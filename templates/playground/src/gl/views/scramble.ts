@@ -1,0 +1,77 @@
+import { PerspectiveCamera, Scene } from 'three/webgpu'
+import { createText, scramble } from 'letterpress/three'
+import type { Stage } from '../stage'
+import { createTweener, frameText } from '../stage'
+
+export interface ScrambleView {
+  /** Scramble everything, then decode back to clean glyphs. */
+  decode(): void
+  setAmount(value: number): void
+  dispose(): void
+}
+
+const TEXT = 'DECODING\nTHE ATLAS'
+const POOL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+
+/** fig. 03 — the glyph scramble: glyphs re-roll through the atlas while
+ * driven, engaging in stable random order. */
+export async function createScrambleView(stage: Stage, el: HTMLElement): Promise<ScrambleView> {
+  const scene = new Scene()
+  const camera = new PerspectiveCamera(35, 1, 0.1, 100)
+  camera.position.z = 10
+
+  const effect = scramble({ font: stage.fonts.lettra.font, chars: POOL, rate: 14 })
+  const text = createText({
+    font: stage.fonts.lettra.font,
+    map: stage.fonts.lettra.map,
+    text: TEXT,
+    layout: { align: 'center' },
+    material: { fill: '#414141', effect },
+  })
+  scene.add(text.mesh)
+
+  const frame = () => {
+    frameText(camera, {
+      width: text.layout.width,
+      height: text.layout.height,
+      fontSize: text.layout.metrics.fontSize,
+    })
+    handle.invalidate()
+  }
+
+  const handle = stage.addView(el, {
+    scene,
+    camera,
+    resize(width, height) {
+      camera.aspect = width / height
+      camera.updateProjectionMatrix()
+      frame()
+    },
+    // the re-roll is time-driven — keep frames coming while any glyph scrambles
+    update: () => text.uniforms.scramble.value > 0.001,
+  })
+  text.onChange(() => handle.invalidate())
+  const tweener = createTweener(() => handle.invalidate())
+
+  await text.warmup(stage.renderer, camera, scene)
+  frame()
+
+  return {
+    decode() {
+      text.uniforms.scramble.value = 1
+      tweener.tween(2200, (t) => {
+        text.uniforms.scramble.value = 1 - t
+      })
+    },
+    setAmount(value) {
+      tweener.cancel()
+      text.uniforms.scramble.value = value
+      handle.invalidate()
+    },
+    dispose() {
+      tweener.cancel()
+      handle.dispose()
+      text.dispose({ map: false })
+    },
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "pages": ["sample.png"],
+  "chars": [
+    { "id": 65, "index": 36, "char": "A", "width": 30, "height": 32, "xoffset": -1, "yoffset": 10, "xadvance": 28, "chnl": 15, "x": 0, "y": 0, "page": 0 },
+    { "id": 86, "index": 57, "char": "V", "width": 30, "height": 32, "xoffset": -1, "yoffset": 10, "xadvance": 28, "chnl": 15, "x": 32, "y": 0, "page": 0 },
+    { "id": 97, "index": 68, "char": "a", "width": 24, "height": 25, "xoffset": 0, "yoffset": 17, "xadvance": 24, "chnl": 15, "x": 64, "y": 0, "page": 0 },
+    { "id": 63, "index": 34, "char": "?", "width": 22, "height": 33, "xoffset": 0, "yoffset": 9, "xadvance": 22, "chnl": 15, "x": 90, "y": 0, "page": 0 },
+    { "id": 32, "index": 1, "char": " ", "width": 0, "height": 0, "xoffset": 0, "yoffset": 0, "xadvance": 12, "chnl": 15, "x": 0, "y": 0, "page": 0 }
+  ],
+  "info": {
+    "face": "SampleFace",
+    "size": 42,
+    "bold": 0,
+    "italic": 0,
+    "charset": ["A", "V", "a", "?", " "],
+    "unicode": 1,
+    "stretchH": 100,
+    "smooth": 1,
+    "aa": 1,
+    "padding": [2, 2, 2, 2],
+    "spacing": [0, 0]
+  },
+  "common": {
+    "lineHeight": 53,
+    "base": 42,
+    "scaleW": 128,
+    "scaleH": 64,
+    "pages": 1,
+    "packed": 0,
+    "alphaChnl": 0,
+    "redChnl": 0,
+    "greenChnl": 0,
+    "blueChnl": 0
+  },
+  "distanceField": { "fieldType": "msdf", "distanceRange": 8 },
+  "kernings": [
+    { "first": 65, "second": 86, "amount": -3 },
+    { "first": 86, "second": 97, "amount": -2 },
+    { "first": 97, "second": 86, "amount": 0 }
+  ]
+}

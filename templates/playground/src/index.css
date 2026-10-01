@@ -1,0 +1,186 @@
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'PP Lettra Mono';
+  src: url('/fonts/ui/PPLettraMono-Regular.woff2') format('woff2');
+  font-weight: 100 350;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Lettra Mono';
+  src: url('/fonts/ui/PPLettraMono-Medium.woff2') format('woff2');
+  font-weight: 351 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GT Sectra Fine';
+  src: url('/fonts/ui/GT-Sectra-Fine-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GT Sectra Fine';
+  src: url('/fonts/ui/GT-Sectra-Fine-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GT Sectra Fine';
+  src: url('/fonts/ui/GT-Sectra-Fine-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --font-public-sans: 'Public Sans', system-ui, sans-serif;
+  --font-lettra-mono: 'PP Lettra Mono', ui-monospace, monospace;
+  --paper: #e4e4e4;
+  --ink: #414141;
+  --ink-faint: #9b9b9b;
+  --night: #121217;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-serif: 'GT Sectra Fine', Georgia, serif;
+    --color-paper: var(--paper);
+    --color-ink: var(--ink);
+    --color-ink-faint: var(--ink-faint);
+    --color-night: var(--night);
+    --gap: 0.25rem;
+    --spacing-gap: var(--gap);
+    --radius: 0rem;
+    --font-sans: var(--font-public-sans);
+    --font-mono: var(--font-lettra-mono);
+    --default-font-family: var(--font-sans);
+    --default-font-family-mono: var(--font-mono);
+    --text-base--letter-spacing: -0.015em;
+    --text-lg--letter-spacing: -0.02em;
+    --text-xl--letter-spacing: -0.025em;
+    --text-2xl--letter-spacing: -0.03em;
+    --text-3xl--letter-spacing: -0.03em;
+    --text-4xl--letter-spacing: -0.03em;
+    --text-5xl--letter-spacing: -0.03em;
+    --text-6xl--letter-spacing: -0.03em;
+    --text-7xl--letter-spacing: -0.03em;
+    --text-8xl--letter-spacing: -0.03em;
+    --text-9xl--letter-spacing: -0.03em;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(0.97 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.452 0.313214 264.052);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.9 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+    --radius: 0rem;
+}
+
+@custom-variant hocus (&:is(:hover, :focus-visible));
+
+@custom-variant light (&:where(.light, .light *));
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    }
+  ::selection {
+    background-color: color-mix(in oklab, var(--ink) 16%, transparent);
+    }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+    }
+  *::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background-color: transparent;
+    }
+  *::-webkit-scrollbar-track {
+    -webkit-appearance: none;
+    background-color: transparent;
+    border-radius: 0;
+    }
+  *::-webkit-scrollbar-thumb {
+    -webkit-appearance: none;
+    background-color: var(--accent);
+    border-radius: 0;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--accent) 80%, var(--foreground));
+    }
+  *::-webkit-scrollbar-corner {
+    background-color: transparent;
+    }
+  :where([data-slot='cluster'] > *) {
+    background-color: var(--cluster-bg, transparent);
+    }
+}
