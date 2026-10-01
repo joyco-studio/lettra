@@ -1,8 +1,7 @@
 # letterpress playground
 
 Live letterpress demo skinned with the [JOYCO UI kit](https://hub.joyco.studio)
-(Cluster/Filler layout, `@joyco` shadcn registry, Tailwind v4, dark console
-theme). React owns only the control panel. The actual letterpress usage lives
+(Next.js App Router, `@joyco` shadcn registry, Tailwind v4). React owns only the control panel. The actual letterpress usage lives
 in [`src/scene.ts`](./src/scene.ts) as plain imperative Three.js, exactly how a
 consumer without React would write it.
 

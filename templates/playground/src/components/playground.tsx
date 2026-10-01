@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Metri } from '@joycostudio/metri'
 import { MetriProvider } from '@joycostudio/metri/react'
@@ -6,10 +8,8 @@ import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
 import type { TocSection } from '@/components/toc'
 import { LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
-import { createStage } from './gl/stage'
-import type { Stage } from './gl/stage'
-import stageSource from './gl/stage.ts?raw'
-import specimenSource from './gl/views/specimen.ts?raw'
+import { createStage } from '../gl/stage'
+import type { Stage } from '../gl/stage'
 
 const SECTIONS: TocSection[] = [
   { id: 'specimen', index: '01', label: 'Specimen' },
@@ -90,7 +90,7 @@ function MetaTable() {
   )
 }
 
-export default function App() {
+export default function Playground({ stageSource, specimenSource }: { stageSource: string; specimenSource: string }) {
   const metri = useMemo(() => new Metri(), [])
   useLayoutEffect(() => {
     metri.initialize()
