@@ -1,39 +1,7 @@
 @import 'tailwindcss';
 
-@font-face {
-  font-family: 'PP Lettra Mono';
-  src: url('/fonts/ui/PPLettraMono-Regular.woff2') format('woff2');
-  font-weight: 100 350;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'PP Lettra Mono';
-  src: url('/fonts/ui/PPLettraMono-Medium.woff2') format('woff2');
-  font-weight: 351 900;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'GT Sectra Fine';
-  src: url('/fonts/ui/GT-Sectra-Fine-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'GT Sectra Fine';
-  src: url('/fonts/ui/GT-Sectra-Fine-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'GT Sectra Fine';
-  src: url('/fonts/ui/GT-Sectra-Fine-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-display: swap;
-}
-
 :root {
-  --font-public-sans: 'Public Sans', system-ui, sans-serif;
-  --font-lettra-mono: 'PP Lettra Mono', ui-monospace, monospace;
+  --font-lettra-mono: var(--font-lettra), ui-monospace, monospace;
   --paper: #e4e4e4;
   --ink: #414141;
   --ink-faint: #9b9b9b;
@@ -43,7 +11,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-serif: 'GT Sectra Fine', Georgia, serif;
+    --font-serif: var(--font-sectra), Georgia, serif;
     --color-paper: var(--paper);
     --color-ink: var(--ink);
     --color-ink-faint: var(--ink-faint);
@@ -51,7 +19,7 @@
     --gap: 0.25rem;
     --spacing-gap: var(--gap);
     --radius: 0rem;
-    --font-sans: var(--font-public-sans);
+    --font-sans: system-ui, sans-serif;
     --font-mono: var(--font-lettra-mono);
     --default-font-family: var(--font-sans);
     --default-font-family-mono: var(--font-mono);

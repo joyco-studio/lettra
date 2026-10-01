@@ -1,5 +1,25 @@
 import type { Metadata, Viewport } from 'next'
+import localFont from 'next/font/local'
 import './globals.css'
+
+const sectra = localFont({
+  src: [
+    { path: '../fonts/GT-Sectra-Fine-Regular.woff2', weight: '400', style: 'normal' },
+    { path: '../fonts/GT-Sectra-Fine-Medium.woff2', weight: '500', style: 'normal' },
+    { path: '../fonts/GT-Sectra-Fine-Bold.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-sectra',
+  display: 'swap',
+})
+
+const lettra = localFont({
+  src: [
+    { path: '../fonts/PPLettraMono-Regular.woff2', weight: '100 350', style: 'normal' },
+    { path: '../fonts/PPLettraMono-Medium.woff2', weight: '351 900', style: 'normal' },
+  ],
+  variable: '--font-lettra',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
@@ -33,7 +53,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${sectra.variable} ${lettra.variable}`}>
       <body className="bg-paper text-ink antialiased">{children}</body>
     </html>
   )
