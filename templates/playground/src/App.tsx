@@ -54,14 +54,15 @@ Full API (layout engine, effects, composing TSL nodes, lifecycle contract): http
 
 function GettingStarted() {
   return (
-    <div className="mt-9">
-      <Caption className="text-[11px] text-ink-faint">getting started</Caption>
-      <div className="mt-3">
+    <div className="mt-10">
+      <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Getting started</h2>
+      <div className="mt-4">
         <CommandLine command={INSTALL_COMMAND} />
       </div>
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 font-serif text-[16px] text-ink">
+        <span>or</span>
         <CopyAction text={AGENT_PROMPT} label="copy agent prompt" tone="light" />
-        <span className="font-serif text-[14px] text-ink-faint">— paste it into your agent, it does the rest.</span>
+        <span>paste it into your agent, it does the rest.</span>
       </div>
     </div>
   )
@@ -76,7 +77,7 @@ function MetaTable() {
     ['license', 'isc'],
   ]
   return (
-    <table className="w-full border-collapse font-mono text-[11px] font-semibold tracking-[0.06em] uppercase">
+    <table className="w-full border-collapse font-mono text-[12px] font-semibold tracking-[0.04em]">
       <tbody>
         {rows.map(([key, value]) => (
           <tr key={key}>
@@ -129,7 +130,7 @@ export default function App() {
           className="pointer-events-none absolute top-0 left-0 z-30 will-change-transform"
         />
 
-        <div className="relative mx-auto flex max-w-[1440px] justify-center gap-14 px-6 pb-28">
+        <div className="relative mx-auto flex max-w-[1440px] justify-center gap-14 px-6">
           {/* left rail — hub-style contents */}
           <div className="sticky top-0 hidden h-screen w-[280px] shrink-0 self-start pt-14 pb-10 xl:block">
             {/* block hugs the body column; content inside stays left-aligned */}
@@ -154,7 +155,7 @@ export default function App() {
           </div>
 
           {/* prose column + right rail */}
-          <div className="grid min-w-0 grid-cols-1 gap-x-14 lg:grid-cols-[minmax(0,580px)_minmax(0,460px)]">
+          <div className="grid min-w-0 grid-cols-1 gap-x-14 pb-28 lg:grid-cols-[minmax(0,580px)_minmax(0,460px)]">
             {/* masthead */}
             <Row>
               <div className="flex items-start gap-1 pt-14">
@@ -170,8 +171,8 @@ export default function App() {
                 node material, sharp at any scale and any angle.
               </Prose>
               <Prose className="mt-4 text-[14px] text-[#6b6b6b]">
-                Every figure below is ink on a single shared canvas, scroll-synced to the page — toggle{' '}
-                <span className="font-mono text-[12px] uppercase">view code</span> on any of them to read the snippet
+                Every figure below is ink on a single shared canvas, scroll-synced to the page — hit the{' '}
+                <span className="font-mono text-[12px]">{'</>'}</span> square on any of them to read the snippet
                 alongside.
               </Prose>
 
@@ -297,7 +298,7 @@ export default function App() {
                 <MetaTable />
               </div>
               <div className="flex flex-col gap-3">
-                <Caption className="text-[11px] text-ink-faint">from readme.md</Caption>
+                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">From readme.md</h2>
                 <Prose className="text-[14px] text-[#6b6b6b]">
                   Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi —
                   that work belongs to a real shaper. Layout ported from Jam3&apos;s layout-bmfont-text (MIT). Specimen

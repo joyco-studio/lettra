@@ -62,7 +62,7 @@ export function CopyAction({
         'cursor-pointer px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.08em] transition-colors',
         tone === 'dark'
           ? 'bg-paper/10 text-paper/70 hover:bg-paper/20 hover:text-paper'
-          : 'bg-ink/8 text-ink-faint hover:bg-ink/15 hover:text-ink'
+          : 'bg-night text-paper hover:bg-night/85'
       )}
     >
       {label}
@@ -109,6 +109,13 @@ export function ControlLabel({ className, children }: { className?: string; chil
     <span className={cn('font-mono text-[11px] font-medium tracking-[0.02em] text-ink-faint', className)}>
       {children}
     </span>
+  )
+}
+
+/** Serif figure caption — quiet but readable, never uppercase mono. */
+export function FigCaption({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <span className={cn('font-serif text-[14px] tracking-[0.01em] text-[#84847f]', className)}>{children}</span>
   )
 }
 

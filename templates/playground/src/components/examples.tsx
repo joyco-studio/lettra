@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useObserve } from '@joycostudio/metri/react'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
-import { Caption, ControlLabel, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
+import { Caption, ControlLabel, FigCaption, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
 import { specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
@@ -159,7 +159,7 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
         </div>
 
         <figcaption className="mt-5">
-          <Caption className="text-[11px] text-ink-faint">fig. 01 — live specimen · drag to tilt</Caption>
+          <FigCaption>fig. 01 — live specimen · drag to tilt</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -199,7 +199,7 @@ export function WipeExample({ stage }: { stage: Stage | null }) {
           <MonoButton onClick={() => view?.wipe('out')}>wipe out</MonoButton>
         </div>
         <figcaption className="mt-5">
-          <Caption className="text-[11px] text-ink-faint">fig. 02 — threshold erosion · plays as it enters</Caption>
+          <FigCaption>fig. 02 — threshold erosion · plays as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -260,7 +260,7 @@ export function ScrambleExample({ stage }: { stage: Stage | null }) {
           </div>
         </div>
         <figcaption className="mt-5">
-          <Caption className="text-[11px] text-ink-faint">fig. 03 — atlas scramble · decodes as it enters</Caption>
+          <FigCaption>fig. 03 — atlas scramble · decodes as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -300,7 +300,7 @@ export function LiquidExample({ stage }: { stage: Stage | null }) {
           <ControlLabel>move the cursor across the text</ControlLabel>
         </div>
         <figcaption className="mt-5">
-          <Caption className="text-[11px] text-ink-faint">fig. 04 — fluid-sim ink driving the scramble</Caption>
+          <FigCaption>fig. 04 — fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
       </figure>
     </Row>

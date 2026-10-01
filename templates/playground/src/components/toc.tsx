@@ -21,9 +21,7 @@ export function Toc({ sections }: { sections: TocSection[] }) {
   return (
     <AnchorProvider toc={toc} single>
       <nav aria-label="Contents" className="flex flex-col gap-5">
-        <span className="font-mono text-[11px] leading-[16px] font-semibold tracking-[0.06em] text-ink-faint uppercase">
-          contents
-        </span>
+        <span className="font-serif text-[15px] font-medium tracking-[0.01em] text-ink-faint">Contents</span>
         <TocItems sections={sections} />
       </nav>
     </AnchorProvider>
