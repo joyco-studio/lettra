@@ -1,0 +1,86 @@
+{
+  "name": "letterpress",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "version": "0.0.0",
+  "description": "Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joyco-studio/letterpress.git"
+  },
+  "homepage": "https://github.com/joyco-studio/letterpress#readme",
+  "bugs": {
+    "url": "https://github.com/joyco-studio/letterpress/issues"
+  },
+  "keywords": [
+    "three",
+    "webgpu",
+    "tsl",
+    "msdf",
+    "sdf",
+    "text",
+    "font",
+    "bmfont",
+    "typography"
+  ],
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.mjs"
+    },
+    "./three": {
+      "types": "./dist/three.d.ts",
+      "import": "./dist/three.mjs",
+      "require": "./dist/three.js",
+      "default": "./dist/three.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "version:package": "pnpm changeset version",
+    "release": "pnpm build && pnpm changeset publish",
+    "lint": "eslint -c ./eslint.config.mjs . --fix --no-cache"
+  },
+  "author": "joyco.studio",
+  "license": "MIT",
+  "packageManager": "pnpm@10.29.2",
+  "devDependencies": {
+    "@changesets/cli": "^2.27.11",
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^20.11.24",
+    "@types/three": "^0.186.0",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-plugin-prettier": "^5.2.3",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.2",
+    "three": "^0.186.1",
+    "tsup": "^8.0.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.21.0",
+    "vitest": "^3.2.6"
+  },
+  "peerDependencies": {
+    "three": ">=0.185.0"
+  },
+  "peerDependenciesMeta": {
+    "three": {
+      "optional": true
+    }
+  }
+}
