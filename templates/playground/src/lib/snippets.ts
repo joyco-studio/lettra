@@ -87,3 +87,23 @@ const text = createText({
 
 // the sim is view code, not library code -- swap it for a wipe
 // front or an audio level and nothing else changes`
+
+export const bakeRecipe = `# instance variable fonts first — variable GPOS kerning
+# bakes to 0 pairs otherwise (static GPOS reads fine)
+python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf
+
+# bake: MSDF atlas PNG + BMFont JSON metrics
+# -r 8 — distance range 8, required for smooth erosion wipes
+npx -y -p msdf-bmfont-xml msdf-bmfont \\
+  -f json -i charset.txt -s 64 -r 8 -p 2 \\
+  -t msdf --smart-size static.ttf`
+
+/** Static code blocks highlighted server-side at build. */
+export interface HighlightedSnippets {
+  stage: string
+  specimen: string
+  bake: string
+  wipe: string
+  scramble: string
+  liquid: string
+}

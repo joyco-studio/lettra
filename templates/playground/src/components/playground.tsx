@@ -8,6 +8,8 @@ import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
 import type { TocSection } from '@/components/toc'
 import { LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
+import { bakeRecipe } from '@/lib/snippets'
+import type { HighlightedSnippets } from '@/lib/snippets'
 import { createStage } from '../gl/stage'
 import type { Stage } from '../gl/stage'
 
@@ -20,16 +22,6 @@ const SECTIONS: TocSection[] = [
   { id: 'implementation', index: '06', label: 'Implementation' },
   { id: 'colophon', index: '07', label: 'Colophon' },
 ]
-
-const BAKE_RECIPE = `# instance variable fonts first — variable GPOS kerning
-# bakes to 0 pairs otherwise (static GPOS reads fine)
-python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf
-
-# bake: MSDF atlas PNG + BMFont JSON metrics
-# -r 8 — distance range 8, required for smooth erosion wipes
-npx -y -p msdf-bmfont-xml msdf-bmfont \\
-  -f json -i charset.txt -s 64 -r 8 -p 2 \\
-  -t msdf --smart-size static.ttf`
 
 const INSTALL_COMMAND = 'pnpm add letterpress three'
 
@@ -90,7 +82,15 @@ function MetaTable() {
   )
 }
 
-export default function Playground({ stageSource, specimenSource }: { stageSource: string; specimenSource: string }) {
+export default function Playground({
+  stageSource,
+  specimenSource,
+  highlighted,
+}: {
+  stageSource: string
+  specimenSource: string
+  highlighted: HighlightedSnippets
+}) {
   const metri = useMemo(() => new Metri(), [])
   useLayoutEffect(() => {
     metri.initialize()
@@ -191,7 +191,8 @@ export default function Playground({ stageSource, specimenSource }: { stageSourc
                 <SnippetPanel
                   open={bakeOpen}
                   title="bake.sh"
-                  code={BAKE_RECIPE}
+                  code={bakeRecipe}
+                  html={highlighted.bake}
                   lang="bash"
                   onToggle={() => setBakeOpen((value) => !value)}
                 />
@@ -228,9 +229,9 @@ export default function Playground({ stageSource, specimenSource }: { stageSourc
             </Row>
 
             {/* fig. 02 — wipe, fig. 03 — scramble, fig. 04 — water trail */}
-            <WipeExample stage={stage} />
-            <ScrambleExample stage={stage} />
-            <LiquidExample stage={stage} />
+            <WipeExample stage={stage} html={highlighted.wipe} />
+            <ScrambleExample stage={stage} html={highlighted.scramble} />
+            <LiquidExample stage={stage} html={highlighted.liquid} />
 
             {/* 06 — implementation */}
             <Row id="implementation" className="pt-20">
@@ -272,7 +273,7 @@ export default function Playground({ stageSource, specimenSource }: { stageSourc
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <CodePanel title="gl/stage.ts" code={stageSource} maxHeight="max-h-[480px]" />
+                  <CodePanel title="gl/stage.ts" code={stageSource} html={highlighted.stage} maxHeight="max-h-[480px]" />
                 </div>
               </details>
 
@@ -287,7 +288,7 @@ export default function Playground({ stageSource, specimenSource }: { stageSourc
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <CodePanel title="gl/views/specimen.ts" code={specimenSource} maxHeight="max-h-[480px]" />
+                  <CodePanel title="gl/views/specimen.ts" code={specimenSource} html={highlighted.specimen} maxHeight="max-h-[480px]" />
                 </div>
               </details>
             </Row>

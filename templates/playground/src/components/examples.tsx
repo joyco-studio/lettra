@@ -166,7 +166,7 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
   )
 }
 
-export function WipeExample({ stage }: { stage: Stage | null }) {
+export function WipeExample({ stage, html }: { stage: Stage | null; html: string }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const view = useGLView(stage, elRef, createWipeView)
@@ -179,7 +179,7 @@ export function WipeExample({ stage }: { stage: Stage | null }) {
       className="pt-20"
       asideClassName="lg:pt-20"
       aside={
-        <SnippetPanel open={open} title="wipe.ts" code={wipeSnippet} onToggle={() => setOpen((value) => !value)} />
+        <SnippetPanel open={open} title="wipe.ts" code={wipeSnippet} html={html} onToggle={() => setOpen((value) => !value)} />
       }
     >
       <div className="flex items-start gap-1">
@@ -206,7 +206,7 @@ export function WipeExample({ stage }: { stage: Stage | null }) {
   )
 }
 
-export function ScrambleExample({ stage }: { stage: Stage | null }) {
+export function ScrambleExample({ stage, html }: { stage: Stage | null; html: string }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(0)
@@ -223,7 +223,7 @@ export function ScrambleExample({ stage }: { stage: Stage | null }) {
         <SnippetPanel
           open={open}
           title="scramble.ts"
-          code={scrambleSnippet}
+          code={scrambleSnippet} html={html}
           onToggle={() => setOpen((value) => !value)}
         />
       }
@@ -267,7 +267,7 @@ export function ScrambleExample({ stage }: { stage: Stage | null }) {
   )
 }
 
-export function LiquidExample({ stage }: { stage: Stage | null }) {
+export function LiquidExample({ stage, html }: { stage: Stage | null; html: string }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   useGLView(stage, elRef, createLiquidView)
@@ -278,7 +278,7 @@ export function LiquidExample({ stage }: { stage: Stage | null }) {
       className="pt-20"
       asideClassName="lg:pt-20"
       aside={
-        <SnippetPanel open={open} title="liquid.ts" code={liquidSnippet} onToggle={() => setOpen((value) => !value)} />
+        <SnippetPanel open={open} title="liquid.ts" code={liquidSnippet} html={html} onToggle={() => setOpen((value) => !value)} />
       }
     >
       <div className="flex items-start gap-1">

@@ -156,6 +156,7 @@ export function CodePanel({
   title,
   code,
   lang,
+  html,
   leading,
   onClose,
   maxHeight = 'max-h-[70vh]',
@@ -164,6 +165,8 @@ export function CodePanel({
   title: string
   code: string
   lang?: string
+  /** Pre-highlighted HTML (server-side shiki); omits the client highlighter. */
+  html?: string
   /** Rendered flush-left before the name tab (e.g. the code toggle). */
   leading?: React.ReactNode
   onClose?: () => void
@@ -200,7 +203,7 @@ export function CodePanel({
           maxHeight
         )}
       >
-        <CodeBlock code={code} lang={lang} />
+        <CodeBlock code={code} lang={lang} html={html} />
       </div>
     </div>
   )
@@ -248,12 +251,14 @@ export function SnippetPanel({
   title,
   code,
   lang,
+  html,
   onToggle,
 }: {
   open: boolean
   title: string
   code: string
   lang?: string
+  html?: string
   onToggle: () => void
 }) {
   return (
@@ -263,6 +268,7 @@ export function SnippetPanel({
           title={title}
           code={code}
           lang={lang}
+          html={html}
           maxHeight="max-h-[80vh]"
           leading={<CodeToggle active onClick={onToggle} />}
         />
