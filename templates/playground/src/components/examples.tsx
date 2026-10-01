@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useObserve } from '@joycostudio/metri/react'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
-import { Caption, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
+import { Caption, ControlLabel, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
 import { specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
@@ -105,12 +105,12 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
 
         <div className="mt-4 flex flex-col gap-4">
           <label className="flex flex-col gap-2">
-            <Caption className="text-[11px] text-ink-faint">edit the specimen</Caption>
+            <ControlLabel>edit the specimen</ControlLabel>
             <Textarea
               value={state.text}
               spellCheck={false}
               rows={2}
-              className="min-h-0 resize-none border-0 bg-transparent p-0 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className="min-h-0 resize-none border-0 bg-ink/4 px-3 py-2.5 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:bg-ink/6 focus-visible:ring-0 dark:bg-ink/4"
               onChange={(event) => patch({ text: event.target.value })}
             />
           </label>
@@ -120,21 +120,21 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
                 {label}
               </MonoButton>
             ))}
-            <span className="font-mono text-[12px] text-ink-faint">·</span>
+            <span className="w-1" />
             {ALIGNS.map((align) => (
               <MonoButton key={align} active={state.align === align} onClick={() => patch({ align })}>
                 {align}
               </MonoButton>
             ))}
-            <span className="font-mono text-[12px] text-ink-faint">·</span>
+            <span className="w-1" />
             <MonoButton onClick={() => view?.wipe('in')}>wipe in</MonoButton>
             <MonoButton onClick={() => view?.wipe('out')}>wipe out</MonoButton>
           </div>
           <div className="flex flex-col gap-x-10 gap-y-3 sm:flex-row">
             <div className="flex flex-1 items-center gap-3">
-              <Caption className="w-[132px] shrink-0 text-[11px] text-ink-faint">
+              <ControlLabel className="w-[132px] shrink-0">
                 tracking {state.letterSpacing}px
-              </Caption>
+              </ControlLabel>
               <Slider
                 value={[state.letterSpacing]}
                 min={-4}
@@ -144,9 +144,9 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
               />
             </div>
             <div className="flex flex-1 items-center gap-3">
-              <Caption className="w-[132px] shrink-0 text-[11px] text-ink-faint">
+              <ControlLabel className="w-[132px] shrink-0">
                 measure {state.maxWidth > 0 ? `${state.maxWidth}px` : 'off'}
-              </Caption>
+              </ControlLabel>
               <Slider
                 value={[state.maxWidth]}
                 min={0}
@@ -178,7 +178,9 @@ export function WipeExample({ stage }: { stage: Stage | null }) {
       id="wipe"
       className="pt-20"
       asideClassName="lg:pt-20"
-      aside={<SnippetPanel open={open} title="wipe.ts" code={wipeSnippet} onToggle={() => setOpen((value) => !value)} />}
+      aside={
+        <SnippetPanel open={open} title="wipe.ts" code={wipeSnippet} onToggle={() => setOpen((value) => !value)} />
+      }
     >
       <div className="flex items-start gap-1">
         <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Erosion wipes</h2>
@@ -217,7 +219,14 @@ export function ScrambleExample({ stage }: { stage: Stage | null }) {
       id="scramble"
       className="pt-20"
       asideClassName="lg:pt-20"
-      aside={<SnippetPanel open={open} title="scramble.ts" code={scrambleSnippet} onToggle={() => setOpen((value) => !value)} />}
+      aside={
+        <SnippetPanel
+          open={open}
+          title="scramble.ts"
+          code={scrambleSnippet}
+          onToggle={() => setOpen((value) => !value)}
+        />
+      }
     >
       <div className="flex items-start gap-1">
         <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Glyph scramble</h2>
@@ -234,9 +243,9 @@ export function ScrambleExample({ stage }: { stage: Stage | null }) {
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
           <MonoButton onClick={() => view?.decode()}>decode</MonoButton>
-          <span className="font-mono text-[12px] text-ink-faint">·</span>
+          <span className="w-1" />
           <div className="flex flex-1 items-center gap-3">
-            <Caption className="w-[90px] shrink-0 text-[11px] text-ink-faint">drive {amount}%</Caption>
+            <ControlLabel className="w-[90px] shrink-0">drive {amount}%</ControlLabel>
             <Slider
               value={[amount]}
               min={0}
@@ -277,18 +286,18 @@ export function LiquidExample({ stage }: { stage: Stage | null }) {
         <Caption>[composition]</Caption>
       </div>
       <Prose className="mt-5">
-        The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU
-        fluid sim: ink splatted along the cursor stroke, advected by its own velocity, dissipating as it goes — it
-        swirls while you move and soaks away when you stop. Glyphs touched by its rim re-roll through the atlas, the
-        wet interior darkens the ink, and none of it is library code. An audio level or a wipe front plugs into the
-        same seam.
+        The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU fluid
+        sim: ink splatted along the cursor stroke, advected by its own velocity, dissipating as it goes — it swirls
+        while you move and soaks away when you stop. Glyphs touched by its rim re-roll through the atlas, the wet
+        interior darkens the ink, and none of it is library code. An audio level or a wipe front plugs into the same
+        seam.
       </Prose>
       <figure className="mt-8">
         <div className="bg-[#dcdcda]">
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <Caption className="text-[11px] text-ink-faint">move the cursor across the text</Caption>
+          <ControlLabel>move the cursor across the text</ControlLabel>
         </div>
         <figcaption className="mt-5">
           <Caption className="text-[11px] text-ink-faint">fig. 04 — fluid-sim ink driving the scramble</Caption>

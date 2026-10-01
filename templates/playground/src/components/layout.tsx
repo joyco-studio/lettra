@@ -24,9 +24,7 @@ export function useScrambleLabel(idle: string) {
       setLabel(
         target
           .split('')
-          .map((char, i) =>
-            i < reveal ? char : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]
-          )
+          .map((char, i) => (i < reveal ? char : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]))
           .join('')
       )
       if (frame >= total) {
@@ -95,13 +93,22 @@ export function MonoButton({
     <button
       onClick={onClick}
       className={cn(
-        'cursor-pointer font-mono text-[12px] font-semibold tracking-[0.06em] uppercase transition-colors',
-        active ? 'text-ink' : 'text-ink-faint hover:text-ink',
+        'cursor-pointer px-2.5 py-[5px] font-mono text-[11px] font-semibold tracking-[0.04em] transition-colors',
+        active ? 'bg-night text-paper' : 'bg-ink/8 text-ink-faint hover:bg-ink/15 hover:text-ink',
         className
       )}
     >
       {children}
     </button>
+  )
+}
+
+/** Lowercase mono label for control rows — quiet, never uppercase. */
+export function ControlLabel({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <span className={cn('font-mono text-[11px] font-medium tracking-[0.02em] text-ink-faint', className)}>
+      {children}
+    </span>
   )
 }
 
@@ -218,9 +225,7 @@ export function CodeToggle({ active, onClick }: { active: boolean; onClick: () =
       aria-pressed={active}
       className={cn(
         'flex size-9 shrink-0 cursor-pointer items-center justify-center font-mono text-[12px] font-semibold transition-colors',
-        active
-          ? 'bg-night text-paper'
-          : 'bg-ink/8 text-ink-faint hover:bg-ink/15 hover:text-ink'
+        active ? 'bg-night text-paper' : 'bg-ink/8 text-ink-faint hover:bg-ink/15 hover:text-ink'
       )}
     >
       {'</>'}

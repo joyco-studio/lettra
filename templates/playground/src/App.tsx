@@ -261,11 +261,14 @@ export default function App() {
               </Prose>
 
               <details className="group mt-8">
-                <summary className="cursor-pointer list-none">
-                  <Caption className="text-[11px] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 05 — the stage (gl/stage.ts) · <span className="group-open:hidden">expand</span>
-                    <span className="hidden group-open:inline">collapse</span>
-                  </Caption>
+                <summary className="flex cursor-pointer list-none items-center gap-3">
+                  <span className="flex size-7 shrink-0 items-center justify-center bg-ink/8 font-mono text-[14px] text-ink-faint transition-colors group-hover:bg-ink/15 group-hover:text-ink">
+                    <span className="group-open:hidden">+</span>
+                    <span className="hidden group-open:inline">−</span>
+                  </span>
+                  <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
+                    fig. 05 — the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
+                  </span>
                 </summary>
                 <div className="mt-4">
                   <CodePanel title="gl/stage.ts" code={stageSource} maxHeight="max-h-[480px]" />
@@ -273,11 +276,14 @@ export default function App() {
               </details>
 
               <details className="group mt-6">
-                <summary className="cursor-pointer list-none">
-                  <Caption className="text-[11px] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 06 — a view (gl/views/specimen.ts) · <span className="group-open:hidden">expand</span>
-                    <span className="hidden group-open:inline">collapse</span>
-                  </Caption>
+                <summary className="flex cursor-pointer list-none items-center gap-3">
+                  <span className="flex size-7 shrink-0 items-center justify-center bg-ink/8 font-mono text-[14px] text-ink-faint transition-colors group-hover:bg-ink/15 group-hover:text-ink">
+                    <span className="group-open:hidden">+</span>
+                    <span className="hidden group-open:inline">−</span>
+                  </span>
+                  <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
+                    fig. 06 — a view <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
+                  </span>
                 </summary>
                 <div className="mt-4">
                   <CodePanel title="gl/views/specimen.ts" code={specimenSource} maxHeight="max-h-[480px]" />

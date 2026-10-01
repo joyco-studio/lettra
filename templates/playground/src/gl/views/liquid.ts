@@ -12,7 +12,20 @@ import {
   Vector2,
   Vector3,
 } from 'three/webgpu'
-import { color, float, max, mix, positionWorld, saturate, smoothstep, texture, uniform, uv, vec2, vec4 } from 'three/tsl'
+import {
+  color,
+  float,
+  max,
+  mix,
+  positionWorld,
+  saturate,
+  smoothstep,
+  texture,
+  uniform,
+  uv,
+  vec2,
+  vec4,
+} from 'three/tsl'
 import { createText, scramble } from 'letterpress/three'
 import type { Stage } from '../stage'
 import { frameText } from '../stage'
@@ -31,8 +44,8 @@ export interface LiquidView {
  * contributes only `scramble({ drive })` — the sim is view code, and any
  * other field plugs into the same seam. */
 
-const SIM_W = 256
-const SIM_H = 128
+const SIM_W = 384
+const SIM_H = 192
 const INK_DISSIPATE = 0.975 // per 60 Hz step — gone in ~1.5 s
 const VEL_DAMP = 0.94
 const SETTLE_MS = 3200
@@ -202,7 +215,9 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
         const limit = 2.5
         const k = speed > limit ? limit / speed : 1
         splatVelU.value.set(vx * k * 0.9, vy * k * 0.9)
-        inkStrengthU.value = Math.min(1, 0.1 + speed * 0.5)
+        // ink is purely motion-driven — a resting cursor splats nothing,
+        // so the pool always dissipates to zero instead of self-refreshing
+        inkStrengthU.value = Math.min(1, speed * 0.7)
         previous = { ...pointer }
       } else {
         // off-canvas: no splat, the sim just advects and fades
