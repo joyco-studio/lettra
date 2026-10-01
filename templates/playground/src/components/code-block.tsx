@@ -23,7 +23,9 @@ const core = () => (corePromise ??= createCore())
 const FRAME_CLASS = 'overflow-auto text-[13px] leading-[1.85] **:[pre]:!bg-transparent **:[pre]:px-5 **:[pre]:py-7 **:[pre]:font-mono'
 
 export function CodeBlock({ code, html }: { code: string; lang?: string; html?: string }) {
-  const [clientHtml, setClientHtml] = useState<string | null>(null)
+  // cache keyed to the code that produced it, so a stale highlight never
+  // renders against newer code (plain <pre> shows the current code instead)
+  const [highlighted, setHighlighted] = useState<{ code: string; html: string } | null>(null)
 
   useEffect(() => {
     if (html) return
@@ -31,7 +33,7 @@ export function CodeBlock({ code, html }: { code: string; lang?: string; html?: 
     core()
       .then((highlighter) => highlighter.codeToHtml(code, { lang: 'typescript', theme: 'min-light' }))
       .then((result) => {
-        if (alive) setClientHtml(result)
+        if (alive) setHighlighted({ code, html: result })
       })
       .catch(() => {})
     return () => {
@@ -39,7 +41,7 @@ export function CodeBlock({ code, html }: { code: string; lang?: string; html?: 
     }
   }, [code, html])
 
-  const rendered = html ?? clientHtml
+  const rendered = html ?? (highlighted?.code === code ? highlighted.html : null)
   if (!rendered) {
     return <pre className="overflow-auto px-5 py-7 font-mono text-[13px] leading-[1.85] text-ink">{code}</pre>
   }

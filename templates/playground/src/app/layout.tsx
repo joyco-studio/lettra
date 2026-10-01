@@ -21,8 +21,16 @@ const lettra = localFont({
   display: 'swap',
 })
 
+/** Public origin for absolute metadata URLs: explicit env first, then the
+ * Vercel production domain, localhost only for local dev. */
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : 'http://localhost:3000')
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(siteUrl),
   title: 'Letterpress — sharp MSDF text for Three.js WebGPU',
   description:
     'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out — no wasm, no shaper, sharp at any scale.',
@@ -30,19 +38,19 @@ export const metadata: Metadata = {
     icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon-32.png', sizes: '32x32' }],
     apple: '/apple-touch-icon.png',
   },
+  // og:image / twitter:image come from the app/opengraph-image.png and
+  // app/twitter-image.png file conventions (plus their .alt.txt files)
   openGraph: {
     type: 'website',
     siteName: 'Letterpress',
     title: 'Letterpress — sharp MSDF text for Three.js WebGPU',
     description:
       'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.',
-    images: [{ url: '/og.png', alt: 'Letterpress — get sharp, typed MSDF fonts in your scene' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Letterpress — sharp MSDF text for Three.js WebGPU',
     description: 'Runtime MSDF text for Three.js WebGPURenderer + TSL. No wasm, no shaper — sharp at any scale.',
-    images: ['/og.png'],
   },
 }
 
