@@ -42,8 +42,7 @@ export function useScrambleLabel(idle: string) {
 }
 
 /** Badge-style corner cuts, chip scale. */
-const CHIP_CLIP =
-  '[clip-path:polygon(6px_0%,100%_0%,100%_calc(100%-6px),calc(100%-6px)_100%,0%_100%,0%_6px)]'
+const CHIP_CLIP = '[clip-path:polygon(6px_0%,100%_0%,100%_calc(100%-6px),calc(100%-6px)_100%,0%_100%,0%_6px)]'
 
 /** Copy button; the label scrambles to "done". Tones: `dark` chip for night
  * surfaces, `light` solid night chip for paper, `outline` an ink ring that
@@ -66,7 +65,10 @@ export function CopyAction({
 
   if (tone === 'outline') {
     return (
-      <button onClick={copy} className={cn('group/copy cursor-pointer bg-ink/40 p-px transition-colors hover:bg-ink', CHIP_CLIP)}>
+      <button
+        onClick={copy}
+        className={cn('group/copy cursor-pointer bg-ink/40 p-px transition-colors hover:bg-ink', CHIP_CLIP)}
+      >
         <span
           className={cn(
             'flex items-center bg-paper px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.08em] text-ink/70 transition-colors group-hover/copy:text-ink',
