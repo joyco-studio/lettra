@@ -33,6 +33,12 @@ function useReadingLineActive(ids: string[]) {
     // on any manual input (which also cancels the browser's smooth scroll).
     let lock: string | null = null
     let idleTimer = 0
+    // hysteresis state: a switch needs two consecutive frames agreeing, and
+    // the bottom clamp releases only 80px above the point it engaged
+    // (trackpad rubber-banding oscillates scrollY around the maximum)
+    let committed: string | null = null
+    let candidate: string | null = null
+    let clamped = false
 
     const pick = () => {
       raf = 0
@@ -43,13 +49,32 @@ function useReadingLineActive(ids: string[]) {
         const element = document.getElementById(id)
         if (element && element.getBoundingClientRect().top <= line) current = id
       }
-      const bottomed = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
-      setActive(bottomed ? ids[ids.length - 1] : current)
+      const bottom = window.innerHeight + window.scrollY
+      const max = document.documentElement.scrollHeight
+      if (clamped) {
+        if (bottom < max - 80) clamped = false
+      } else if (bottom >= max - 2) {
+        clamped = true
+      }
+      const next = clamped ? ids[ids.length - 1] : current
+      if (next === committed) {
+        candidate = null
+        return
+      }
+      if (next === candidate) {
+        committed = next
+        candidate = null
+        setActive(next)
+      } else {
+        candidate = next
+        if (!raf) raf = requestAnimationFrame(pick)
+      }
     }
     const armIdle = (ms: number) => {
       clearTimeout(idleTimer)
       idleTimer = window.setTimeout(() => {
         lock = null
+        candidate = null
         if (!raf) raf = requestAnimationFrame(pick)
       }, ms)
     }
@@ -60,15 +85,10 @@ function useReadingLineActive(ids: string[]) {
       }
       if (!raf) raf = requestAnimationFrame(pick)
     }
-    const cancelLock = () => {
-      if (!lock) return
-      lock = null
-      clearTimeout(idleTimer)
-      if (!raf) raf = requestAnimationFrame(pick)
-    }
-
     api.current.lockTo = (id) => {
       lock = id
+      committed = id
+      candidate = null
       setActive(id)
       armIdle(900) // settles even if the click causes no scroll at all
     }
@@ -80,18 +100,12 @@ function useReadingLineActive(ids: string[]) {
     resizeObserver.observe(document.body)
     window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule)
-    window.addEventListener('wheel', cancelLock, { passive: true })
-    window.addEventListener('touchstart', cancelLock, { passive: true })
-    window.addEventListener('keydown', cancelLock)
     return () => {
       cancelAnimationFrame(raf)
       clearTimeout(idleTimer)
       resizeObserver.disconnect()
       window.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
-      window.removeEventListener('wheel', cancelLock)
-      window.removeEventListener('touchstart', cancelLock)
-      window.removeEventListener('keydown', cancelLock)
     }
   }, [ids])
 
