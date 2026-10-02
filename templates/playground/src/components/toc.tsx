@@ -23,7 +23,7 @@ export interface TocSection {
  * seven sparse sections. We keep its rail mechanics and own the highlight. */
 function useReadingLineActive(ids: string[]) {
   const [active, setActive] = useState(ids[0])
-  const api = useRef({ lockTo: (_id: string) => {} })
+  const api = useRef<{ lockTo: (id: string) => void }>({ lockTo: () => {} })
 
   useEffect(() => {
     let raf = 0
