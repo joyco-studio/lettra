@@ -1,6 +1,6 @@
 # lettra
 
-![lettra: sharp, typed MSDF fonts in your scene](./static/cover.png)
+![lettra: sharp, typed MSDF fonts in your scene](https://r2.joyco.studio/hub/images/lettra-banner.png)
 
 Runtime MSDF text for Three.js `WebGPURenderer` + TSL. Bake a font atlas once
 (dev-time, manual for now), then render sharp, kerned, animatable text with
