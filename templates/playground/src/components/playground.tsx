@@ -3,7 +3,17 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Metri } from '@joycostudio/metri'
 import { MetriProvider } from '@joycostudio/metri/react'
-import { Caption, CodePanel, CommandLine, CopyAction, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
+import {
+  Caption,
+  CodePanel,
+  CommandLine,
+  CopyAction,
+  MonoButton,
+  Prose,
+  Row,
+  SectionBreak,
+  SnippetPanel,
+} from '@/components/layout'
 import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
 import type { TocSection } from '@/components/toc'
@@ -42,7 +52,7 @@ npx -y -p msdf-bmfont-xml msdf-bmfont -f json -i charset.txt -s 64 -r 8 -p 2 -t 
 - instance variable fonts to a static weight first (python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf) or GPOS kerning bakes to 0 pairs
 - keep distance range 8 (erosion wipes need the SDF headroom), single atlas page, no rotated packing
 
-Full API (layout engine, effects, composing TSL nodes, lifecycle contract): https://github.com/joyco-studio/letterpress#readme`
+Full API (layout engine, effects, composing TSL nodes, lifecycle contract): https://github.com/joyco-studio/lettra#readme`
 
 function GettingStarted() {
   return (
@@ -137,13 +147,8 @@ export default function Playground({
           <div className="sticky top-0 hidden h-screen w-[280px] shrink-0 self-start pt-14 pb-10 xl:block">
             {/* block hugs the body column; content inside stays left-aligned */}
             <div className="ml-auto flex h-full w-full max-w-[280px] flex-col">
-              <div className="flex items-center gap-2 pb-10">
-                <img src="/brand/logo-framed.svg" alt="Lettra logo" className="h-10 w-10" />
-                <img
-                  src="/brand/wordmark.svg"
-                  alt="Lettra®"
-                  className="h-[27px] w-auto [filter:brightness(0.32)]"
-                />
+              <div className="flex items-center pb-10">
+                <img src="/brand/wordmark.svg" alt="Lettra®" className="h-[26px] w-auto [filter:brightness(0.32)]" />
               </div>
               <Toc sections={SECTIONS} />
               <a
@@ -183,10 +188,11 @@ export default function Playground({
             {/* fig. 01 — specimen */}
             <SpecimenExample stage={stage} />
 
+            <SectionBreak />
             {/* 02 — pipeline */}
             <Row
               id="pipeline"
-              className="pt-20"
+              className="pt-10"
               asideClassName="lg:pt-20"
               aside={
                 <SnippetPanel
@@ -230,12 +236,16 @@ export default function Playground({
             </Row>
 
             {/* fig. 02 — wipe, fig. 03 — scramble, fig. 04 — water trail */}
+            <SectionBreak />
             <WipeExample stage={stage} html={highlighted.wipe} />
+            <SectionBreak />
             <ScrambleExample stage={stage} html={highlighted.scramble} />
+            <SectionBreak />
             <LiquidExample stage={stage} html={highlighted.liquid} />
 
+            <SectionBreak />
             {/* 06 — implementation */}
-            <Row id="implementation" className="pt-20">
+            <Row id="implementation" className="pt-10">
               <div className="flex items-start gap-1">
                 <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
                   One canvas, tracked
@@ -305,8 +315,9 @@ export default function Playground({
               </details>
             </Row>
 
+            <SectionBreak />
             {/* 07 — colophon */}
-            <Row id="colophon" className="pt-24">
+            <Row id="colophon" className="pt-10">
               <div className="pb-10">
                 <MetaTable />
               </div>

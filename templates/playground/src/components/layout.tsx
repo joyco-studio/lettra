@@ -212,6 +212,16 @@ export function Prose({ className, children }: { className?: string; children: R
   return <p className={cn('font-serif text-[16px] leading-[1.3] tracking-[0.01em] text-ink', className)}>{children}</p>
 }
 
+/** Editorial section separator: the nib mark as a small centered dinkus
+ * in the prose column. */
+export function SectionBreak() {
+  return (
+    <div className="flex justify-center pt-20 lg:col-start-1" aria-hidden>
+      <img src="/brand/logo-mark.svg" alt="" className="h-4 w-4 opacity-30" />
+    </div>
+  )
+}
+
 /** One page row: the section content in the prose column and an optional
  * aside in the right rail. On large screens both land in the same grid row
  * (explicit column + auto row placement); below `lg` the aside flows inline

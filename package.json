@@ -8,11 +8,11 @@
   "description": "Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/joyco-studio/letterpress.git"
+    "url": "git+https://github.com/joyco-studio/lettra.git"
   },
-  "homepage": "https://github.com/joyco-studio/letterpress#readme",
+  "homepage": "https://github.com/joyco-studio/lettra#readme",
   "bugs": {
-    "url": "https://github.com/joyco-studio/letterpress/issues"
+    "url": "https://github.com/joyco-studio/lettra/issues"
   },
   "keywords": [
     "three",
