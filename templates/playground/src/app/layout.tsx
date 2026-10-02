@@ -29,11 +29,14 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'Letterpress — sharp MSDF text for Three.js WebGPU',
+  title: 'Letterpress · sharp MSDF text for Three.js WebGPU',
   description:
-    'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out — no wasm, no shaper, sharp at any scale.',
+    'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out. No wasm, no shaper, sharp at any scale.',
   icons: {
-    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/favicon-32.png', sizes: '32x32' }],
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-32.png', sizes: '32x32' },
+    ],
     apple: '/apple-touch-icon.png',
   },
   // og:image / twitter:image come from the app/opengraph-image.png and
@@ -41,14 +44,14 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: 'Letterpress',
-    title: 'Letterpress — sharp MSDF text for Three.js WebGPU',
+    title: 'Letterpress · sharp MSDF text for Three.js WebGPU',
     description:
       'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Letterpress — sharp MSDF text for Three.js WebGPU',
-    description: 'Runtime MSDF text for Three.js WebGPURenderer + TSL. No wasm, no shaper — sharp at any scale.',
+    title: 'Letterpress · sharp MSDF text for Three.js WebGPU',
+    description: 'Runtime MSDF text for Three.js WebGPURenderer + TSL. No wasm, no shaper, sharp at any scale.',
   },
 }
 

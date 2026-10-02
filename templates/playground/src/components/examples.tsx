@@ -69,17 +69,17 @@ function usePlayOnEnter(visible: boolean, ready: boolean, play: () => void) {
 }
 
 const INITIAL: SpecimenState = {
-  text: 'AVATAR WAVE To.\n¡Sójy! — á la WebGPU',
-  font: 'bebas',
+  text: 'Sir Fabroos\n— The _destroyer_ of bugs',
+  font: 'respira',
   align: 'center',
   letterSpacing: 0,
   maxWidth: 0,
 }
 
 const FONTS: { name: FontName; label: string }[] = [
+  { name: 'respira', label: 'Respira' },
   { name: 'bebas', label: 'Bebas' },
   { name: 'lora', label: 'Lora' },
-  { name: 'respira', label: 'Respira' },
 ]
 
 /** Per-font default copy. The Respira trial cut only inks A-Z a-z 0-9 and
@@ -89,7 +89,7 @@ const FONTS: { name: FontName; label: string }[] = [
 const DEFAULT_TEXT: Record<FontName, string> = {
   bebas: INITIAL.text,
   lora: INITIAL.text,
-  respira: 'Respira breathes.\nBlack No 9 at 80px',
+  respira: INITIAL.text,
   roboto: INITIAL.text,
   lettra: INITIAL.text,
 }
@@ -188,7 +188,7 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
         </div>
 
         <figcaption className="mt-5">
-          <FigCaption>fig. 01 — live specimen · drag to tilt</FigCaption>
+          <FigCaption>fig. 01 · live specimen · drag to tilt</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -208,7 +208,13 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
       className="pt-20"
       asideClassName="lg:pt-20"
       aside={
-        <SnippetPanel open={open} title="wipe.ts" code={wipeSnippet} html={html} onToggle={() => setOpen((value) => !value)} />
+        <SnippetPanel
+          open={open}
+          title="wipe.ts"
+          code={wipeSnippet}
+          html={html}
+          onToggle={() => setOpen((value) => !value)}
+        />
       }
     >
       <div className="flex items-start gap-1">
@@ -216,8 +222,8 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
         <Caption>[effect]</Caption>
       </div>
       <Prose className="mt-5">
-        The wipe never masks — it erodes. A front sweeps the ink and raises the distance threshold as it passes, so thin
-        edges give way first and stroke skeletons hold out last, every glyph dissolving through its own field.
+        The wipe never masks; it erodes. A front sweeps the ink and raises the distance threshold as it passes. Thin
+        edges give way first, stroke skeletons hold out last, every glyph dissolving through its own field.
       </Prose>
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
@@ -230,7 +236,7 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 02 — threshold erosion · plays as it enters</FigCaption>
+          <FigCaption>fig. 02 · threshold erosion · plays as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -254,7 +260,8 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
         <SnippetPanel
           open={open}
           title="scramble.ts"
-          code={scrambleSnippet} html={html}
+          code={scrambleSnippet}
+          html={html}
           onToggle={() => setOpen((value) => !value)}
         />
       }
@@ -264,7 +271,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
         <Caption>[effect]</Caption>
       </div>
       <Prose className="mt-5">
-        While driven, a glyph renders a random same-font glyph instead, re-rolled a few times a second — the decoder
+        While driven, a glyph renders a random same-font glyph instead, re-rolled a few times a second: the decoder
         effect, straight from the atlas. Glyphs engage in stable random order, so sweeping the drive down decodes the
         line letter by letter.
       </Prose>
@@ -292,7 +299,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 03 — atlas scramble · decodes as it enters</FigCaption>
+          <FigCaption>fig. 03 · atlas scramble · decodes as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -310,7 +317,13 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
       className="pt-20"
       asideClassName="lg:pt-20"
       aside={
-        <SnippetPanel open={open} title="liquid.ts" code={liquidSnippet} html={html} onToggle={() => setOpen((value) => !value)} />
+        <SnippetPanel
+          open={open}
+          title="liquid.ts"
+          code={liquidSnippet}
+          html={html}
+          onToggle={() => setOpen((value) => !value)}
+        />
       }
     >
       <div className="flex items-start gap-1">
@@ -319,17 +332,16 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
       </div>
       <Prose className="mt-5">
         The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU fluid
-        sim: ink splatted along the cursor stroke, advected by its own velocity, dissipating as it goes — it swirls
-        while you move and soaks away when you stop. Glyphs touched by its rim re-roll through the atlas, the wet
-        interior darkens the ink, and none of it is library code. An audio level or a wipe front plugs into the same
-        seam.
+        sim: ink splatted along the cursor stroke, advected by its own velocity, swirling while you move and soaking
+        away when you stop. Glyphs on its rim re-roll through the atlas, the wet interior darkens the ink. None of it is
+        library code; an audio level or a wipe front plugs into the same seam.
       </Prose>
       <figure className="mt-8">
         <div className="bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 04 — fluid-sim ink driving the scramble</FigCaption>
+          <FigCaption>fig. 04 · fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
       </figure>
     </Row>

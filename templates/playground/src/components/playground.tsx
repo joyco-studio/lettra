@@ -73,7 +73,9 @@ function MetaTable() {
       <tbody className="divide-y divide-ink-faint/30">
         {rows.map(([key, value]) => (
           <tr key={key}>
-            <td className="w-[140px] py-[7px] font-serif text-[13px] font-medium tracking-normal text-ink-faint">{key}</td>
+            <td className="w-[140px] py-[7px] font-serif text-[13px] font-medium tracking-normal text-ink-faint">
+              {key}
+            </td>
             <td className="py-[7px] text-ink">{value}</td>
           </tr>
         ))}
@@ -167,13 +169,12 @@ export default function Playground({
 
               <Prose className="mt-7 text-[18px] leading-[1.35]">
                 Letterpress renders live, kerned typography on the GPU from a font baked once into a multi-channel
-                signed distance field. No runtime shaper, no wasm — a few kilobytes of layout and a composable Three.js
+                signed distance field. No runtime shaper, no wasm: a few kilobytes of layout and a composable Three.js
                 node material, sharp at any scale and any angle.
               </Prose>
               <Prose className="mt-4 text-[14px] text-[#6b6b6b]">
-                Every figure below is ink on a single shared canvas, scroll-synced to the page — hit the{' '}
-                <span className="font-mono text-[12px]">{'</>'}</span> square on any of them to read the snippet
-                alongside.
+                Every figure below is ink on one shared canvas, scroll-synced to the page. Hit the{' '}
+                <span className="font-mono text-[12px]">{'</>'}</span> square on any figure to read its snippet.
               </Prose>
 
               <GettingStarted />
@@ -207,9 +208,9 @@ export default function Playground({
 
               <div className="mt-6 flex flex-col gap-5">
                 <Prose>
-                  <span className="font-bold">Bake once.</span> A font becomes a small PNG atlas and a metrics JSON —
-                  each glyph stored as a multi-channel distance field, each kerning pair carried over from the source.
-                  It happens at build time, by hand or script; the library starts where the bake ends.{' '}
+                  <span className="font-bold">Bake once.</span> A font becomes a small PNG atlas and a metrics JSON:
+                  each glyph a multi-channel distance field, each kerning pair carried over. It happens at build time,
+                  by hand or script. The library starts where the bake ends.{' '}
                   <MonoButton active={bakeOpen} onClick={() => setBakeOpen((value) => !value)}>
                     {bakeOpen ? 'hide recipe' : 'view recipe'}
                   </MonoButton>
@@ -222,8 +223,8 @@ export default function Playground({
                 <Prose>
                   <span className="font-bold">Reconstruct on the GPU.</span> The material takes the median of three
                   channels, sharpens it over half a derivative&apos;s width, and exposes erosion wipes that dissolve
-                  glyphs through the distance field — edges first, stroke skeletons last. Every node is exported, typed,
-                  and replaceable.
+                  glyphs through the distance field, edges first and stroke skeletons last. Every node is exported,
+                  typed, and replaceable.
                 </Prose>
               </div>
             </Row>
@@ -242,15 +243,15 @@ export default function Playground({
                 <Caption>[stage]</Caption>
               </div>
               <Prose className="mt-5">
-                The page keeps a single WebGPU canvas in page space and slides it back over the viewport each frame —
-                the &ldquo;absolute&rdquo; approach from the JOYCO{' '}
+                The page keeps a single WebGPU canvas in page space and slides it back over the viewport each frame, the
+                &ldquo;absolute&rdquo; approach from the JOYCO{' '}
                 <a
                   href="https://hub.joyco.studio/logs/08-webgl-scroll-sync"
                   className="underline decoration-1 underline-offset-2 hover:text-ink"
                 >
                   WebGL Scroll Sync
                 </a>{' '}
-                log: content never drifts from the DOM during scroll, and 25% of padding top and bottom absorbs the
+                log. Content never drifts from the DOM during scroll; 25% padding top and bottom absorbs the
                 one-frame-stale transform. Each figure is a placeholder div measured by{' '}
                 <a
                   href="https://hub.joyco.studio/toolbox/metri"
@@ -258,7 +259,7 @@ export default function Playground({
                 >
                   Metri
                 </a>{' '}
-                — cached document-space bounds, one shared ResizeObserver — and rendered into its rect with a scissored
+                (cached document-space bounds, one shared ResizeObserver) and rendered into its rect with a scissored
                 viewport. Frames are demand-driven: no scroll, no tween, no render.
               </Prose>
 
@@ -269,11 +270,16 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 05 — the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
+                    fig. 05 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <CodePanel title="gl/stage.ts" code={stageSource} html={highlighted.stage} maxHeight="max-h-[480px]" />
+                  <CodePanel
+                    title="gl/stage.ts"
+                    code={stageSource}
+                    html={highlighted.stage}
+                    maxHeight="max-h-[480px]"
+                  />
                 </div>
               </details>
 
@@ -284,11 +290,17 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 06 — a view <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
+                    fig. 06 · a view{' '}
+                    <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <CodePanel title="gl/views/specimen.ts" code={specimenSource} html={highlighted.specimen} maxHeight="max-h-[480px]" />
+                  <CodePanel
+                    title="gl/views/specimen.ts"
+                    code={specimenSource}
+                    html={highlighted.specimen}
+                    maxHeight="max-h-[480px]"
+                  />
                 </div>
               </details>
             </Row>
@@ -299,12 +311,14 @@ export default function Playground({
                 <MetaTable />
               </div>
               <div className="flex flex-col gap-3">
-                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">From readme.md</h2>
+                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
+                  From readme.md
+                </h2>
                 <Prose className="text-[14px] text-[#6b6b6b]">
-                  Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi —
+                  Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi;
                   that work belongs to a real shaper. Layout ported from Jam3&apos;s layout-bmfont-text (MIT). Specimen
                   faces: Bebas Neue &amp; Lora, OFL. Append <span className="font-mono text-[12.5px]">?forceWebGL</span>{' '}
-                  to exercise the fallback. ISC ©{' '}
+                  to exercise the fallback. MIT ©{' '}
                   <a href="https://joyco.studio" className="underline decoration-1 underline-offset-2 hover:text-ink">
                     joyco.studio
                   </a>

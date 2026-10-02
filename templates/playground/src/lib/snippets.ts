@@ -33,7 +33,7 @@ const text = createText({
   map,
   text: 'EDGES FIRST,\\nBONES LAST.',
   layout: { align: 'center' },
-  // band — dissolve front width, in wipe-coordinate units
+  // band: dissolve front width, in wipe-coordinate units
   material: { fill: '#414141', effect: wipe({ band: 0.35 }) },
 })
 
@@ -61,7 +61,7 @@ const text = createText({
 })
 
 // 0 clean, 1 everything scrambles; glyphs engage
-// in stable random order in between — tween it down to decode
+// in stable random order in between; tween it down to decode
 text.uniforms.scramble.value = 1`
 
 export const liquidSnippet = `import { createText, scramble } from 'letterpress/three'
@@ -88,12 +88,12 @@ const text = createText({
 // the sim is view code, not library code -- swap it for a wipe
 // front or an audio level and nothing else changes`
 
-export const bakeRecipe = `# instance variable fonts first — variable GPOS kerning
+export const bakeRecipe = `# instance variable fonts first: variable GPOS kerning
 # bakes to 0 pairs otherwise (static GPOS reads fine)
 python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf
 
 # bake: MSDF atlas PNG + BMFont JSON metrics
-# -r 8 — distance range 8, required for smooth erosion wipes
+# -r 8 is the distance range, required for smooth erosion wipes
 npx -y -p msdf-bmfont-xml msdf-bmfont \\
   -f json -i charset.txt -s 64 -r 8 -p 2 \\
   -t msdf --smart-size static.ttf`

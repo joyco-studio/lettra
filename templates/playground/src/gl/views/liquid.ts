@@ -2,6 +2,7 @@ import {
   ClampToEdgeWrapping,
   HalfFloatType,
   LinearFilter,
+  LinearMipmapLinearFilter,
   Mesh,
   MeshBasicNodeMaterial,
   PerspectiveCamera,
@@ -53,7 +54,7 @@ const SETTLE_MS = 3200
 const PARAGRAPH =
   'Water finds the gaps. Drag the cursor through this paragraph: ink is ' +
   'splatted into a tiny fluid sim, advected by its own velocity, and ' +
-  'dissipated every frame — it swirls while you move and soaks away when ' +
+  'dissipated every frame. It swirls while you move and soaks away when ' +
   'you stop. Every glyph the rim touches re-rolls through the atlas. The ' +
   'library only sees a scalar field: swap the sim for a wipe front or an ' +
   'audio level and nothing else changes.'
@@ -116,6 +117,13 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   const wet = smoothstep(0.4, 0.8, field)
 
   const { font, map } = stage.fonts.lettra
+  // this paragraph draws the 64px bake at ~1/4 size in a narrow figure;
+  // without mips that undersamples the atlas and reads as crunch on 1x
+  // displays. Trilinear minification is safe for MSDF at this shallow depth
+  // (lettra is only used here, so flipping the shared texture is fine).
+  map.generateMipmaps = true
+  map.minFilter = LinearMipmapLinearFilter
+  map.needsUpdate = true
   const text = createText({
     font,
     map,
