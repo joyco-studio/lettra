@@ -20,7 +20,7 @@
     --spacing-gap: var(--gap);
     --radius: 0rem;
     --font-sans: system-ui, sans-serif;
-    --font-mono: var(--font-lettra-mono);
+    --font-mono: var(--font-ui-mono);
     --default-font-family: var(--font-sans);
     --default-font-family-mono: var(--font-mono);
     --text-base--letter-spacing: -0.015em;

@@ -20,10 +20,10 @@ export async function createScrambleView(stage: Stage, el: HTMLElement): Promise
   const camera = new PerspectiveCamera(35, 1, 0.1, 100)
   camera.position.z = 10
 
-  const effect = scramble({ font: stage.fonts.lettra.font, chars: POOL, rate: 14 })
+  const effect = scramble({ font: stage.fonts.roboto.font, chars: POOL, rate: 14 })
   const text = createText({
-    font: stage.fonts.lettra.font,
-    map: stage.fonts.lettra.map,
+    font: stage.fonts.roboto.font,
+    map: stage.fonts.roboto.map,
     text: TEXT,
     layout: { align: 'center' },
     material: { fill: '#414141', effect },

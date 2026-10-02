@@ -4,7 +4,7 @@ import type { Bounds, Metri, Viewport } from '@joycostudio/metri'
 import type { MSDFFont } from 'letterpress'
 import { loadFont, loadFontTexture } from 'letterpress/three'
 
-export type FontName = 'bebas' | 'lora' | 'lettra'
+export type FontName = 'bebas' | 'lora' | 'roboto' | 'lettra'
 
 export interface FontBundle {
   font: MSDFFont
@@ -55,12 +55,13 @@ interface RegisteredView {
  * Placeholder tracking comes from Metri — cached document-space bounds, one
  * shared ResizeObserver, no per-frame getBoundingClientRect. */
 export async function createStage(canvas: HTMLCanvasElement, metri: Metri): Promise<Stage> {
-  const [bebas, lora, lettra] = await Promise.all([
+  const [bebas, lora, roboto, lettra] = await Promise.all([
     loadFontBundle('bebas'),
     loadFontBundle('lora'),
+    loadFontBundle('roboto'),
     loadFontBundle('lettra'),
   ])
-  const fonts = { bebas, lora, lettra }
+  const fonts = { bebas, lora, roboto, lettra }
 
   const renderer = new WebGPURenderer({
     canvas,

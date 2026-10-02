@@ -59,10 +59,13 @@ Recipe notes:
 - A browser alternative: [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com)
   bakes the atlas + JSON without installing anything.
 
-Fonts: [Bebas Neue](https://fonts.google.com/specimen/Bebas+Neue) and
-[Lora](https://fonts.google.com/specimen/Lora) (SIL Open Font License), plus
-[PP Lettra Mono](https://pangrampangram.com/products/lettra-mono) (licensed;
-also the UI mono face). Lettra Mono is there for the scramble effect:
+Fonts: [Bebas Neue](https://fonts.google.com/specimen/Bebas+Neue),
+[Lora](https://fonts.google.com/specimen/Lora), and
+[Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono) (all open
+licenses; Roboto Mono is also the UI mono face, served via
+`next/font/google`), plus
+[PP Lettra Mono](https://pangrampangram.com/products/lettra-mono) (licensed)
+for the liquid paragraph example. The mono faces back the scramble effect:
 glyph swaps read best when every glyph shares one ink box. A mono face
 legitimately has zero kerning pairs, so the empty-kerning warning is
-expected for it.
+expected for them.
