@@ -20,7 +20,8 @@ async function createCore() {
 let corePromise: ReturnType<typeof createCore> | null = null
 const core = () => (corePromise ??= createCore())
 
-const FRAME_CLASS = 'overflow-auto text-[13px] leading-[1.85] **:[pre]:!bg-transparent **:[pre]:px-5 **:[pre]:py-7 **:[pre]:font-mono'
+const FRAME_CLASS =
+  'overflow-auto text-[13px] leading-[1.85] **:[pre]:!bg-transparent **:[pre]:px-5 **:[pre]:py-7 **:[pre]:font-mono'
 
 export function CodeBlock({ code, html }: { code: string; lang?: string; html?: string }) {
   // cache keyed to the code that produced it, so a stale highlight never

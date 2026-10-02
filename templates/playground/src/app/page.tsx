@@ -4,8 +4,7 @@ import { codeToHtml } from 'shiki'
 import Playground from '@/components/playground'
 import { bakeRecipe, liquidSnippet, scrambleSnippet, wipeSnippet } from '@/lib/snippets'
 
-const highlight = (code: string, lang: 'typescript' | 'bash') =>
-  codeToHtml(code, { lang, theme: 'min-light' })
+const highlight = (code: string, lang: 'typescript' | 'bash') => codeToHtml(code, { lang, theme: 'min-light' })
 
 /** Server component. The implementation tabs show the real source files,
  * read and highlighted at build time — the client only ships a minimal
