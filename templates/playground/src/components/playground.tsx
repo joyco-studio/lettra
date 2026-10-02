@@ -53,7 +53,7 @@ function GettingStarted() {
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 font-serif text-[16px] text-ink">
         <span>or</span>
-        <CopyAction text={AGENT_PROMPT} label="copy agent prompt" tone="light" />
+        <CopyAction text={AGENT_PROMPT} label="copy agent prompt" tone="outline" />
         <span>paste it into your agent, it does the rest.</span>
       </div>
     </div>

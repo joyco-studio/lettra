@@ -41,23 +41,47 @@ export function useScrambleLabel(idle: string) {
   return { label, trigger }
 }
 
-/** Copy button with a subtle chip background; the label scrambles to "done". */
+/** Badge-style corner cuts, chip scale. */
+const CHIP_CLIP =
+  '[clip-path:polygon(6px_0%,100%_0%,100%_calc(100%-6px),calc(100%-6px)_100%,0%_100%,0%_6px)]'
+
+/** Copy button; the label scrambles to "done". Tones: `dark` chip for night
+ * surfaces, `light` solid night chip for paper, `outline` an ink ring that
+ * keeps the badge corner cuts (clipped wrapper + 1px-inset clipped core,
+ * since a CSS border cannot follow a clip-path). */
 export function CopyAction({
   text,
   tone = 'dark',
   label: idleLabel = 'copy',
 }: {
   text: string
-  tone?: 'dark' | 'light'
+  tone?: 'dark' | 'light' | 'outline'
   label?: string
 }) {
   const { label, trigger } = useScrambleLabel(idleLabel)
+  const copy = () => {
+    navigator.clipboard?.writeText(text).catch(() => {})
+    trigger()
+  }
+
+  if (tone === 'outline') {
+    return (
+      <button onClick={copy} className={cn('group/copy cursor-pointer bg-ink/40 p-px transition-colors hover:bg-ink', CHIP_CLIP)}>
+        <span
+          className={cn(
+            'flex items-center bg-paper px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.08em] text-ink/70 transition-colors group-hover/copy:text-ink',
+            CHIP_CLIP
+          )}
+        >
+          {label}
+        </span>
+      </button>
+    )
+  }
+
   return (
     <button
-      onClick={() => {
-        navigator.clipboard?.writeText(text).catch(() => {})
-        trigger()
-      }}
+      onClick={copy}
       className={cn(
         'cursor-pointer px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.08em] transition-colors',
         tone === 'dark'
@@ -124,13 +148,7 @@ export function ControlCell({
   children?: React.ReactNode
 }) {
   return (
-    <div
-      className={cn(
-        'flex h-10 items-center gap-2.5 bg-paper px-3',
-        grow && 'min-w-[210px] flex-1',
-        className
-      )}
-    >
+    <div className={cn('flex h-10 items-center gap-2.5 bg-paper px-3', grow && 'min-w-[210px] flex-1', className)}>
       {label ? (
         <span className="font-mono text-[10px] font-medium tracking-[0.02em] whitespace-nowrap text-ink-faint">
           {label}
@@ -187,9 +205,7 @@ export function ControlLabel({ className, children }: { className?: string; chil
 
 /** Serif figure caption — quiet but readable, never uppercase mono. */
 export function FigCaption({ className, children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <span className={cn('font-serif text-[14px] tracking-[0.01em] text-[#84847f]', className)}>{children}</span>
-  )
+  return <span className={cn('font-serif text-[14px] tracking-[0.01em] text-[#84847f]', className)}>{children}</span>
 }
 
 export function Prose({ className, children }: { className?: string; children: React.ReactNode }) {
