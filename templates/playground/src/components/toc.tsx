@@ -74,6 +74,10 @@ function useReadingLineActive(ids: string[]) {
     }
 
     pick()
+    // layout can shift without a scroll or resize (code panels and
+    // collapsibles opening); watch document size too
+    const resizeObserver = new ResizeObserver(schedule)
+    resizeObserver.observe(document.body)
     window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule)
     window.addEventListener('wheel', cancelLock, { passive: true })
@@ -82,6 +86,7 @@ function useReadingLineActive(ids: string[]) {
     return () => {
       cancelAnimationFrame(raf)
       clearTimeout(idleTimer)
+      resizeObserver.disconnect()
       window.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
       window.removeEventListener('wheel', cancelLock)
