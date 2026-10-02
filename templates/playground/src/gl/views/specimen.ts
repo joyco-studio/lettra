@@ -1,6 +1,6 @@
 import { Group, PerspectiveCamera, Scene } from 'three/webgpu'
-import type { LayoutOptions } from 'letterpress'
-import { createText } from 'letterpress/three'
+import type { LayoutOptions } from 'lettra'
+import { createText } from 'lettra/three'
 import type { FontName, Stage } from '../stage'
 import { frameText } from '../stage'
 

@@ -23,10 +23,10 @@
       }
     ],
     "paths": {
-      "letterpress": [
+      "lettra": [
         "../../packages/core/index.ts"
       ],
-      "letterpress/three": [
+      "lettra/three": [
         "../../packages/three/index.ts"
       ],
       "@/*": [

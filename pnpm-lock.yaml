@@ -87,7 +87,7 @@ importers:
       fumadocs-core:
         specifier: ^16.15.17
         version: 16.15.17(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.49.0(@types/react@19.3.0)(react@19.3.0))(next@16.3.8(@types/node@20.19.43)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      letterpress:
+      lettra:
         specifier: workspace:*
         version: link:../..
       lucide-react:

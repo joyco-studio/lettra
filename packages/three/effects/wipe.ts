@@ -5,7 +5,7 @@ import type { FloatNode, TextEffect } from '../material'
 /** Erosion amount per fragment: 0 = untouched, 1 = fully eroded. Combines an
  * entering front (`wipeIn` 0 → 1 reveals) and an exiting front (`wipeOut`
  * 0 → 1 consumes), both sweeping low → high `coord`. `coord` is the
- * coordinate the fronts sweep across (letterpress geometry provides the
+ * coordinate the fronts sweep across (lettra geometry provides the
  * `layoutX` attribute, 0 → 1 over ink width); `band` is the front width in
  * `coord` units. */
 export const wipeErosion = /* @__PURE__ */ defineNode(

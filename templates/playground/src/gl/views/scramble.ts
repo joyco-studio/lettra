@@ -1,5 +1,5 @@
 import { PerspectiveCamera, Scene } from 'three/webgpu'
-import { createText, scramble } from 'letterpress/three'
+import { createText, scramble } from 'lettra/three'
 import type { Stage } from '../stage'
 import { createTweener, frameText } from '../stage'
 

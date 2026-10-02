@@ -27,7 +27,7 @@ import {
   vec2,
   vec4,
 } from 'three/tsl'
-import { createText, scramble } from 'letterpress/three'
+import { createText, scramble } from 'lettra/three'
 import type { Stage } from '../stage'
 import { frameText } from '../stage'
 

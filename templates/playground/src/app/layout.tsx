@@ -29,7 +29,7 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'Letterpress · sharp MSDF text for Three.js WebGPU',
+  title: 'Lettra · sharp MSDF text for Three.js WebGPU',
   description:
     'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out. No wasm, no shaper, sharp at any scale.',
   icons: {
@@ -43,14 +43,14 @@ export const metadata: Metadata = {
   // app/twitter-image.png file conventions (plus their .alt.txt files)
   openGraph: {
     type: 'website',
-    siteName: 'Letterpress',
-    title: 'Letterpress · sharp MSDF text for Three.js WebGPU',
+    siteName: 'Lettra',
+    title: 'Lettra · sharp MSDF text for Three.js WebGPU',
     description:
       'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Letterpress · sharp MSDF text for Three.js WebGPU',
+    title: 'Lettra · sharp MSDF text for Three.js WebGPU',
     description: 'Runtime MSDF text for Three.js WebGPURenderer + TSL. No wasm, no shaper, sharp at any scale.',
   },
 }

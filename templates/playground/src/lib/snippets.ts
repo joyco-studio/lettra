@@ -6,7 +6,7 @@ export function specimenSnippet(state: SpecimenState): string {
   if (state.letterSpacing !== 0) layout.push(`letterSpacing: ${state.letterSpacing}`)
   if (state.maxWidth > 0) layout.push(`maxWidth: ${state.maxWidth}`)
 
-  return `import { createText, loadFont, loadFontTexture } from 'letterpress/three'
+  return `import { createText, loadFont, loadFontTexture } from 'lettra/three'
 
 const [font, map] = await Promise.all([
   loadFont('/fonts/${state.font}.json'),
@@ -26,7 +26,7 @@ scene.add(text.mesh)
 await text.warmup(renderer, camera, scene)`
 }
 
-export const wipeSnippet = `import { createText, wipe } from 'letterpress/three'
+export const wipeSnippet = `import { createText, wipe } from 'lettra/three'
 
 const text = createText({
   font,
@@ -44,7 +44,7 @@ text.uniforms.wipeOut.value = 0 // 0 untouched, 1 fully consumed
 // erosion dissolves glyphs through the distance field:
 // thin edges give way first, stroke skeletons hold out last`
 
-export const scrambleSnippet = `import { createText, scramble } from 'letterpress/three'
+export const scrambleSnippet = `import { createText, scramble } from 'lettra/three'
 
 const effect = scramble({
   font,                 // pool source: same font the text renders with
@@ -64,7 +64,7 @@ const text = createText({
 // in stable random order in between; tween it down to decode
 text.uniforms.scramble.value = 1`
 
-export const liquidSnippet = `import { createText, scramble } from 'letterpress/three'
+export const liquidSnippet = `import { createText, scramble } from 'lettra/three'
 import { positionWorld, saturate, texture, float } from 'three/tsl'
 
 // a tiny GPU fluid sim: one half-float ping-pong texture,

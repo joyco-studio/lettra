@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
   // this app's root)
   turbopack: {
     resolveAlias: {
-      'letterpress/three': '../../packages/three/index.ts',
-      letterpress: '../../packages/core/index.ts',
+      'lettra/three': '../../packages/three/index.ts',
+      lettra: '../../packages/core/index.ts',
     },
   },
 }

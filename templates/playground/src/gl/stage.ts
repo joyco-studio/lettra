@@ -1,8 +1,8 @@
 import { PerspectiveCamera, Scene, WebGPURenderer } from 'three/webgpu'
 import type { Texture } from 'three/webgpu'
 import type { Bounds, Metri, Viewport } from '@joycostudio/metri'
-import type { MSDFFont } from 'letterpress'
-import { loadFont, loadFontTexture } from 'letterpress/three'
+import type { MSDFFont } from 'lettra'
+import { loadFont, loadFontTexture } from 'lettra/three'
 
 export type FontName = 'bebas' | 'lora' | 'respira' | 'roboto' | 'lettra'
 

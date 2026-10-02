@@ -23,14 +23,14 @@ const SECTIONS: TocSection[] = [
   { id: 'colophon', index: '07', label: 'Colophon' },
 ]
 
-const INSTALL_COMMAND = 'pnpm add letterpress three'
+const INSTALL_COMMAND = 'pnpm add lettra three'
 
-const AGENT_PROMPT = `Add letterpress (runtime MSDF text for Three.js WebGPURenderer + TSL) to this project.
+const AGENT_PROMPT = `Add lettra (runtime MSDF text for Three.js WebGPURenderer + TSL) to this project.
 
-Install: pnpm add letterpress three   (three >= 0.185)
+Install: pnpm add lettra three   (three >= 0.185)
 
 Quickstart:
-import { createText, loadFont, loadFontTexture, wipe } from 'letterpress/three'
+import { createText, loadFont, loadFontTexture, wipe } from 'lettra/three'
 const [font, map] = await Promise.all([loadFont('/fonts/display.json'), loadFontTexture('/fonts/display.png')])
 const text = createText({ font, map, text: 'Hello', layout: { align: 'center' }, material: { fill: '#414141', effect: wipe() } })
 scene.add(text.mesh)
@@ -62,7 +62,7 @@ function GettingStarted() {
 
 function MetaTable() {
   const rows: [string, string][] = [
-    ['package', 'letterpress · npm'],
+    ['package', 'lettra · npm'],
     ['renderer', 'webgpu · webgl fallback'],
     ['engine', 'three/webgpu + tsl'],
     ['tracking', '@joycostudio/metri'],
@@ -138,10 +138,10 @@ export default function Playground({
             {/* block hugs the body column; content inside stays left-aligned */}
             <div className="ml-auto flex h-full w-full max-w-[280px] flex-col">
               <div className="flex items-center gap-2 pb-10">
-                <img src="/brand/logo-framed.svg" alt="Letterpress logo" className="h-10 w-10" />
+                <img src="/brand/logo-framed.svg" alt="Lettra logo" className="h-10 w-10" />
                 <img
                   src="/brand/wordmark.svg"
-                  alt="Letterpress®"
+                  alt="Lettra®"
                   className="h-[27px] w-auto [filter:brightness(0.32)]"
                 />
               </div>
@@ -168,7 +168,7 @@ export default function Playground({
               </div>
 
               <Prose className="mt-7 text-[18px] leading-[1.35]">
-                Letterpress renders live, kerned typography on the GPU from a font baked once into a multi-channel
+                Lettra renders live, kerned typography on the GPU from a font baked once into a multi-channel
                 signed distance field. No runtime shaper, no wasm: a few kilobytes of layout and a composable Three.js
                 node material, sharp at any scale and any angle.
               </Prose>

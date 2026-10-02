@@ -1,7 +1,7 @@
 import type { BMFontJson, Glyph, GlyphTuple, MSDFFont } from './types'
 
 function fail(message: string): never {
-  throw new Error(`[letterpress] ${message}`)
+  throw new Error(`[lettra] ${message}`)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -77,16 +77,16 @@ export function parseFont(data: unknown): MSDFFont {
   const font = isBMFont(data) ? fromBMFont(data) : validateMSDFFont(data)
 
   if (!(' ' in font.glyphs)) {
-    console.warn('[letterpress] baked charset has no space glyph — word spacing will be approximated')
+    console.warn('[lettra] baked charset has no space glyph — word spacing will be approximated')
   }
   if (!('?' in font.glyphs)) {
     console.warn(
-      '[letterpress] baked charset has no "?" glyph — characters outside the charset will be skipped instead of substituted'
+      '[lettra] baked charset has no "?" glyph — characters outside the charset will be skipped instead of substituted'
     )
   }
   if (Object.keys(font.kerning ?? {}).length === 0) {
     console.warn(
-      '[letterpress] font has 0 kerning pairs — if the source font kerns (most text faces do), the bake dropped its GPOS kerning. Instance variable fonts to a static weight first: `python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf`'
+      '[lettra] font has 0 kerning pairs — if the source font kerns (most text faces do), the bake dropped its GPOS kerning. Instance variable fonts to a static weight first: `python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf`'
     )
   }
   parseCache.set(data, font)

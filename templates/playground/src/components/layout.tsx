@@ -8,7 +8,7 @@ export const PANEL_CLIP =
 
 const SCRAMBLE_CHARS = '#?*+/<>=-'
 
-/** Label that decodes to "done" on trigger, then back — the letterpress
+/** Label that decodes to "done" on trigger, then back — the lettra
  * scramble, miniaturized for button feedback. */
 export function useScrambleLabel(idle: string) {
   const [label, setLabel] = useState(idle)

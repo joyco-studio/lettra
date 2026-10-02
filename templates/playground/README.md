@@ -1,7 +1,7 @@
-# letterpress playground
+# lettra playground
 
-Live letterpress demo skinned with the [JOYCO UI kit](https://hub.joyco.studio)
-(Next.js App Router, `@joyco` shadcn registry, Tailwind v4). React owns only the control panel. The actual letterpress usage lives
+Live lettra demo skinned with the [JOYCO UI kit](https://hub.joyco.studio)
+(Next.js App Router, `@joyco` shadcn registry, Tailwind v4). React owns only the control panel. The actual lettra usage lives
 in [`src/scene.ts`](./src/scene.ts) as plain imperative Three.js, exactly how a
 consumer without React would write it.
 
@@ -21,14 +21,14 @@ pnpm --filter @templates/playground dev
 ## Baking the fonts (manual, for now)
 
 The fonts in `public/fonts/` were baked with [msdf-bmfont-xml](https://github.com/soimy/msdf-bmfont-xml)
-and minified with letterpress' own `fromBMFont`:
+and minified with lettra' own `fromBMFont`:
 
 ```bash
 # charset: ASCII + áéíóúüñÁÉÍÓÚÜÑ¿¡—–“”‘’ (one file, no newline)
 npx -y -p msdf-bmfont-xml msdf-bmfont \
   -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
 
-node -e "import('letterpress').then(({ fromBMFont }) => {
+node -e "import('lettra').then(({ fromBMFont }) => {
   const fs = require('fs')
   const font = fromBMFont(JSON.parse(fs.readFileSync('font.json', 'utf8')))
   fs.writeFileSync('font.min.json', JSON.stringify(font))
@@ -42,7 +42,7 @@ Recipe notes:
 
 - `-r 8` (distanceRange) is deliberate: it leaves SDF headroom for the
   threshold-erosion wipes. Shallow ranges make dissolves snap.
-- Keep the atlas on a **single page**; letterpress rejects multi-page bakes.
+- Keep the atlas on a **single page**; lettra rejects multi-page bakes.
   If glyphs don't fit, raise the texture size instead.
 - Never enable rotated glyph packing; the UV builder assumes upright rects.
 - Check the reported kerning count. Variable fonts come out with **0 pairs**
