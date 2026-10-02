@@ -328,7 +328,6 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
         <div className="bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
         </div>
-        <ControlCell label="move the cursor across the text" className="justify-center bg-transparent" />
         <figcaption className="mt-5">
           <FigCaption>fig. 04 — fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
