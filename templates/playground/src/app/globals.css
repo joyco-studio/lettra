@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 :root {
-  --font-lettra-mono: var(--font-lettra), ui-monospace, monospace;
+  --font-ui-mono: var(--font-roboto-mono), ui-monospace, monospace;
   --paper: #e4e4e4;
   --ink: #414141;
   --ink-faint: #9b9b9b;

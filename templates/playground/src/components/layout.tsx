@@ -103,6 +103,79 @@ export function MonoButton({
   )
 }
 
+/* --- instrument bar (foundry-tester pattern, à la Pangram Pangram
+ * samplers): a control strip docked into the figure plate. One cell per
+ * instrument, paper background on the plate tone for explicit division,
+ * night-filled segments for active state. --- */
+
+export function ControlBar({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn('flex flex-wrap gap-[2px]', className)}>{children}</div>
+}
+
+export function ControlCell({
+  label,
+  grow,
+  className,
+  children,
+}: {
+  label?: string
+  grow?: boolean
+  className?: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div
+      className={cn(
+        'flex h-10 items-center gap-2.5 bg-paper px-3',
+        grow && 'min-w-[210px] flex-1',
+        className
+      )}
+    >
+      {label ? (
+        <span className="font-mono text-[10px] font-medium tracking-[0.02em] whitespace-nowrap text-ink-faint">
+          {label}
+        </span>
+      ) : null}
+      {children}
+    </div>
+  )
+}
+
+/** One option inside a ControlCell. Momentary actions omit `active`. */
+export function Segment({
+  active,
+  onClick,
+  title,
+  children,
+}: {
+  active?: boolean
+  onClick: () => void
+  title?: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+      className={cn(
+        'flex h-7 cursor-pointer items-center px-2.5 font-mono text-[11px] font-semibold tracking-[0.04em] transition-colors',
+        active ? 'bg-night text-paper' : 'text-ink-faint hover:bg-ink/8 hover:text-ink'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function ControlValue({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="min-w-[4ch] text-right font-mono text-[11px] font-semibold tracking-[0.02em] text-ink tabular-nums">
+      {children}
+    </span>
+  )
+}
+
 /** Lowercase mono label for control rows — quiet, never uppercase. */
 export function ControlLabel({ className, children }: { className?: string; children: React.ReactNode }) {
   return (

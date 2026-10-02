@@ -2,7 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { useObserve } from '@joycostudio/metri/react'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
-import { Caption, ControlLabel, FigCaption, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
+import {
+  Caption,
+  ControlBar,
+  ControlCell,
+  ControlValue,
+  FigCaption,
+  Prose,
+  Row,
+  Segment,
+  SnippetPanel,
+} from '@/components/layout'
+import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
@@ -99,63 +110,63 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
       }
     >
       <figure>
-        <div className="bg-[#dcdcda]">
-          <div ref={elRef} className="aspect-[16/10] w-full cursor-grab touch-none active:cursor-grabbing" />
-        </div>
-
-        <div className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col gap-2">
-            <ControlLabel>edit the specimen</ControlLabel>
-            <Textarea
-              value={state.text}
-              spellCheck={false}
-              rows={2}
-              className="min-h-0 resize-none border-0 bg-ink/4 px-3 py-2.5 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:bg-ink/6 focus-visible:ring-0 dark:bg-ink/4"
-              onChange={(event) => patch({ text: event.target.value })}
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            {FONTS.map(({ name, label }) => (
-              <MonoButton key={name} active={state.font === name} onClick={() => patch({ font: name })}>
-                {label}
-              </MonoButton>
-            ))}
-            <span className="w-1" />
-            {ALIGNS.map((align) => (
-              <MonoButton key={align} active={state.align === align} onClick={() => patch({ align })}>
-                {align}
-              </MonoButton>
-            ))}
-            <span className="w-1" />
-            <MonoButton onClick={() => view?.wipe('in')}>wipe in</MonoButton>
-            <MonoButton onClick={() => view?.wipe('out')}>wipe out</MonoButton>
-          </div>
-          <div className="flex flex-col gap-x-10 gap-y-3 sm:flex-row">
-            <div className="flex flex-1 items-center gap-3">
-              <ControlLabel className="w-[132px] shrink-0">
-                tracking {state.letterSpacing}px
-              </ControlLabel>
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+          <ControlBar>
+            <ControlCell label="font">
+              {FONTS.map(({ name, label }) => (
+                <Segment key={name} active={state.font === name} onClick={() => patch({ font: name })}>
+                  {label}
+                </Segment>
+              ))}
+            </ControlCell>
+            <ControlCell label="align">
+              {ALIGNS.map((align) => {
+                const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight
+                return (
+                  <Segment key={align} title={align} active={state.align === align} onClick={() => patch({ align })}>
+                    <Icon size={13} strokeWidth={2.25} />
+                  </Segment>
+                )
+              })}
+            </ControlCell>
+            <ControlCell label="wipe">
+              <Segment onClick={() => view?.wipe('in')}>in</Segment>
+              <Segment onClick={() => view?.wipe('out')}>out</Segment>
+            </ControlCell>
+            <ControlCell label="tracking" grow>
               <Slider
                 value={[state.letterSpacing]}
                 min={-4}
                 max={24}
                 step={1}
+                className="min-w-16 flex-1"
                 onValueChange={([value]) => patch({ letterSpacing: value })}
               />
-            </div>
-            <div className="flex flex-1 items-center gap-3">
-              <ControlLabel className="w-[132px] shrink-0">
-                measure {state.maxWidth > 0 ? `${state.maxWidth}px` : 'off'}
-              </ControlLabel>
+              <ControlValue>{state.letterSpacing}px</ControlValue>
+            </ControlCell>
+            <ControlCell label="measure" grow>
               <Slider
                 value={[state.maxWidth]}
                 min={0}
                 max={1600}
                 step={20}
+                className="min-w-16 flex-1"
                 onValueChange={([value]) => patch({ maxWidth: value })}
               />
-            </div>
-          </div>
+              <ControlValue>{state.maxWidth > 0 ? state.maxWidth : 'off'}</ControlValue>
+            </ControlCell>
+          </ControlBar>
+          <div ref={elRef} className="aspect-[16/10] w-full cursor-grab touch-none active:cursor-grabbing" />
+          <label className="flex items-start gap-3 bg-paper px-3 py-2.5">
+            <span className="pt-[3px] font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">text</span>
+            <Textarea
+              value={state.text}
+              spellCheck={false}
+              rows={2}
+              className="min-h-0 flex-1 resize-none border-0 bg-transparent p-0 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-transparent"
+              onChange={(event) => patch({ text: event.target.value })}
+            />
+          </label>
         </div>
 
         <figcaption className="mt-5">
@@ -191,12 +202,14 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
         edges give way first and stroke skeletons hold out last, every glyph dissolving through its own field.
       </Prose>
       <figure className="mt-8">
-        <div className="bg-[#dcdcda]">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/7] w-full" />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <MonoButton onClick={() => view?.wipe('in')}>wipe in</MonoButton>
-          <MonoButton onClick={() => view?.wipe('out')}>wipe out</MonoButton>
+          <ControlBar>
+            <ControlCell label="wipe">
+              <Segment onClick={() => view?.wipe('in')}>in</Segment>
+              <Segment onClick={() => view?.wipe('out')}>out</Segment>
+            </ControlCell>
+          </ControlBar>
         </div>
         <figcaption className="mt-5">
           <FigCaption>fig. 02 — threshold erosion · plays as it enters</FigCaption>
@@ -238,26 +251,27 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
         line letter by letter.
       </Prose>
       <figure className="mt-8">
-        <div className="bg-[#dcdcda]">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/7] w-full" />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <MonoButton onClick={() => view?.decode()}>decode</MonoButton>
-          <span className="w-1" />
-          <div className="flex flex-1 items-center gap-3">
-            <ControlLabel className="w-[90px] shrink-0">drive {amount}%</ControlLabel>
-            <Slider
-              value={[amount]}
-              min={0}
-              max={100}
-              step={1}
-              className="max-w-[180px]"
-              onValueChange={([value]) => {
-                setAmount(value)
-                view?.setAmount(value / 100)
-              }}
-            />
-          </div>
+          <ControlBar>
+            <ControlCell>
+              <Segment onClick={() => view?.decode()}>decode</Segment>
+            </ControlCell>
+            <ControlCell label="drive" grow>
+              <Slider
+                value={[amount]}
+                min={0}
+                max={100}
+                step={1}
+                className="min-w-16 max-w-[220px] flex-1"
+                onValueChange={([value]) => {
+                  setAmount(value)
+                  view?.setAmount(value / 100)
+                }}
+              />
+              <ControlValue>{amount}%</ControlValue>
+            </ControlCell>
+          </ControlBar>
         </div>
         <figcaption className="mt-5">
           <FigCaption>fig. 03 — atlas scramble · decodes as it enters</FigCaption>
@@ -293,11 +307,11 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
         seam.
       </Prose>
       <figure className="mt-8">
-        <div className="bg-[#dcdcda]">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <ControlLabel>move the cursor across the text</ControlLabel>
+          <ControlBar>
+            <ControlCell label="move the cursor across the text" />
+          </ControlBar>
         </div>
         <figcaption className="mt-5">
           <FigCaption>fig. 04 — fluid-sim ink driving the scramble</FigCaption>

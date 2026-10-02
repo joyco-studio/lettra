@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { Roboto_Mono } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
 
@@ -12,12 +13,9 @@ const sectra = localFont({
   display: 'swap',
 })
 
-const lettra = localFont({
-  src: [
-    { path: '../fonts/PPLettraMono-Regular.woff2', weight: '100 350', style: 'normal' },
-    { path: '../fonts/PPLettraMono-Medium.woff2', weight: '351 900', style: 'normal' },
-  ],
-  variable: '--font-lettra',
+const robotoMono = Roboto_Mono({
+  subsets: ['latin'],
+  variable: '--font-roboto-mono',
   display: 'swap',
 })
 
@@ -61,7 +59,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sectra.variable} ${lettra.variable}`}>
+    <html lang="en" className={`${sectra.variable} ${robotoMono.variable}`}>
       <body className="bg-paper text-ink antialiased">{children}</body>
     </html>
   )
