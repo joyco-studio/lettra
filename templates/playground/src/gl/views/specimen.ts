@@ -1,8 +1,8 @@
 import { Group, PerspectiveCamera, Scene } from 'three/webgpu'
 import type { LayoutOptions } from 'letterpress'
-import { createText, wipe } from 'letterpress/three'
+import { createText } from 'letterpress/three'
 import type { FontName, Stage } from '../stage'
-import { createTweener, frameText } from '../stage'
+import { frameText } from '../stage'
 
 export type Align = 'left' | 'center' | 'right'
 
@@ -17,7 +17,6 @@ export interface SpecimenState {
 
 export interface SpecimenView {
   apply(state: SpecimenState): void
-  wipe(direction: 'in' | 'out'): void
   dispose(): void
 }
 
@@ -44,7 +43,7 @@ export async function createSpecimenView(stage: Stage, el: HTMLElement, initial:
     map: stage.fonts[current.font].map,
     text: current.text,
     layout: layoutOptions(current),
-    material: { fill: '#414141', effect: wipe() },
+    material: { fill: '#414141' },
   })
   rig.add(text.mesh)
 
@@ -67,7 +66,6 @@ export async function createSpecimenView(stage: Stage, el: HTMLElement, initial:
     },
   })
   text.onChange(() => handle.invalidate())
-  const tweener = createTweener(() => handle.invalidate())
 
   // pipeline compile off the hot path
   await text.warmup(stage.renderer, camera, scene)
@@ -115,21 +113,7 @@ export async function createSpecimenView(stage: Stage, el: HTMLElement, initial:
       }
       frame()
     },
-    wipe(direction) {
-      if (direction === 'in') {
-        text.uniforms.wipeOut.value = 0
-        tweener.tween(1100, (t) => {
-          text.uniforms.wipeIn.value = t
-        })
-      } else {
-        text.uniforms.wipeIn.value = 1
-        tweener.tween(1100, (t) => {
-          text.uniforms.wipeOut.value = t
-        })
-      }
-    },
     dispose() {
-      tweener.cancel()
       el.removeEventListener('pointerdown', onPointerDown)
       el.removeEventListener('pointermove', onPointerMove)
       el.removeEventListener('pointerup', onPointerUp)

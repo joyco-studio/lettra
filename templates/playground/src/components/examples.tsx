@@ -129,10 +129,6 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
                 )
               })}
             </ControlCell>
-            <ControlCell label="wipe">
-              <Segment onClick={() => view?.wipe('in')}>in</Segment>
-              <Segment onClick={() => view?.wipe('out')}>out</Segment>
-            </ControlCell>
             <ControlCell label="tracking" grow>
               <Slider
                 value={[state.letterSpacing]}

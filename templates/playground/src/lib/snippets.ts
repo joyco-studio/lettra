@@ -6,7 +6,7 @@ export function specimenSnippet(state: SpecimenState): string {
   if (state.letterSpacing !== 0) layout.push(`letterSpacing: ${state.letterSpacing}`)
   if (state.maxWidth > 0) layout.push(`maxWidth: ${state.maxWidth}`)
 
-  return `import { createText, loadFont, loadFontTexture, wipe } from 'letterpress/three'
+  return `import { createText, loadFont, loadFontTexture } from 'letterpress/three'
 
 const [font, map] = await Promise.all([
   loadFont('/fonts/${state.font}.json'),
@@ -18,7 +18,7 @@ const text = createText({
   map,
   text: ${JSON.stringify(state.text)},
   layout: { ${layout.join(', ')} },
-  material: { fill: '#414141', effect: wipe() },
+  material: { fill: '#414141' },
 })
 scene.add(text.mesh)
 

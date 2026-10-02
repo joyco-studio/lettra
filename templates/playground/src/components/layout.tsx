@@ -252,8 +252,8 @@ export function CodePanel({
         <div className="flex min-w-0 items-center gap-gap">
           {leading}
           {/* tab: name only, width hugs content, corner cut on the right */}
-          <div className="flex h-9 w-fit min-w-0 items-center bg-night pr-5 pl-4 [clip-path:polygon(0%_0%,calc(100%-10px)_0%,100%_10px,100%_100%,0%_100%)]">
-            <span className="block truncate font-mono text-[10px] font-semibold tracking-[0.08em] text-paper">
+          <div className="flex h-7 w-fit min-w-0 items-center bg-night pr-4 pl-3 [clip-path:polygon(0%_0%,calc(100%-8px)_0%,100%_8px,100%_100%,0%_100%)]">
+            <span className="block truncate font-mono text-[9px] font-semibold tracking-[0.08em] text-paper">
               {title}
             </span>
           </div>
@@ -307,7 +307,7 @@ export function CodeToggle({ active, onClick }: { active: boolean; onClick: () =
       aria-label={active ? 'hide code' : 'view code'}
       aria-pressed={active}
       className={cn(
-        'flex size-9 shrink-0 cursor-pointer items-center justify-center font-mono text-[12px] font-semibold transition-colors',
+        'flex size-7 shrink-0 cursor-pointer items-center justify-center font-mono text-[10px] font-semibold transition-colors',
         active ? 'bg-night text-paper' : 'bg-ink/8 text-ink-faint hover:bg-ink/15 hover:text-ink'
       )}
     >
