@@ -69,7 +69,7 @@ function usePlayOnEnter(visible: boolean, ready: boolean, play: () => void) {
 }
 
 const INITIAL: SpecimenState = {
-  text: 'Sir Fabroos\n— The _destroyer_ of bugs',
+  text: "I'm Sir Fabroos\nThe destroyer of bugs",
   font: 'respira',
   align: 'center',
   letterSpacing: 0,
