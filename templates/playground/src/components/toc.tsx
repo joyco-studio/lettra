@@ -11,15 +11,7 @@ export interface TocSection {
   label: string
 }
 
-/** Reading-line scroll-spy with a hysteresis band, the missing piece in
- * every previous version (including pure fumadocs: with sparse sections its
- * closest-top fallback flaps N<->N+1 whenever an anchor hovers at a viewport
- * edge under trackpad jitter; dense-heading docs never engage that path).
- *
- * A section becomes active when its anchor crosses 28% of the viewport and
- * stays active until it falls back below 36%: an ~8vh dead band that scroll
- * jitter cannot cross. Anchor jumps are instant (no scroll-behavior:
- * smooth), so clicks land directly on the target with no lock needed. */
+/** Reading-line spy; the 28%/36% hysteresis band stops boundary flapping. */
 function useReadingLineActive(ids: string[]) {
   const [active, setActive] = useState(ids[0])
 
@@ -38,7 +30,6 @@ function useReadingLineActive(ids: string[]) {
         if (t !== undefined && t <= advance) candidate = id
       }
       if (ids.indexOf(candidate) < ids.indexOf(current)) {
-        // retreating: hold the current section inside the dead band
         const t = top(current)
         if (t !== undefined && t <= retreat) candidate = current
       }
@@ -57,7 +48,6 @@ function useReadingLineActive(ids: string[]) {
     }
 
     pick()
-    // layout can shift without scroll or resize (panels, collapsibles)
     const resizeObserver = new ResizeObserver(schedule)
     resizeObserver.observe(document.body)
     window.addEventListener('scroll', schedule, { passive: true })
@@ -73,8 +63,7 @@ function useReadingLineActive(ids: string[]) {
   return active
 }
 
-/** Hub-style contents rail on fumadocs' TOC primitives; the highlight comes
- * from the banded reading-line spy above. */
+/** Hub-style contents rail on fumadocs' TOC primitives. */
 export function Toc({ sections }: { sections: TocSection[] }) {
   const toc = useMemo(
     () => sections.map((section) => ({ title: section.label, url: `#${section.id}`, depth: 2 })),
