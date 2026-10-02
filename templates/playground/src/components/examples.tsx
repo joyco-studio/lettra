@@ -205,7 +205,7 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
   return (
     <Row
       id="wipe"
-      className="pt-14"
+      className="pt-20"
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -254,7 +254,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
   return (
     <Row
       id="scramble"
-      className="pt-14"
+      className="pt-20"
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -314,7 +314,7 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
   return (
     <Row
       id="liquid"
-      className="pt-14"
+      className="pt-20"
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel

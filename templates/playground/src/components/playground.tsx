@@ -192,7 +192,7 @@ export default function Playground({
             {/* 02 — pipeline */}
             <Row
               id="pipeline"
-              className="pt-14"
+              className="pt-20"
               asideClassName="lg:pt-20"
               aside={
                 <SnippetPanel
@@ -245,7 +245,7 @@ export default function Playground({
 
             <SectionBreak />
             {/* 06 — implementation */}
-            <Row id="implementation" className="pt-14">
+            <Row id="implementation" className="pt-20">
               <div className="flex items-start gap-1">
                 <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
                   One canvas, tracked
@@ -317,7 +317,7 @@ export default function Playground({
 
             <SectionBreak />
             {/* 07 — colophon */}
-            <Row id="colophon" className="pt-14">
+            <Row id="colophon" className="pt-20">
               <div className="pb-10">
                 <MetaTable />
               </div>

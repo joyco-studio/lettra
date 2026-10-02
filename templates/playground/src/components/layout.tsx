@@ -216,7 +216,7 @@ export function Prose({ className, children }: { className?: string; children: R
  * in the prose column. */
 export function SectionBreak() {
   return (
-    <div className="flex justify-center gap-3 pt-12 lg:col-start-1" aria-hidden>
+    <div className="flex justify-center gap-3 pt-16 lg:col-start-1" aria-hidden>
       <img src="/brand/logo-mark.svg" alt="" className="h-3.5 w-3.5 opacity-25" />
       <img src="/brand/logo-mark.svg" alt="" className="h-3.5 w-3.5 opacity-25" />
       <img src="/brand/logo-mark.svg" alt="" className="h-3.5 w-3.5 opacity-25" />
