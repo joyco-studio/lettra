@@ -78,7 +78,7 @@ export interface ScrambleOptions {
  * between). Swapping fonts? Call `setPool(nextFont)` alongside `swapFont`. */
 export function scramble({ font, chars, rate = 15, drive, capacity }: ScrambleOptions) {
   const initial = glyphRects(parseFont(font), chars)
-  if (initial.length === 0) throw new Error('letterpress: scramble pool is empty — no requested chars in the font')
+  if (initial.length === 0) throw new Error('lettra: scramble pool is empty — no requested chars in the font')
 
   const size = Math.max(initial.length, capacity ?? 0)
   const rects = uniformArray(
@@ -107,8 +107,8 @@ export function scramble({ font, chars, rate = 15, drive, capacity }: ScrambleOp
      * to the allocated capacity. Pair with `TextHandle.swapFont`. */
     setPool(nextFont: FontInput, nextChars?: string) {
       const next = glyphRects(parseFont(nextFont), nextChars ?? chars)
-      if (next.length === 0) throw new Error('letterpress: scramble pool is empty — no requested chars in the font')
-      if (next.length > size) console.warn(`letterpress: scramble pool truncated to capacity ${size}`)
+      if (next.length === 0) throw new Error('lettra: scramble pool is empty — no requested chars in the font')
+      if (next.length > size) console.warn(`lettra: scramble pool truncated to capacity ${size}`)
       const count = Math.min(next.length, size)
       for (let i = 0; i < count; i++) (rects.array[i] as Vector4).copy(next[i])
       poolSize.value = count

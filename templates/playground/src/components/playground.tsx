@@ -1,15 +1,27 @@
+'use client'
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Metri } from '@joycostudio/metri'
 import { MetriProvider } from '@joycostudio/metri/react'
-import { Caption, CodePanel, CommandLine, CopyAction, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
+import {
+  Caption,
+  CodePanel,
+  CommandLine,
+  CopyAction,
+  MonoButton,
+  Prose,
+  Row,
+  SectionBreak,
+  SnippetPanel,
+} from '@/components/layout'
 import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
 import type { TocSection } from '@/components/toc'
 import { LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
-import { createStage } from './gl/stage'
-import type { Stage } from './gl/stage'
-import stageSource from './gl/stage.ts?raw'
-import specimenSource from './gl/views/specimen.ts?raw'
+import { bakeRecipe } from '@/lib/snippets'
+import type { HighlightedSnippets } from '@/lib/snippets'
+import { createStage } from '../gl/stage'
+import type { Stage } from '../gl/stage'
 
 const SECTIONS: TocSection[] = [
   { id: 'specimen', index: '01', label: 'Specimen' },
@@ -21,24 +33,14 @@ const SECTIONS: TocSection[] = [
   { id: 'colophon', index: '07', label: 'Colophon' },
 ]
 
-const BAKE_RECIPE = `# instance variable fonts first — variable GPOS kerning
-# bakes to 0 pairs otherwise (static GPOS reads fine)
-python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf
+const INSTALL_COMMAND = 'pnpm add lettra three'
 
-# bake: MSDF atlas PNG + BMFont JSON metrics
-# -r 8 — distance range 8, required for smooth erosion wipes
-npx -y -p msdf-bmfont-xml msdf-bmfont \\
-  -f json -i charset.txt -s 64 -r 8 -p 2 \\
-  -t msdf --smart-size static.ttf`
+const AGENT_PROMPT = `Add lettra (runtime MSDF text for Three.js WebGPURenderer + TSL) to this project.
 
-const INSTALL_COMMAND = 'pnpm add letterpress three'
-
-const AGENT_PROMPT = `Add letterpress (runtime MSDF text for Three.js WebGPURenderer + TSL) to this project.
-
-Install: pnpm add letterpress three   (three >= 0.185)
+Install: pnpm add lettra three   (three >= 0.185)
 
 Quickstart:
-import { createText, loadFont, loadFontTexture, wipe } from 'letterpress/three'
+import { createText, loadFont, loadFontTexture, wipe } from 'lettra/three'
 const [font, map] = await Promise.all([loadFont('/fonts/display.json'), loadFontTexture('/fonts/display.png')])
 const text = createText({ font, map, text: 'Hello', layout: { align: 'center' }, material: { fill: '#414141', effect: wipe() } })
 scene.add(text.mesh)
@@ -50,7 +52,7 @@ npx -y -p msdf-bmfont-xml msdf-bmfont -f json -i charset.txt -s 64 -r 8 -p 2 -t 
 - instance variable fonts to a static weight first (python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf) or GPOS kerning bakes to 0 pairs
 - keep distance range 8 (erosion wipes need the SDF headroom), single atlas page, no rotated packing
 
-Full API (layout engine, effects, composing TSL nodes, lifecycle contract): https://github.com/joyco-studio/letterpress#readme`
+Full API (layout engine, effects, composing TSL nodes, lifecycle contract): https://github.com/joyco-studio/lettra#readme`
 
 function GettingStarted() {
   return (
@@ -61,7 +63,7 @@ function GettingStarted() {
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 font-serif text-[16px] text-ink">
         <span>or</span>
-        <CopyAction text={AGENT_PROMPT} label="copy agent prompt" tone="light" />
+        <CopyAction text={AGENT_PROMPT} label="copy agent prompt" tone="outline" />
         <span>paste it into your agent, it does the rest.</span>
       </div>
     </div>
@@ -70,18 +72,20 @@ function GettingStarted() {
 
 function MetaTable() {
   const rows: [string, string][] = [
-    ['package', 'letterpress · npm'],
+    ['package', 'lettra · npm'],
     ['renderer', 'webgpu · webgl fallback'],
     ['engine', 'three/webgpu + tsl'],
     ['tracking', '@joycostudio/metri'],
-    ['license', 'isc'],
+    ['license', 'mit'],
   ]
   return (
     <table className="w-full border-collapse font-mono text-[12px] font-semibold tracking-[0.04em]">
-      <tbody>
+      <tbody className="divide-y divide-ink-faint/30">
         {rows.map(([key, value]) => (
           <tr key={key}>
-            <td className="w-[140px] py-[7px] text-ink-faint">{key}</td>
+            <td className="w-[140px] py-[7px] font-serif text-[13px] font-medium tracking-normal text-ink-faint">
+              {key}
+            </td>
             <td className="py-[7px] text-ink">{value}</td>
           </tr>
         ))}
@@ -90,7 +94,15 @@ function MetaTable() {
   )
 }
 
-export default function App() {
+export default function Playground({
+  stageSource,
+  specimenSource,
+  highlighted,
+}: {
+  stageSource: string
+  specimenSource: string
+  highlighted: HighlightedSnippets
+}) {
   const metri = useMemo(() => new Metri(), [])
   useLayoutEffect(() => {
     metri.initialize()
@@ -135,13 +147,8 @@ export default function App() {
           <div className="sticky top-0 hidden h-screen w-[280px] shrink-0 self-start pt-14 pb-10 xl:block">
             {/* block hugs the body column; content inside stays left-aligned */}
             <div className="ml-auto flex h-full w-full max-w-[280px] flex-col">
-              <div className="flex items-center gap-2 pb-10">
-                <img src="/brand/logo-framed.svg" alt="Letterpress logo" className="h-10 w-10" />
-                <img
-                  src="/brand/wordmark.svg"
-                  alt="Letterpress®"
-                  className="h-[27px] w-auto [filter:brightness(0.32)]"
-                />
+              <div className="flex items-center pb-10">
+                <img src="/brand/wordmark.svg" alt="Lettra®" className="h-[26px] w-auto [filter:brightness(0.32)]" />
               </div>
               <Toc sections={SECTIONS} />
               <a
@@ -166,14 +173,13 @@ export default function App() {
               </div>
 
               <Prose className="mt-7 text-[18px] leading-[1.35]">
-                Letterpress renders live, kerned typography on the GPU from a font baked once into a multi-channel
-                signed distance field. No runtime shaper, no wasm — a few kilobytes of layout and a composable Three.js
+                Lettra renders live, kerned typography on the GPU from a font baked once into a multi-channel
+                signed distance field. No runtime shaper, no wasm: a few kilobytes of layout and a composable Three.js
                 node material, sharp at any scale and any angle.
               </Prose>
               <Prose className="mt-4 text-[14px] text-[#6b6b6b]">
-                Every figure below is ink on a single shared canvas, scroll-synced to the page — hit the{' '}
-                <span className="font-mono text-[12px]">{'</>'}</span> square on any of them to read the snippet
-                alongside.
+                Every figure below is ink on one shared canvas, scroll-synced to the page. Hit the{' '}
+                <span className="font-mono text-[12px]">{'</>'}</span> square on any figure to read its snippet.
               </Prose>
 
               <GettingStarted />
@@ -182,6 +188,7 @@ export default function App() {
             {/* fig. 01 — specimen */}
             <SpecimenExample stage={stage} />
 
+            <SectionBreak />
             {/* 02 — pipeline */}
             <Row
               id="pipeline"
@@ -191,7 +198,8 @@ export default function App() {
                 <SnippetPanel
                   open={bakeOpen}
                   title="bake.sh"
-                  code={BAKE_RECIPE}
+                  code={bakeRecipe}
+                  html={highlighted.bake}
                   lang="bash"
                   onToggle={() => setBakeOpen((value) => !value)}
                 />
@@ -206,9 +214,9 @@ export default function App() {
 
               <div className="mt-6 flex flex-col gap-5">
                 <Prose>
-                  <span className="font-bold">Bake once.</span> A font becomes a small PNG atlas and a metrics JSON —
-                  each glyph stored as a multi-channel distance field, each kerning pair carried over from the source.
-                  It happens at build time, by hand or script; the library starts where the bake ends.{' '}
+                  <span className="font-bold">Bake once.</span> A font becomes a small PNG atlas and a metrics JSON:
+                  each glyph a multi-channel distance field, each kerning pair carried over. It happens at build time,
+                  by hand or script. The library starts where the bake ends.{' '}
                   <MonoButton active={bakeOpen} onClick={() => setBakeOpen((value) => !value)}>
                     {bakeOpen ? 'hide recipe' : 'view recipe'}
                   </MonoButton>
@@ -221,17 +229,21 @@ export default function App() {
                 <Prose>
                   <span className="font-bold">Reconstruct on the GPU.</span> The material takes the median of three
                   channels, sharpens it over half a derivative&apos;s width, and exposes erosion wipes that dissolve
-                  glyphs through the distance field — edges first, stroke skeletons last. Every node is exported, typed,
-                  and replaceable.
+                  glyphs through the distance field, edges first and stroke skeletons last. Every node is exported,
+                  typed, and replaceable.
                 </Prose>
               </div>
             </Row>
 
             {/* fig. 02 — wipe, fig. 03 — scramble, fig. 04 — water trail */}
-            <WipeExample stage={stage} />
-            <ScrambleExample stage={stage} />
-            <LiquidExample stage={stage} />
+            <SectionBreak />
+            <WipeExample stage={stage} html={highlighted.wipe} />
+            <SectionBreak />
+            <ScrambleExample stage={stage} html={highlighted.scramble} />
+            <SectionBreak />
+            <LiquidExample stage={stage} html={highlighted.liquid} />
 
+            <SectionBreak />
             {/* 06 — implementation */}
             <Row id="implementation" className="pt-20">
               <div className="flex items-start gap-1">
@@ -241,15 +253,15 @@ export default function App() {
                 <Caption>[stage]</Caption>
               </div>
               <Prose className="mt-5">
-                The page keeps a single WebGPU canvas in page space and slides it back over the viewport each frame —
-                the &ldquo;absolute&rdquo; approach from the JOYCO{' '}
+                The page keeps a single WebGPU canvas in page space and slides it back over the viewport each frame, the
+                &ldquo;absolute&rdquo; approach from the JOYCO{' '}
                 <a
                   href="https://hub.joyco.studio/logs/08-webgl-scroll-sync"
                   className="underline decoration-1 underline-offset-2 hover:text-ink"
                 >
                   WebGL Scroll Sync
                 </a>{' '}
-                log: content never drifts from the DOM during scroll, and 25% of padding top and bottom absorbs the
+                log. Content never drifts from the DOM during scroll; 25% padding top and bottom absorbs the
                 one-frame-stale transform. Each figure is a placeholder div measured by{' '}
                 <a
                   href="https://hub.joyco.studio/toolbox/metri"
@@ -257,7 +269,7 @@ export default function App() {
                 >
                   Metri
                 </a>{' '}
-                — cached document-space bounds, one shared ResizeObserver — and rendered into its rect with a scissored
+                (cached document-space bounds, one shared ResizeObserver) and rendered into its rect with a scissored
                 viewport. Frames are demand-driven: no scroll, no tween, no render.
               </Prose>
 
@@ -268,11 +280,16 @@ export default function App() {
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 05 — the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
+                    fig. 05 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <CodePanel title="gl/stage.ts" code={stageSource} maxHeight="max-h-[480px]" />
+                  <CodePanel
+                    title="gl/stage.ts"
+                    code={stageSource}
+                    html={highlighted.stage}
+                    maxHeight="max-h-[480px]"
+                  />
                 </div>
               </details>
 
@@ -283,27 +300,36 @@ export default function App() {
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 06 — a view <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
+                    fig. 06 · a view{' '}
+                    <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
                   </span>
                 </summary>
                 <div className="mt-4">
-                  <CodePanel title="gl/views/specimen.ts" code={specimenSource} maxHeight="max-h-[480px]" />
+                  <CodePanel
+                    title="gl/views/specimen.ts"
+                    code={specimenSource}
+                    html={highlighted.specimen}
+                    maxHeight="max-h-[480px]"
+                  />
                 </div>
               </details>
             </Row>
 
+            <SectionBreak />
             {/* 07 — colophon */}
-            <Row id="colophon" className="pt-24">
+            <Row id="colophon" className="pt-20">
               <div className="pb-10">
                 <MetaTable />
               </div>
               <div className="flex flex-col gap-3">
-                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">From readme.md</h2>
+                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
+                  From readme.md
+                </h2>
                 <Prose className="text-[14px] text-[#6b6b6b]">
-                  Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi —
+                  Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi;
                   that work belongs to a real shaper. Layout ported from Jam3&apos;s layout-bmfont-text (MIT). Specimen
                   faces: Bebas Neue &amp; Lora, OFL. Append <span className="font-mono text-[12.5px]">?forceWebGL</span>{' '}
-                  to exercise the fallback. ISC ©{' '}
+                  to exercise the fallback. MIT ©{' '}
                   <a href="https://joyco.studio" className="underline decoration-1 underline-offset-2 hover:text-ink">
                     joyco.studio
                   </a>

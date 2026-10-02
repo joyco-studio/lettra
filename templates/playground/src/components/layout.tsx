@@ -8,7 +8,7 @@ export const PANEL_CLIP =
 
 const SCRAMBLE_CHARS = '#?*+/<>=-'
 
-/** Label that decodes to "done" on trigger, then back — the letterpress
+/** Label that decodes to "done" on trigger, then back — the lettra
  * scramble, miniaturized for button feedback. */
 export function useScrambleLabel(idle: string) {
   const [label, setLabel] = useState(idle)
@@ -41,23 +41,47 @@ export function useScrambleLabel(idle: string) {
   return { label, trigger }
 }
 
-/** Copy button with a subtle chip background; the label scrambles to "done". */
+/** Badge-style corner cuts, chip scale. */
+const CHIP_CLIP =
+  '[clip-path:polygon(6px_0%,100%_0%,100%_calc(100%-6px),calc(100%-6px)_100%,0%_100%,0%_6px)]'
+
+/** Copy button; the label scrambles to "done". Tones: `dark` chip for night
+ * surfaces, `light` solid night chip for paper, `outline` an ink ring that
+ * keeps the badge corner cuts (clipped wrapper + 1px-inset clipped core,
+ * since a CSS border cannot follow a clip-path). */
 export function CopyAction({
   text,
   tone = 'dark',
   label: idleLabel = 'copy',
 }: {
   text: string
-  tone?: 'dark' | 'light'
+  tone?: 'dark' | 'light' | 'outline'
   label?: string
 }) {
   const { label, trigger } = useScrambleLabel(idleLabel)
+  const copy = () => {
+    navigator.clipboard?.writeText(text).catch(() => {})
+    trigger()
+  }
+
+  if (tone === 'outline') {
+    return (
+      <button onClick={copy} className={cn('group/copy cursor-pointer bg-ink/40 p-px transition-colors hover:bg-ink', CHIP_CLIP)}>
+        <span
+          className={cn(
+            'flex items-center bg-paper px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.08em] text-ink/70 transition-colors group-hover/copy:text-ink',
+            CHIP_CLIP
+          )}
+        >
+          {label}
+        </span>
+      </button>
+    )
+  }
+
   return (
     <button
-      onClick={() => {
-        navigator.clipboard?.writeText(text).catch(() => {})
-        trigger()
-      }}
+      onClick={copy}
       className={cn(
         'cursor-pointer px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.08em] transition-colors',
         tone === 'dark'
@@ -103,6 +127,73 @@ export function MonoButton({
   )
 }
 
+/* --- instrument bar (foundry-tester pattern, à la Pangram Pangram
+ * samplers): a control strip docked into the figure plate. One cell per
+ * instrument, paper background on the plate tone for explicit division,
+ * night-filled segments for active state. --- */
+
+export function ControlBar({ className, children }: { className?: string; children: React.ReactNode }) {
+  return <div className={cn('flex flex-wrap gap-[2px]', className)}>{children}</div>
+}
+
+export function ControlCell({
+  label,
+  grow,
+  className,
+  children,
+}: {
+  label?: string
+  grow?: boolean
+  className?: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className={cn('flex h-10 items-center gap-2.5 bg-paper px-3', grow && 'min-w-[210px] flex-1', className)}>
+      {label ? (
+        <span className="font-mono text-[10px] font-medium tracking-[0.02em] whitespace-nowrap text-ink-faint">
+          {label}
+        </span>
+      ) : null}
+      {children}
+    </div>
+  )
+}
+
+/** One option inside a ControlCell. Momentary actions omit `active`. */
+export function Segment({
+  active,
+  onClick,
+  title,
+  children,
+}: {
+  active?: boolean
+  onClick: () => void
+  title?: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-pressed={active}
+      className={cn(
+        'flex h-7 cursor-pointer items-center px-2.5 font-mono text-[11px] font-semibold tracking-[0.04em] transition-colors',
+        active ? 'bg-night text-paper' : 'text-ink-faint hover:bg-ink/8 hover:text-ink'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function ControlValue({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="min-w-[4ch] text-right font-mono text-[11px] font-semibold tracking-[0.02em] text-ink tabular-nums">
+      {children}
+    </span>
+  )
+}
+
 /** Lowercase mono label for control rows — quiet, never uppercase. */
 export function ControlLabel({ className, children }: { className?: string; children: React.ReactNode }) {
   return (
@@ -114,13 +205,23 @@ export function ControlLabel({ className, children }: { className?: string; chil
 
 /** Serif figure caption — quiet but readable, never uppercase mono. */
 export function FigCaption({ className, children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <span className={cn('font-serif text-[14px] tracking-[0.01em] text-[#84847f]', className)}>{children}</span>
-  )
+  return <span className={cn('font-serif text-[14px] tracking-[0.01em] text-[#84847f]', className)}>{children}</span>
 }
 
 export function Prose({ className, children }: { className?: string; children: React.ReactNode }) {
   return <p className={cn('font-serif text-[16px] leading-[1.3] tracking-[0.01em] text-ink', className)}>{children}</p>
+}
+
+/** Editorial section separator: the nib mark as a small centered dinkus
+ * in the prose column. */
+export function SectionBreak() {
+  return (
+    <div className="flex justify-center gap-3 pt-16 lg:col-start-1" aria-hidden>
+      <img src="/brand/logo-mark.svg" alt="" className="h-3.5 w-3.5 opacity-25" />
+      <img src="/brand/logo-mark.svg" alt="" className="h-3.5 w-3.5 opacity-25" />
+      <img src="/brand/logo-mark.svg" alt="" className="h-3.5 w-3.5 opacity-25" />
+    </div>
+  )
 }
 
 /** One page row: the section content in the prose column and an optional
@@ -156,6 +257,7 @@ export function CodePanel({
   title,
   code,
   lang,
+  html,
   leading,
   onClose,
   maxHeight = 'max-h-[70vh]',
@@ -164,6 +266,8 @@ export function CodePanel({
   title: string
   code: string
   lang?: string
+  /** Pre-highlighted HTML (server-side shiki); omits the client highlighter. */
+  html?: string
   /** Rendered flush-left before the name tab (e.g. the code toggle). */
   leading?: React.ReactNode
   onClose?: () => void
@@ -176,8 +280,8 @@ export function CodePanel({
         <div className="flex min-w-0 items-center gap-gap">
           {leading}
           {/* tab: name only, width hugs content, corner cut on the right */}
-          <div className="flex h-9 w-fit min-w-0 items-center bg-night pr-5 pl-4 [clip-path:polygon(0%_0%,calc(100%-10px)_0%,100%_10px,100%_100%,0%_100%)]">
-            <span className="block truncate font-mono text-[10px] font-semibold tracking-[0.08em] text-paper">
+          <div className="flex h-7 w-fit min-w-0 items-center bg-night pr-4 pl-3 [clip-path:polygon(0%_0%,calc(100%-8px)_0%,100%_8px,100%_100%,0%_100%)]">
+            <span className="block truncate font-mono text-[9px] font-semibold tracking-[0.08em] text-paper">
               {title}
             </span>
           </div>
@@ -200,7 +304,7 @@ export function CodePanel({
           maxHeight
         )}
       >
-        <CodeBlock code={code} lang={lang} />
+        <CodeBlock code={code} lang={lang} html={html} />
       </div>
     </div>
   )
@@ -231,7 +335,7 @@ export function CodeToggle({ active, onClick }: { active: boolean; onClick: () =
       aria-label={active ? 'hide code' : 'view code'}
       aria-pressed={active}
       className={cn(
-        'flex size-9 shrink-0 cursor-pointer items-center justify-center font-mono text-[12px] font-semibold transition-colors',
+        'flex size-7 shrink-0 cursor-pointer items-center justify-center font-mono text-[10px] font-semibold transition-colors',
         active ? 'bg-night text-paper' : 'bg-ink/8 text-ink-faint hover:bg-ink/15 hover:text-ink'
       )}
     >
@@ -248,12 +352,14 @@ export function SnippetPanel({
   title,
   code,
   lang,
+  html,
   onToggle,
 }: {
   open: boolean
   title: string
   code: string
   lang?: string
+  html?: string
   onToggle: () => void
 }) {
   return (
@@ -263,6 +369,7 @@ export function SnippetPanel({
           title={title}
           code={code}
           lang={lang}
+          html={html}
           maxHeight="max-h-[80vh]"
           leading={<CodeToggle active onClick={onToggle} />}
         />

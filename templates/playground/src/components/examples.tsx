@@ -2,7 +2,18 @@ import { useEffect, useRef, useState } from 'react'
 import { useObserve } from '@joycostudio/metri/react'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
-import { Caption, ControlLabel, FigCaption, MonoButton, Prose, Row, SnippetPanel } from '@/components/layout'
+import {
+  Caption,
+  ControlBar,
+  ControlCell,
+  ControlValue,
+  FigCaption,
+  Prose,
+  Row,
+  Segment,
+  SnippetPanel,
+} from '@/components/layout'
+import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
@@ -58,17 +69,30 @@ function usePlayOnEnter(visible: boolean, ready: boolean, play: () => void) {
 }
 
 const INITIAL: SpecimenState = {
-  text: 'AVATAR WAVE To.\n¡Sójy! — á la WebGPU',
-  font: 'bebas',
+  text: "I am Sir Fabroos\nThe destroyer of bugs",
+  font: 'respira',
   align: 'center',
   letterSpacing: 0,
   maxWidth: 0,
 }
 
 const FONTS: { name: FontName; label: string }[] = [
+  { name: 'respira', label: 'Respira' },
   { name: 'bebas', label: 'Bebas' },
   { name: 'lora', label: 'Lora' },
 ]
+
+/** Per-font default copy. The Respira trial cut only inks A-Z a-z 0-9 and
+ * the period (54 husk glyphs stripped, including ?), so its line sticks to
+ * that coverage — switching fonts swaps the default only if the text is
+ * still a default, never clobbering user edits. */
+const DEFAULT_TEXT: Record<FontName, string> = {
+  bebas: INITIAL.text,
+  lora: INITIAL.text,
+  respira: INITIAL.text,
+  roboto: INITIAL.text,
+  lettra: INITIAL.text,
+}
 
 const ALIGNS: Align[] = ['left', 'center', 'right']
 
@@ -99,74 +123,79 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
       }
     >
       <figure>
-        <div className="bg-[#dcdcda]">
-          <div ref={elRef} className="aspect-[16/10] w-full cursor-grab touch-none active:cursor-grabbing" />
-        </div>
-
-        <div className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col gap-2">
-            <ControlLabel>edit the specimen</ControlLabel>
-            <Textarea
-              value={state.text}
-              spellCheck={false}
-              rows={2}
-              className="min-h-0 resize-none border-0 bg-ink/4 px-3 py-2.5 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:bg-ink/6 focus-visible:ring-0 dark:bg-ink/4"
-              onChange={(event) => patch({ text: event.target.value })}
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-            {FONTS.map(({ name, label }) => (
-              <MonoButton key={name} active={state.font === name} onClick={() => patch({ font: name })}>
-                {label}
-              </MonoButton>
-            ))}
-            <span className="w-1" />
-            {ALIGNS.map((align) => (
-              <MonoButton key={align} active={state.align === align} onClick={() => patch({ align })}>
-                {align}
-              </MonoButton>
-            ))}
-            <span className="w-1" />
-            <MonoButton onClick={() => view?.wipe('in')}>wipe in</MonoButton>
-            <MonoButton onClick={() => view?.wipe('out')}>wipe out</MonoButton>
-          </div>
-          <div className="flex flex-col gap-x-10 gap-y-3 sm:flex-row">
-            <div className="flex flex-1 items-center gap-3">
-              <ControlLabel className="w-[132px] shrink-0">
-                tracking {state.letterSpacing}px
-              </ControlLabel>
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+          <ControlBar>
+            <ControlCell label="font">
+              {FONTS.map(({ name, label }) => (
+                <Segment
+                  key={name}
+                  active={state.font === name}
+                  onClick={() =>
+                    patch({
+                      font: name,
+                      ...(state.text === DEFAULT_TEXT[state.font] ? { text: DEFAULT_TEXT[name] } : {}),
+                    })
+                  }
+                >
+                  {label}
+                </Segment>
+              ))}
+            </ControlCell>
+            <ControlCell label="align">
+              {ALIGNS.map((align) => {
+                const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight
+                return (
+                  <Segment key={align} title={align} active={state.align === align} onClick={() => patch({ align })}>
+                    <Icon size={13} strokeWidth={2.25} />
+                  </Segment>
+                )
+              })}
+            </ControlCell>
+            <ControlCell label="tracking" grow>
               <Slider
                 value={[state.letterSpacing]}
                 min={-4}
                 max={24}
                 step={1}
+                className="min-w-16 flex-1"
                 onValueChange={([value]) => patch({ letterSpacing: value })}
               />
-            </div>
-            <div className="flex flex-1 items-center gap-3">
-              <ControlLabel className="w-[132px] shrink-0">
-                measure {state.maxWidth > 0 ? `${state.maxWidth}px` : 'off'}
-              </ControlLabel>
+              <ControlValue>{state.letterSpacing}px</ControlValue>
+            </ControlCell>
+            <ControlCell label="measure" grow>
               <Slider
                 value={[state.maxWidth]}
                 min={0}
                 max={1600}
                 step={20}
+                className="min-w-16 flex-1"
                 onValueChange={([value]) => patch({ maxWidth: value })}
               />
-            </div>
-          </div>
+              <ControlValue>{state.maxWidth > 0 ? state.maxWidth : 'off'}</ControlValue>
+            </ControlCell>
+          </ControlBar>
+          <div ref={elRef} className="aspect-[16/10] w-full cursor-grab touch-none active:cursor-grabbing" />
+          <label className="flex items-start gap-3 bg-paper px-3 py-2.5">
+            <span className="pt-[3px] font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">text</span>
+            <Textarea
+              value={state.text}
+              spellCheck={false}
+              rows={2}
+              className="min-h-0 flex-1 resize-none border-0 bg-transparent p-0 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-transparent"
+              onChange={(event) => patch({ text: event.target.value })}
+            />
+          </label>
         </div>
 
         <figcaption className="mt-5">
-          <FigCaption>fig. 01 — live specimen · drag to tilt</FigCaption>
+          <FigCaption>fig. 01 · live specimen · drag to tilt</FigCaption>
         </figcaption>
       </figure>
     </Row>
   )
 }
 
-export function WipeExample({ stage }: { stage: Stage | null }) {
+export function WipeExample({ stage, html }: { stage: Stage | null; html: string }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const view = useGLView(stage, elRef, createWipeView)
@@ -179,7 +208,13 @@ export function WipeExample({ stage }: { stage: Stage | null }) {
       className="pt-20"
       asideClassName="lg:pt-20"
       aside={
-        <SnippetPanel open={open} title="wipe.ts" code={wipeSnippet} onToggle={() => setOpen((value) => !value)} />
+        <SnippetPanel
+          open={open}
+          title="wipe.ts"
+          code={wipeSnippet}
+          html={html}
+          onToggle={() => setOpen((value) => !value)}
+        />
       }
     >
       <div className="flex items-start gap-1">
@@ -187,26 +222,28 @@ export function WipeExample({ stage }: { stage: Stage | null }) {
         <Caption>[effect]</Caption>
       </div>
       <Prose className="mt-5">
-        The wipe never masks — it erodes. A front sweeps the ink and raises the distance threshold as it passes, so thin
-        edges give way first and stroke skeletons hold out last, every glyph dissolving through its own field.
+        The wipe never masks; it erodes. A front sweeps the ink and raises the distance threshold as it passes. Thin
+        edges give way first, stroke skeletons hold out last, every glyph dissolving through its own field.
       </Prose>
       <figure className="mt-8">
-        <div className="bg-[#dcdcda]">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/7] w-full" />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <MonoButton onClick={() => view?.wipe('in')}>wipe in</MonoButton>
-          <MonoButton onClick={() => view?.wipe('out')}>wipe out</MonoButton>
+          <ControlBar>
+            <ControlCell label="wipe">
+              <Segment onClick={() => view?.wipe('in')}>in</Segment>
+              <Segment onClick={() => view?.wipe('out')}>out</Segment>
+            </ControlCell>
+          </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 02 — threshold erosion · plays as it enters</FigCaption>
+          <FigCaption>fig. 02 · threshold erosion · plays as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
   )
 }
 
-export function ScrambleExample({ stage }: { stage: Stage | null }) {
+export function ScrambleExample({ stage, html }: { stage: Stage | null; html: string }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(0)
@@ -224,6 +261,7 @@ export function ScrambleExample({ stage }: { stage: Stage | null }) {
           open={open}
           title="scramble.ts"
           code={scrambleSnippet}
+          html={html}
           onToggle={() => setOpen((value) => !value)}
         />
       }
@@ -233,41 +271,42 @@ export function ScrambleExample({ stage }: { stage: Stage | null }) {
         <Caption>[effect]</Caption>
       </div>
       <Prose className="mt-5">
-        While driven, a glyph renders a random same-font glyph instead, re-rolled a few times a second — the decoder
+        While driven, a glyph renders a random same-font glyph instead, re-rolled a few times a second: the decoder
         effect, straight from the atlas. Glyphs engage in stable random order, so sweeping the drive down decodes the
         line letter by letter.
       </Prose>
       <figure className="mt-8">
-        <div className="bg-[#dcdcda]">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/7] w-full" />
-        </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <MonoButton onClick={() => view?.decode()}>decode</MonoButton>
-          <span className="w-1" />
-          <div className="flex flex-1 items-center gap-3">
-            <ControlLabel className="w-[90px] shrink-0">drive {amount}%</ControlLabel>
-            <Slider
-              value={[amount]}
-              min={0}
-              max={100}
-              step={1}
-              className="max-w-[180px]"
-              onValueChange={([value]) => {
-                setAmount(value)
-                view?.setAmount(value / 100)
-              }}
-            />
-          </div>
+          <ControlBar>
+            <ControlCell>
+              <Segment onClick={() => view?.decode()}>decode</Segment>
+            </ControlCell>
+            <ControlCell label="drive" grow>
+              <Slider
+                value={[amount]}
+                min={0}
+                max={100}
+                step={1}
+                className="min-w-16 max-w-[220px] flex-1"
+                onValueChange={([value]) => {
+                  setAmount(value)
+                  view?.setAmount(value / 100)
+                }}
+              />
+              <ControlValue>{amount}%</ControlValue>
+            </ControlCell>
+          </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 03 — atlas scramble · decodes as it enters</FigCaption>
+          <FigCaption>fig. 03 · atlas scramble · decodes as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
   )
 }
 
-export function LiquidExample({ stage }: { stage: Stage | null }) {
+export function LiquidExample({ stage, html }: { stage: Stage | null; html: string }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   useGLView(stage, elRef, createLiquidView)
@@ -278,7 +317,13 @@ export function LiquidExample({ stage }: { stage: Stage | null }) {
       className="pt-20"
       asideClassName="lg:pt-20"
       aside={
-        <SnippetPanel open={open} title="liquid.ts" code={liquidSnippet} onToggle={() => setOpen((value) => !value)} />
+        <SnippetPanel
+          open={open}
+          title="liquid.ts"
+          code={liquidSnippet}
+          html={html}
+          onToggle={() => setOpen((value) => !value)}
+        />
       }
     >
       <div className="flex items-start gap-1">
@@ -287,20 +332,16 @@ export function LiquidExample({ stage }: { stage: Stage | null }) {
       </div>
       <Prose className="mt-5">
         The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU fluid
-        sim: ink splatted along the cursor stroke, advected by its own velocity, dissipating as it goes — it swirls
-        while you move and soaks away when you stop. Glyphs touched by its rim re-roll through the atlas, the wet
-        interior darkens the ink, and none of it is library code. An audio level or a wipe front plugs into the same
-        seam.
+        sim: ink splatted along the cursor stroke, advected by its own velocity, swirling while you move and soaking
+        away when you stop. Glyphs on its rim re-roll through the atlas, the wet interior darkens the ink. None of it is
+        library code; an audio level or a wipe front plugs into the same seam.
       </Prose>
       <figure className="mt-8">
-        <div className="bg-[#dcdcda]">
+        <div className="bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <ControlLabel>move the cursor across the text</ControlLabel>
-        </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 04 — fluid-sim ink driving the scramble</FigCaption>
+          <FigCaption>fig. 04 · fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
       </figure>
     </Row>

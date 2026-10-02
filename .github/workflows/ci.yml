@@ -38,3 +38,6 @@ jobs:
 
       - name: Typecheck playground
         run: pnpm --filter @templates/playground typecheck
+
+      - name: Build playground
+        run: pnpm --filter @templates/playground build

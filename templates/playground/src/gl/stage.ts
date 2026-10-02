@@ -1,10 +1,10 @@
 import { PerspectiveCamera, Scene, WebGPURenderer } from 'three/webgpu'
 import type { Texture } from 'three/webgpu'
 import type { Bounds, Metri, Viewport } from '@joycostudio/metri'
-import type { MSDFFont } from 'letterpress'
-import { loadFont, loadFontTexture } from 'letterpress/three'
+import type { MSDFFont } from 'lettra'
+import { loadFont, loadFontTexture } from 'lettra/three'
 
-export type FontName = 'bebas' | 'lora' | 'lettra'
+export type FontName = 'bebas' | 'lora' | 'respira' | 'roboto' | 'lettra'
 
 export interface FontBundle {
   font: MSDFFont
@@ -55,12 +55,14 @@ interface RegisteredView {
  * Placeholder tracking comes from Metri — cached document-space bounds, one
  * shared ResizeObserver, no per-frame getBoundingClientRect. */
 export async function createStage(canvas: HTMLCanvasElement, metri: Metri): Promise<Stage> {
-  const [bebas, lora, lettra] = await Promise.all([
+  const [bebas, lora, respira, roboto, lettra] = await Promise.all([
     loadFontBundle('bebas'),
     loadFontBundle('lora'),
+    loadFontBundle('respira'),
+    loadFontBundle('roboto'),
     loadFontBundle('lettra'),
   ])
-  const fonts = { bebas, lora, lettra }
+  const fonts = { bebas, lora, respira, roboto, lettra }
 
   const renderer = new WebGPURenderer({
     canvas,

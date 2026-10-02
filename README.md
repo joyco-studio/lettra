@@ -1,6 +1,6 @@
-# letterpress
+# lettra
 
-![letterpress: sharp, typed MSDF fonts in your scene](./static/cover.png)
+![lettra: sharp, typed MSDF fonts in your scene](./static/cover.png)
 
 Runtime MSDF text for Three.js `WebGPURenderer` + TSL. Bake a font atlas once
 (dev-time, manual for now), then render sharp, kerned, animatable text with
@@ -8,13 +8,13 @@ zero runtime dependencies. No wasm, no shaping engine, ~5 KB gzipped.
 
 The WebGL-era text stacks (troika, three-bmfont-text) don't speak TSL node
 materials, and runtime shapers ship megabytes you don't need for Latin UI
-text. letterpress covers the common case: a baked atlas, per-glyph metrics
+text. lettra covers the common case: a baked atlas, per-glyph metrics
 with pairwise kerning, a small layout pass, and a composable node material.
 
 ## Install
 
 ```bash
-pnpm add letterpress three
+pnpm add lettra three
 ```
 
 `three >= 0.185` is an optional peer. The core entry (schema + layout) is
@@ -23,7 +23,7 @@ renderer-agnostic and runs anywhere, including Node.
 ## Quickstart
 
 ```ts
-import { createText, loadFont, loadFontTexture, wipe } from 'letterpress/three'
+import { createText, loadFont, loadFontTexture, wipe } from 'lettra/three'
 
 const [font, map] = await Promise.all([
   loadFont('/fonts/display.json'),
@@ -129,7 +129,7 @@ importing material code. Extend instead of forking:
 
 ```ts
 import { attribute, texture } from 'three/tsl'
-import { createTextMaterial, createTextUniforms, msdfDistance, msdfAA, msdfFill, msdfThreshold, wipe } from 'letterpress/three'
+import { createTextMaterial, createTextUniforms, msdfDistance, msdfAA, msdfFill, msdfThreshold, wipe } from 'lettra/three'
 
 // per-line wipe instead of per-ink-width
 createTextMaterial({ map, effect: wipe({ coord: attribute('lineIndex', 'float').div(lineCount) }) })
@@ -180,7 +180,7 @@ material.alphaTestNode = float(0.5)
 
 ## Loading and warmup
 
-letterpress has no opinion about either. The quickstart's `fetch` +
+lettra has no opinion about either. The quickstart's `fetch` +
 `text.warmup()` is the whole contract, and both seams are plain promises.
 This is how we wire them at [joyco.studio](https://joyco.studio):
 [`@joycostudio/susano`](https://www.npmjs.com/package/@joycostudio/susano)
@@ -196,8 +196,8 @@ result, so the font JSON and atlas plug in as `postprocess` steps:
 ```ts
 import { susano } from '@joycostudio/susano'
 import { Texture } from 'three/webgpu'
-import { parseFont } from 'letterpress'
-import { configureFontTexture, createText } from 'letterpress/three'
+import { parseFont } from 'lettra'
+import { configureFontTexture, createText } from 'lettra/three'
 
 const [font, map] = await Promise.all([
   susano.load('/fonts/display.json', {
@@ -306,7 +306,7 @@ ASCII printable + `áéíóúüñÁÉÍÓÚÜÑ¿¡—–“”‘’`.
 ## Layout
 
 ```ts
-import { layout, parseFont } from 'letterpress'
+import { layout, parseFont } from 'lettra'
 
 const result = layout(font, 'Hello\nworld', {
   align: 'center',        // against the widest line
@@ -336,10 +336,10 @@ to tilt, dpr ≤ 2. `?forceWebGL` exercises the WebGL2 fallback. See
 
 No complex shaping (Arabic, Indic, contextual ligatures), no CJK-scale
 charsets, no color emoji, no bidi paragraphs. Those need a real shaper at
-runtime; use [@pmndrs/glyph](https://github.com/pmndrs/glyph). letterpress
+runtime; use [@pmndrs/glyph](https://github.com/pmndrs/glyph). lettra
 is for Latin-script UI and display text that wants to be tiny and fast.
 
-Known limit: `letterpress/three` imports `three/webgpu`, which ships
+Known limit: `lettra/three` imports `three/webgpu`, which ships
 ESM-only. The CJS build of that subpath exists but is only usable through
 bundlers.
 

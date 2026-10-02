@@ -2,7 +2,7 @@
  * Atlas pixels, y-down, origin at the atlas top-left. */
 export type GlyphTuple = [number, number, number, number, number, number, number]
 
-/** The minified font schema letterpress consumes — the output of an MSDF bake
+/** The minified font schema lettra consumes — the output of an MSDF bake
  * (atlas PNG + this JSON). Produce it from a BMFont JSON via `fromBMFont`. */
 export interface MSDFFont {
   name: string
@@ -98,7 +98,7 @@ export interface LayoutResult {
 }
 
 /** The subset of the BMFont JSON format (msdf-bmfont-xml, msdf web generators)
- * that letterpress reads. */
+ * that lettra reads. */
 export interface BMFontChar {
   id: number
   char?: string
