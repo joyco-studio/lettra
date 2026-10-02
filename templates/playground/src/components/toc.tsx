@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnchorProvider, TOCItem } from 'fumadocs-core/toc'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -23,11 +23,20 @@ export interface TocSection {
  * seven sparse sections. We keep its rail mechanics and own the highlight. */
 function useReadingLineActive(ids: string[]) {
   const [active, setActive] = useState(ids[0])
+  const api = useRef({ lockTo: (_id: string) => {} })
 
   useEffect(() => {
     let raf = 0
+    // While a TOC click smooth-scrolls, the spy is locked to the target —
+    // otherwise the highlight machine-guns through every section the
+    // animation passes. The lock clears when scrolling idles, or instantly
+    // on any manual input (which also cancels the browser's smooth scroll).
+    let lock: string | null = null
+    let idleTimer = 0
+
     const pick = () => {
       raf = 0
+      if (lock) return
       const line = window.innerHeight * 0.3
       let current = ids[0]
       for (const id of ids) {
@@ -37,20 +46,51 @@ function useReadingLineActive(ids: string[]) {
       const bottomed = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2
       setActive(bottomed ? ids[ids.length - 1] : current)
     }
+    const armIdle = (ms: number) => {
+      clearTimeout(idleTimer)
+      idleTimer = window.setTimeout(() => {
+        lock = null
+        if (!raf) raf = requestAnimationFrame(pick)
+      }, ms)
+    }
     const schedule = () => {
+      if (lock) {
+        armIdle(160)
+        return
+      }
       if (!raf) raf = requestAnimationFrame(pick)
     }
+    const cancelLock = () => {
+      if (!lock) return
+      lock = null
+      clearTimeout(idleTimer)
+      if (!raf) raf = requestAnimationFrame(pick)
+    }
+
+    api.current.lockTo = (id) => {
+      lock = id
+      setActive(id)
+      armIdle(900) // settles even if the click causes no scroll at all
+    }
+
     pick()
     window.addEventListener('scroll', schedule, { passive: true })
     window.addEventListener('resize', schedule)
+    window.addEventListener('wheel', cancelLock, { passive: true })
+    window.addEventListener('touchstart', cancelLock, { passive: true })
+    window.addEventListener('keydown', cancelLock)
     return () => {
       cancelAnimationFrame(raf)
+      clearTimeout(idleTimer)
       window.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
+      window.removeEventListener('wheel', cancelLock)
+      window.removeEventListener('touchstart', cancelLock)
+      window.removeEventListener('keydown', cancelLock)
     }
   }, [ids])
 
-  return active
+  return { active, lockTo: (id: string) => api.current.lockTo(id) }
 }
 
 /** Hub-style contents rail on fumadocs' TOC primitives. */
@@ -60,7 +100,7 @@ export function Toc({ sections }: { sections: TocSection[] }) {
     [sections]
   )
   const ids = useMemo(() => sections.map((section) => section.id), [sections])
-  const active = useReadingLineActive(ids)
+  const { active, lockTo } = useReadingLineActive(ids)
 
   return (
     <AnchorProvider toc={toc} single>
@@ -69,7 +109,11 @@ export function Toc({ sections }: { sections: TocSection[] }) {
         <ol className="flex flex-col gap-[8px]">
           {sections.map((section) => (
             <li key={section.id}>
-              <TOCItem href={`#${section.id}`} className="group flex items-center gap-3">
+              <TOCItem
+                href={`#${section.id}`}
+                onClick={() => lockTo(section.id)}
+                className="group flex items-center gap-3"
+              >
                 <Badge
                   size="sm"
                   className={cn(
