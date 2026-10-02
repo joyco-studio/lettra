@@ -114,9 +114,6 @@
 @custom-variant light (&:where(.light, .light *));
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
-    }
   ::selection {
     background-color: color-mix(in oklab, var(--ink) 16%, transparent);
     }

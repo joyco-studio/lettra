@@ -52,12 +52,9 @@ const VEL_DAMP = 0.94
 const SETTLE_MS = 3200
 
 const PARAGRAPH =
-  'Water finds the gaps. Drag the cursor through this paragraph: ink is ' +
-  'splatted into a tiny fluid sim, advected by its own velocity, and ' +
-  'dissipated every frame. It swirls while you move and soaks away when ' +
-  'you stop. Every glyph the rim touches re-rolls through the atlas. The ' +
-  'library only sees a scalar field: swap the sim for a wipe front or an ' +
-  'audio level and nothing else changes.'
+  'Drag the cursor through this text. Ink splats into a tiny fluid sim, ' +
+  'swirls with your motion, and soaks away. Every glyph the rim touches ' +
+  're-rolls through the atlas.'
 
 export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<LiquidView> {
   const scene = new Scene()
@@ -117,10 +114,7 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   const wet = smoothstep(0.4, 0.8, field)
 
   const { font, map } = stage.fonts.lettra
-  // this paragraph draws the 64px bake at ~1/4 size in a narrow figure;
-  // without mips that undersamples the atlas and reads as crunch on 1x
-  // displays. Trilinear minification is safe for MSDF at this shallow depth
-  // (lettra is only used here, so flipping the shared texture is fine).
+  // the paragraph minifies the bake ~2x on 1x displays; mips kill the crunch (lettra only lives here)
   map.generateMipmaps = true
   map.minFilter = LinearMipmapLinearFilter
   map.needsUpdate = true
@@ -128,7 +122,7 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
     font,
     map,
     text: PARAGRAPH,
-    layout: { align: 'left', maxWidth: 2400, mode: 'greedy' },
+    layout: { align: 'left', maxWidth: 1400, mode: 'greedy' },
     material: { fill: '#414141', effect: scramble({ font, rate: 22, drive: (knob) => max(knob, rim) }) },
   })
   const textMaterial = text.mesh.material as MeshBasicNodeMaterial

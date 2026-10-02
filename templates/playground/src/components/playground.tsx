@@ -173,9 +173,9 @@ export default function Playground({
               </div>
 
               <Prose className="mt-7 text-[18px] leading-[1.35]">
-                Lettra renders live, kerned typography on the GPU from a font baked once into a multi-channel
-                signed distance field. No runtime shaper, no wasm: a few kilobytes of layout and a composable Three.js
-                node material, sharp at any scale and any angle.
+                Lettra renders live, kerned typography on the GPU from a font baked once into a multi-channel signed
+                distance field. No runtime shaper, no wasm: a few kilobytes of layout and a composable Three.js node
+                material, sharp at any scale and any angle.
               </Prose>
               <Prose className="mt-4 text-[14px] text-[#6b6b6b]">
                 Every figure below is ink on one shared canvas, scroll-synced to the page. Hit the{' '}

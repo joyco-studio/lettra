@@ -42,8 +42,7 @@ export function useScrambleLabel(idle: string) {
 }
 
 /** Badge-style corner cuts, chip scale. */
-const CHIP_CLIP =
-  '[clip-path:polygon(6px_0%,100%_0%,100%_calc(100%-6px),calc(100%-6px)_100%,0%_100%,0%_6px)]'
+const CHIP_CLIP = '[clip-path:polygon(6px_0%,100%_0%,100%_calc(100%-6px),calc(100%-6px)_100%,0%_100%,0%_6px)]'
 
 /** Copy button; the label scrambles to "done". Tones: `dark` chip for night
  * surfaces, `light` solid night chip for paper, `outline` an ink ring that
@@ -66,7 +65,10 @@ export function CopyAction({
 
   if (tone === 'outline') {
     return (
-      <button onClick={copy} className={cn('group/copy cursor-pointer bg-ink/40 p-px transition-colors hover:bg-ink', CHIP_CLIP)}>
+      <button
+        onClick={copy}
+        className={cn('group/copy cursor-pointer bg-ink/40 p-px transition-colors hover:bg-ink', CHIP_CLIP)}
+      >
         <span
           className={cn(
             'flex items-center bg-paper px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.08em] text-ink/70 transition-colors group-hover/copy:text-ink',
@@ -243,7 +245,11 @@ export function Row({
 }) {
   return (
     <>
-      <section id={id} className={cn('min-w-0 scroll-mt-16 lg:col-start-1', className)}>
+      <section className={cn('min-w-0 lg:col-start-1', className)}>
+        {/* short anchor target at the section top: fumadocs' observer
+            (threshold 0.9) is built for heading-sized elements, exactly how
+            hub.joyco.studio feeds it */}
+        {id ? <span id={id} aria-hidden className="block h-px scroll-mt-24" /> : null}
         {children}
       </section>
       <div className={cn('relative min-w-0 lg:col-start-2', asideClassName)}>{aside}</div>

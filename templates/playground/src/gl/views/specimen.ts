@@ -11,6 +11,8 @@ export interface SpecimenState {
   font: FontName
   align: Align
   letterSpacing: number
+  /** 0 = baked value */
+  lineHeight: number
   /** 0 = no wrap */
   maxWidth: number
 }
@@ -24,6 +26,7 @@ function layoutOptions(state: SpecimenState): LayoutOptions {
   return {
     align: state.align,
     letterSpacing: state.letterSpacing,
+    ...(state.lineHeight > 0 ? { lineHeight: state.lineHeight } : {}),
     ...(state.maxWidth > 0 ? { maxWidth: state.maxWidth } : {}),
     mode: state.maxWidth > 0 ? 'greedy' : 'pre',
   }

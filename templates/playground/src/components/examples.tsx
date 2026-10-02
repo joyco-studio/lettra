@@ -69,10 +69,11 @@ function usePlayOnEnter(visible: boolean, ready: boolean, play: () => void) {
 }
 
 const INITIAL: SpecimenState = {
-  text: "I am Sir Fabroos\nThe destroyer of bugs",
+  text: 'I am Sir Fabroos\nThe destroyer of bugs',
   font: 'respira',
   align: 'center',
   letterSpacing: 0,
+  lineHeight: 0,
   maxWidth: 0,
 }
 
@@ -95,6 +96,10 @@ const DEFAULT_TEXT: Record<FontName, string> = {
 }
 
 const ALIGNS: Align[] = ['left', 'center', 'right']
+
+// leading floor ≈ cap height; the slider's lowest stop stands in for 0 = baked
+const LEADING_MIN = 60
+const LEADING_BAKED = LEADING_MIN - 2
 
 export function SpecimenExample({ stage }: { stage: Stage | null }) {
   const elRef = useRef<HTMLDivElement>(null)
@@ -161,6 +166,17 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
                 onValueChange={([value]) => patch({ letterSpacing: value })}
               />
               <ControlValue>{state.letterSpacing}px</ControlValue>
+            </ControlCell>
+            <ControlCell label="leading" grow>
+              <Slider
+                value={[state.lineHeight === 0 ? LEADING_BAKED : state.lineHeight]}
+                min={LEADING_BAKED}
+                max={160}
+                step={2}
+                className="min-w-16 flex-1"
+                onValueChange={([value]) => patch({ lineHeight: value <= LEADING_BAKED ? 0 : value })}
+              />
+              <ControlValue>{state.lineHeight > 0 ? `${state.lineHeight}px` : 'baked'}</ControlValue>
             </ControlCell>
             <ControlCell label="measure" grow>
               <Slider
