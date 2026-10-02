@@ -73,6 +73,7 @@ const INITIAL: SpecimenState = {
   font: 'respira',
   align: 'center',
   letterSpacing: 0,
+  lineHeight: 0,
   maxWidth: 0,
 }
 
@@ -161,6 +162,17 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
                 onValueChange={([value]) => patch({ letterSpacing: value })}
               />
               <ControlValue>{state.letterSpacing}px</ControlValue>
+            </ControlCell>
+            <ControlCell label="leading" grow>
+              <Slider
+                value={[state.lineHeight]}
+                min={0}
+                max={160}
+                step={2}
+                className="min-w-16 flex-1"
+                onValueChange={([value]) => patch({ lineHeight: value })}
+              />
+              <ControlValue>{state.lineHeight > 0 ? `${state.lineHeight}px` : 'baked'}</ControlValue>
             </ControlCell>
             <ControlCell label="measure" grow>
               <Slider

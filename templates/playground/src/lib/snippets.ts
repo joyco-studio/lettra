@@ -4,6 +4,7 @@ import type { SpecimenState } from '../gl/views/specimen'
 export function specimenSnippet(state: SpecimenState): string {
   const layout: string[] = [`align: '${state.align}'`]
   if (state.letterSpacing !== 0) layout.push(`letterSpacing: ${state.letterSpacing}`)
+  if (state.lineHeight > 0) layout.push(`lineHeight: ${state.lineHeight}`)
   if (state.maxWidth > 0) layout.push(`maxWidth: ${state.maxWidth}`)
 
   return `import { createText, loadFont, loadFontTexture } from 'lettra/three'
