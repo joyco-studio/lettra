@@ -66,14 +66,14 @@ function MetaTable() {
     ['renderer', 'webgpu · webgl fallback'],
     ['engine', 'three/webgpu + tsl'],
     ['tracking', '@joycostudio/metri'],
-    ['license', 'isc'],
+    ['license', 'mit'],
   ]
   return (
     <table className="w-full border-collapse font-mono text-[12px] font-semibold tracking-[0.04em]">
-      <tbody>
+      <tbody className="divide-y divide-ink-faint/30">
         {rows.map(([key, value]) => (
           <tr key={key}>
-            <td className="w-[140px] py-[7px] text-ink-faint">{key}</td>
+            <td className="w-[140px] py-[7px] font-serif text-[13px] font-medium tracking-normal text-ink-faint">{key}</td>
             <td className="py-[7px] text-ink">{value}</td>
           </tr>
         ))}

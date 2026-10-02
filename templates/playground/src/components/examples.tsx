@@ -79,7 +79,20 @@ const INITIAL: SpecimenState = {
 const FONTS: { name: FontName; label: string }[] = [
   { name: 'bebas', label: 'Bebas' },
   { name: 'lora', label: 'Lora' },
+  { name: 'respira', label: 'Respira' },
 ]
+
+/** Per-font default copy. The Respira trial cut only inks A-Z a-z 0-9 and
+ * the period (54 husk glyphs stripped, including ?), so its line sticks to
+ * that coverage — switching fonts swaps the default only if the text is
+ * still a default, never clobbering user edits. */
+const DEFAULT_TEXT: Record<FontName, string> = {
+  bebas: INITIAL.text,
+  lora: INITIAL.text,
+  respira: 'Respira breathes.\nBlack No 9 at 80px',
+  roboto: INITIAL.text,
+  lettra: INITIAL.text,
+}
 
 const ALIGNS: Align[] = ['left', 'center', 'right']
 
@@ -114,7 +127,16 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
           <ControlBar>
             <ControlCell label="font">
               {FONTS.map(({ name, label }) => (
-                <Segment key={name} active={state.font === name} onClick={() => patch({ font: name })}>
+                <Segment
+                  key={name}
+                  active={state.font === name}
+                  onClick={() =>
+                    patch({
+                      font: name,
+                      ...(state.text === DEFAULT_TEXT[state.font] ? { text: DEFAULT_TEXT[name] } : {}),
+                    })
+                  }
+                >
                   {label}
                 </Segment>
               ))}
@@ -303,12 +325,10 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
         seam.
       </Prose>
       <figure className="mt-8">
-        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+        <div className="bg-[#dcdcda] p-[2px]">
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
-          <ControlBar>
-            <ControlCell label="move the cursor across the text" />
-          </ControlBar>
         </div>
+        <ControlCell label="move the cursor across the text" className="justify-center bg-transparent" />
         <figcaption className="mt-5">
           <FigCaption>fig. 04 — fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
