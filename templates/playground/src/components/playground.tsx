@@ -18,6 +18,7 @@ import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
 import type { TocSection } from '@/components/toc'
 import { LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
+import { AGENT_PROMPT } from '@/content/agent-prompt'
 import { bakeRecipe } from '@/lib/snippets'
 import type { HighlightedSnippets } from '@/lib/snippets'
 import { createStage } from '../gl/stage'
@@ -34,25 +35,6 @@ const SECTIONS: TocSection[] = [
 ]
 
 const INSTALL_COMMAND = 'pnpm add lettra three'
-
-const AGENT_PROMPT = `Add lettra (runtime MSDF text for Three.js WebGPURenderer + TSL) to this project.
-
-Install: pnpm add lettra three   (three >= 0.185)
-
-Quickstart:
-import { createText, loadFont, loadFontTexture, wipe } from 'lettra/three'
-const [font, map] = await Promise.all([loadFont('/fonts/display.json'), loadFontTexture('/fonts/display.png')])
-const text = createText({ font, map, text: 'Hello', layout: { align: 'center' }, material: { fill: '#414141', effect: wipe() } })
-scene.add(text.mesh)
-await text.warmup(renderer, camera, scene) // pipeline compile + atlas upload off the hot path
-text.uniforms.wipeIn.value = 1 // tween 0 -> 1 to reveal; wipeOut consumes
-
-Fonts are baked once at build time (manual):
-npx -y -p msdf-bmfont-xml msdf-bmfont -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
-- instance variable fonts to a static weight first (python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf) or GPOS kerning bakes to 0 pairs
-- keep distance range 8 (erosion wipes need the SDF headroom), single atlas page, no rotated packing
-
-Full API (layout engine, effects, composing TSL nodes, lifecycle contract): https://github.com/joyco-studio/lettra#readme`
 
 function GettingStarted() {
   return (

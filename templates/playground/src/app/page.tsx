@@ -1,10 +1,20 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import type { Metadata } from 'next'
 import { codeToHtml } from 'shiki'
 import Playground from '@/components/playground'
 import { bakeRecipe, liquidSnippet, scrambleSnippet, wipeSnippet } from '@/lib/snippets'
+import { homeStructuredData, serializeStructuredData } from '@/lib/structured-data'
 
 const highlight = (code: string, lang: 'typescript' | 'bash') => codeToHtml(code, { lang, theme: 'min-light' })
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: '/',
+    // the Markdown representation, also reachable by content negotiation
+    types: { 'text/markdown': '/index.md' },
+  },
+}
 
 /** Server component. The implementation tabs show the real source files,
  * read and highlighted at build time — the client only ships a minimal
@@ -24,10 +34,16 @@ export default async function Page() {
   ])
 
   return (
-    <Playground
-      stageSource={stageSource}
-      specimenSource={specimenSource}
-      highlighted={{ stage, specimen, bake, wipe, scramble, liquid }}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeStructuredData(homeStructuredData()) }}
+      />
+      <Playground
+        stageSource={stageSource}
+        specimenSource={specimenSource}
+        highlighted={{ stage, specimen, bake, wipe, scramble, liquid }}
+      />
+    </>
   )
 }
