@@ -1,6 +1,6 @@
 import { Color, MeshBasicNodeMaterial } from 'three/webgpu'
 import type { ColorRepresentation, Node, Texture, TextureNode } from 'three/webgpu'
-import { float, fwidth, max, min, mix, smoothstep, texture, uniform, uv } from 'three/tsl'
+import { color, float, fwidth, max, min, mix, saturate, smoothstep, texture, uniform, uv } from 'three/tsl'
 import { defineNode } from './define-node'
 
 /* Composable TSL pieces, each declared through a single contract (see
@@ -14,6 +14,10 @@ export type FloatNode = Node<'float'>
 
 /** A vec2-valued TSL node. */
 export type Vec2Node = Node<'vec2'>
+
+/** A color-valued TSL node. vec3 included: TSL color math (`mix`, `mul`…)
+ * degrades 'color' to 'vec3' in the types, and the GPU treats them alike. */
+export type ColorNode = Node<'color'> | Node<'vec3'>
 
 export type { TextureNode }
 
@@ -45,34 +49,54 @@ export const msdfFill = /* @__PURE__ */ defineNode(
   ({ distance, threshold, aa }) => smoothstep(threshold.sub(aa), threshold.add(aa), distance)
 )
 
-/** Context for the `uv` hook — runs before the atlas sample. */
-export interface TextEffectUvContext {
-  /** The sample coordinate so far (the geometry's `uv` attribute, or the
-   * previous effect's remap when composed). */
-  uv: Vec2Node
-}
-
-/** Shared nodes of the base graph, handed to post-sample effect hooks. */
-export interface TextEffectContext {
+/** Upstream values handed to post-sample field stages (`erosion`). */
+export interface TextFieldContext {
   /** Signed distance recovered from the atlas sample. */
   distance: FloatNode
   /** Screen-space anti-aliasing half-width. */
   aa: FloatNode
 }
 
-/** An opt-in material extension (see `effects/`). Effects own their uniforms
- * and contribute nodes through hooks; an effect you never import tree-shakes
- * away, and the base material stays plain fill + opacity MSDF. Hooks run as
- * stages: `uv` remaps the sample coordinate, then `erosion` reads the sampled
- * field. The contract grows hooks as effects land. */
+/** Upstream values handed to post-fill shading stages (`color`, `opacity`). */
+export interface TextShadeContext extends TextFieldContext {
+  /** Resolved erosion field — 0 when nothing erodes. */
+  erosion: FloatNode
+  /** Glyph coverage in [0, 1]. */
+  coverage: FloatNode
+}
+
+/** The graph's named wires, each an optional transform: it receives the
+ * wire's value so far (the base, or the previous effect's output) and
+ * returns the new value — add, replace, or remap in plain node math. New
+ * wires land here without breaking existing effects, and composition never
+ * needs per-wire merge rules. */
+export interface TextStageTransforms {
+  /** Atlas sample coordinate, pre-sample. Base: the geometry `uv`. */
+  uv?: (prev: Vec2Node) => Vec2Node
+  /** Per-fragment erosion: 0 = untouched, 1 = dissolved through the
+   * distance field (edges first, stroke skeletons last). Base: 0; the
+   * builder saturates the final value. */
+  erosion?: (prev: FloatNode, ctx: TextFieldContext) => FloatNode
+  /** Ink color, post-fill. Base: the material's fill. */
+  color?: (prev: ColorNode, ctx: TextShadeContext) => ColorNode
+  /** Ink opacity, post-fill; coverage multiplies afterwards. Base: the
+   * material's opacity. */
+  opacity?: (prev: FloatNode, ctx: TextShadeContext) => FloatNode
+}
+
+/** Wire resolution order. The builder owns it; effects only transform the
+ * values flowing through. */
+export const textStageOrder = ['uv', 'erosion', 'color', 'opacity'] as const
+
+/** An opt-in material extension (see `effects/`): a uniform bag plus
+ * per-wire transforms. Effects own their uniforms; an effect you never
+ * import tree-shakes away, and the base material stays plain fill + opacity
+ * MSDF. */
 export interface TextEffect<U extends object = object> {
   /** Merged into the material's uniform bag — tween `.value` on these. */
   uniforms: U
-  /** Remaps the atlas sample coordinate (glyph swaps, jitter…). */
-  uv?: (context: TextEffectUvContext) => Vec2Node
-  /** Per-fragment erosion in [0, 1]: 0 = untouched, 1 = fully dissolved
-   * through the distance field (edges first, stroke skeletons last). */
-  erosion?: (context: TextEffectContext) => FloatNode
+  /** Transforms per wire (see `TextStageTransforms`). */
+  stages?: TextStageTransforms
 }
 
 /** The uniforms an effect contributes to the material's bag. */
@@ -95,6 +119,77 @@ export function createTextUniforms({ fill = '#ffffff', opacity = 1 }: TextUnifor
 
 export type TextUniforms = ReturnType<typeof createTextUniforms>
 
+export interface TextGraphOptions {
+  /** The MSDF atlas, configured via `configureFontTexture`. */
+  map: Texture
+  /** Opt-in effect; its stage transforms splice into the wires. Its
+   * uniforms stay the caller's to merge — the graph owns nothing. */
+  effect?: TextEffect
+  /** Base value of the `color` wire (default white). */
+  color?: ColorNode
+  /** Base value of the `opacity` wire (default 1). */
+  opacity?: FloatNode
+}
+
+/** Every stage of the text graph as plain TSL nodes. Wire any of them into
+ * any material slot or onward graph: color by `erosion`, bloom-mask by
+ * `coverage`, displace by `distance`… */
+export interface TextGraph {
+  /** Sample coordinate after effect `uv` transforms. */
+  uv: Vec2Node
+  /** The atlas sampler node — reassign `.value` to swap atlases atomically. */
+  textureNode: TextureNode
+  /** Signed distance recovered from the atlas sample. */
+  distance: FloatNode
+  /** Screen-space anti-aliasing half-width. */
+  aa: FloatNode
+  /** The resolved (saturated) erosion wire; absent when nothing erodes. */
+  erosion?: FloatNode
+  /** Fill threshold — 0.5 iso-edge, lifted by erosion. */
+  threshold: FloatNode
+  /** Glyph coverage in [0, 1] — what the default material renders. */
+  coverage: FloatNode
+  /** The resolved `color` wire. */
+  color: ColorNode
+  /** The resolved `opacity` wire, pre-coverage. */
+  opacity: FloatNode
+}
+
+/** Builds the MSDF text graph: resolves each wire in `textStageOrder`,
+ * folding the effect's transforms over the base values, and returns every
+ * stage. Owns no material and no uniforms — `createTextMaterial` is a thin
+ * assembly over this; drop down here to wire text into any NodeMaterial
+ * slot yourself. */
+export function buildTextGraph(options: TextGraphOptions): TextGraph {
+  const stages = options.effect?.stages
+
+  const sampleUv = stages?.uv ? stages.uv(uv()) : uv()
+  const textureNode = texture(options.map, sampleUv)
+  const distance = msdfDistance({ msdf: textureNode })
+  const aa = msdfAA({ distance })
+
+  const field: TextFieldContext = { distance, aa }
+  const erosion = stages?.erosion ? saturate(stages.erosion(float(0), field)) : undefined
+  const threshold = erosion ? msdfThreshold({ erosion, aa }) : float(0.5)
+  const coverage = msdfFill({ distance, threshold, aa })
+
+  const shade: TextShadeContext = { ...field, erosion: erosion ?? float(0), coverage }
+  const baseColor = options.color ?? color('#ffffff')
+  const baseOpacity = options.opacity ?? float(1)
+
+  return {
+    uv: sampleUv,
+    textureNode,
+    distance,
+    aa,
+    erosion,
+    threshold,
+    coverage,
+    color: stages?.color ? stages.color(baseColor, shade) : baseColor,
+    opacity: stages?.opacity ? stages.opacity(baseOpacity, shade) : baseOpacity,
+  }
+}
+
 export interface TextMaterialOptions<
   E extends TextEffect | undefined = TextEffect | undefined,
 > extends TextUniformOptions {
@@ -114,36 +209,38 @@ export interface TextMaterialResult<E extends TextEffect | undefined = undefined
   uniforms: TextUniforms & EffectUniforms<E>
   /** The atlas sampler node — reassign `.value` to swap atlases atomically. */
   textureNode: TextureNode
+  /** The material's graph stages (see `TextGraph`), reusable in other slots
+   * and materials: `material.colorNode = mix(a, b, nodes.erosion)`. */
+  nodes: TextGraph
 }
 
 /** Builds the default text material: median-of-RGB reconstruction, fwidth AA,
- * plain fill + opacity. Pass `effect` to extend the graph (e.g. the wipe
- * dissolve). Transparent with depthWrite off by default; for opaque-pass text
- * set `transparent = false`, `alphaToCoverage = true` and an `alphaTestNode`
- * of 0.5 instead. */
+ * fill + opacity feeding the `color`/`opacity` wires. Pass `effect` to
+ * transform any wire (e.g. the wipe dissolve); the returned `nodes` expose
+ * every stage for reuse beyond the default slots. Transparent with depthWrite
+ * off by default; for opaque-pass text set `transparent = false`,
+ * `alphaToCoverage = true` and an `alphaTestNode` of 0.5 instead. */
 export function createTextMaterial<E extends TextEffect | undefined = undefined>(
   options: TextMaterialOptions<E>
 ): TextMaterialResult<E> {
   const base = options.uniforms ?? createTextUniforms(options)
-  const effect = options.effect
-
-  const sampleUv = effect?.uv ? effect.uv({ uv: uv() }) : uv()
-  const textureNode = texture(options.map, sampleUv)
-  const distance = msdfDistance({ msdf: textureNode })
-  const aa = msdfAA({ distance })
-  const erosion = effect?.erosion?.({ distance, aa })
-  const threshold = erosion ? msdfThreshold({ erosion, aa }) : float(0.5)
-  const coverage = msdfFill({ distance, threshold, aa })
+  const nodes = buildTextGraph({
+    map: options.map,
+    effect: options.effect,
+    color: base.fill,
+    opacity: base.opacity,
+  })
 
   const material = new MeshBasicNodeMaterial()
-  material.colorNode = base.fill
-  material.opacityNode = coverage.mul(base.opacity)
+  material.colorNode = nodes.color
+  material.opacityNode = nodes.coverage.mul(nodes.opacity)
   material.transparent = true
   material.depthWrite = false
 
   return {
     material,
-    uniforms: { ...base, ...effect?.uniforms } as TextUniforms & EffectUniforms<E>,
-    textureNode,
+    uniforms: { ...base, ...options.effect?.uniforms } as TextUniforms & EffectUniforms<E>,
+    textureNode: nodes.textureNode,
+    nodes,
   }
 }

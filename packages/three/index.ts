@@ -4,14 +4,27 @@ export { buildTextGeometry } from './geometry'
 export type { TextAnchor, TextGeometryOptions } from './geometry'
 export { defineNode } from './define-node'
 export type { DefinedNode, NodeDefinition, NodeInputs, NodeValueType } from './define-node'
-export { createTextMaterial, createTextUniforms, msdfDistance, msdfAA, msdfFill, msdfThreshold } from './material'
+export {
+  buildTextGraph,
+  createTextMaterial,
+  createTextUniforms,
+  msdfDistance,
+  msdfAA,
+  msdfFill,
+  msdfThreshold,
+  textStageOrder,
+} from './material'
 export type {
+  ColorNode,
   EffectUniforms,
+  TextGraph,
+  TextGraphOptions,
   FloatNode,
   TextureNode,
   TextEffect,
-  TextEffectContext,
-  TextEffectUvContext,
+  TextFieldContext,
+  TextShadeContext,
+  TextStageTransforms,
   Vec2Node,
   TextMaterialOptions,
   TextMaterialResult,
@@ -23,7 +36,7 @@ export type { WipeEffect, WipeOptions } from './effects/wipe'
 export { scramble, glyphRects, staggerGate, cycleIndex, rectUv } from './effects/scramble'
 export type { ScrambleEffect, ScrambleOptions } from './effects/scramble'
 export { composeEffects } from './effects/compose'
-export type { ComposedUniforms } from './effects/compose'
+export type { ComposedEffect, ComposedUniforms } from './effects/compose'
 export { disposeText, warmup } from './lifecycle'
 export type { TextResources, WarmupOptions } from './lifecycle'
 export { createText } from './text'

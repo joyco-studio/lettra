@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { float, vec2 } from 'three/tsl'
 import { composeEffects, glyphRects, scramble, wipe } from '../index'
+import type { TextEffect } from '../index'
 import type { MSDFFont } from '../../core/types'
 
 const FONT: MSDFFont = {
@@ -26,12 +27,12 @@ describe('scramble effect', () => {
     expect(rects[1].toArray()).toEqual([32 / 256, 0, 32 / 256, 64 / 128])
   })
 
-  it('exposes the scramble uniform, a uv hook, and a capacity-bound setPool', () => {
+  it('exposes the scramble uniform, a uv transform, and a capacity-bound setPool', () => {
     const effect = scramble({ font: FONT, chars: 'AB', capacity: 4 })
     expect(Object.keys(effect.uniforms)).toEqual(['scramble'])
     expect(effect.uniforms.scramble.value).toBe(0)
 
-    const remapped = effect.uv({ uv: vec2(0.5, 0.5) })
+    const remapped = effect.stages.uv(vec2(0.5, 0.5))
     expect((remapped as { isNode?: boolean }).isNode).toBe(true)
 
     effect.setPool(FONT, 'A')
@@ -52,19 +53,29 @@ describe('scramble effect', () => {
 })
 
 describe('composeEffects', () => {
-  it('merges uniforms and stacks hooks from every effect', () => {
+  it('merges uniforms and chains stage transforms from every effect', () => {
     const composed = composeEffects(wipe(), scramble({ font: FONT, chars: 'AB' }))
     expect(Object.keys(composed.uniforms).sort()).toEqual(['scramble', 'wipeIn', 'wipeOut'])
 
-    const uv = composed.uv!({ uv: vec2(0.5, 0.5) })
-    const erosion = composed.erosion!({ distance: float(0.5), aa: float(0.01) })
+    const uv = composed.stages!.uv!(vec2(0.5, 0.5))
+    const erosion = composed.stages!.erosion!(float(0), { distance: float(0.5), aa: float(0.01) })
     expect((uv as { isNode?: boolean }).isNode).toBe(true)
     expect((erosion as { isNode?: boolean }).isNode).toBe(true)
   })
 
-  it('omits hooks no composed effect provides', () => {
+  it('omits transforms no composed effect provides', () => {
     const composed = composeEffects(wipe())
-    expect(composed.uv).toBeUndefined()
-    expect(composed.erosion).toBeDefined()
+    expect(composed.stages!.uv).toBeUndefined()
+    expect(composed.stages!.color).toBeUndefined()
+    expect(composed.stages!.erosion).toBeDefined()
+  })
+
+  it('chains each wire left → right, every transform seeing the previous value', () => {
+    const tag = (name: string): TextEffect => ({
+      uniforms: {},
+      stages: { color: ((prev: unknown) => `${prev}${name}`) as never },
+    })
+    const composed = composeEffects(tag('a'), tag('b'), tag('c'))
+    expect(composed.stages!.color!('' as never, {} as never)).toBe('abc')
   })
 })

@@ -27,7 +27,8 @@ import {
   vec2,
   vec4,
 } from 'three/tsl'
-import { createText, scramble } from 'lettra/three'
+import { composeEffects, createText, scramble } from 'lettra/three'
+import type { TextEffect } from 'lettra/three'
 import type { Stage } from '../stage'
 import { frameText } from '../stage'
 
@@ -118,15 +119,22 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   map.generateMipmaps = true
   map.minFilter = LinearMipmapLinearFilter
   map.needsUpdate = true
+  // interior wetness tints the ink through the color wire — same contract
+  // as the scramble, so both compose instead of overwriting colorNode
+  const wetInk: TextEffect = {
+    uniforms: {},
+    stages: { color: (prev) => mix(prev, color('#1d3557'), wet) },
+  }
   const text = createText({
     font,
     map,
     text: PARAGRAPH,
     layout: { align: 'left', maxWidth: 1400, mode: 'greedy' },
-    material: { fill: '#414141', effect: scramble({ font, rate: 22, drive: (knob) => max(knob, rim) }) },
+    material: {
+      fill: '#414141',
+      effect: composeEffects(scramble({ font, rate: 22, drive: (knob) => max(knob, rim) }), wetInk),
+    },
   })
-  const textMaterial = text.mesh.material as MeshBasicNodeMaterial
-  textMaterial.colorNode = mix(color('#414141'), color('#1d3557'), wet)
   text.mesh.renderOrder = 1
   scene.add(text.mesh)
 
