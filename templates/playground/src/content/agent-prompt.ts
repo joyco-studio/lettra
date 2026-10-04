@@ -1,3 +1,4 @@
+import { BAKE_COMMAND, INSTANCE_COMMAND } from '@/content/quickstart'
 import { README_URL } from '@/lib/site'
 
 /** The "copy agent prompt" payload. Rendered by the homepage button and
@@ -15,8 +16,8 @@ await text.warmup(renderer, camera, scene) // pipeline compile + atlas upload of
 text.uniforms.wipeIn.value = 1 // tween 0 -> 1 to reveal; wipeOut consumes
 
 Fonts are baked once at build time (manual):
-npx -y -p msdf-bmfont-xml msdf-bmfont -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
-- instance variable fonts to a static weight first (python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf) or GPOS kerning bakes to 0 pairs
+${BAKE_COMMAND}
+- instance variable fonts to a static weight first (${INSTANCE_COMMAND}) or GPOS kerning bakes to 0 pairs
 - keep distance range 8 (erosion wipes need the SDF headroom), single atlas page, no rotated packing
 
 Full API (layout engine, effects, composing TSL nodes, lifecycle contract): ${README_URL}`

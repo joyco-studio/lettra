@@ -1,4 +1,5 @@
 import { AGENT_PROMPT } from '@/content/agent-prompt'
+import { BAKE_COMMAND, INSTANCE_COMMAND, QUICKSTART } from '@/content/quickstart'
 import { absolute, ISSUES_URL, LICENSE, NPM_URL, ORG_URL, README_URL, REPO_URL } from '@/lib/site'
 
 /** Markdown representation of the homepage, served for `Accept: text/markdown`
@@ -26,27 +27,7 @@ pnpm add lettra three
 renderer-agnostic and runs anywhere, including Node.
 
 \`\`\`ts
-import { createText, loadFont, loadFontTexture, wipe } from 'lettra/three'
-
-const [font, map] = await Promise.all([
-  loadFont('/fonts/display.json'),
-  loadFontTexture('/fonts/display.png'),
-])
-
-const text = createText({
-  font,
-  map,
-  text: '¡Hola! Sharp at any scale.',
-  layout: { align: 'center', maxWidth: 900 },
-  material: { fill: '#e8e4da', effect: wipe() },
-})
-scene.add(text.mesh)
-
-// compile the pipeline + upload the atlas off the hot path
-await text.warmup(renderer, camera, scene)
-
-text.setText('live string swap')  // relayout, per keystroke is fine
-text.uniforms.wipeIn.value = 0.5  // tween 0 -> 1 to reveal
+${QUICKSTART}
 \`\`\`
 
 ### Task prompt
@@ -66,8 +47,7 @@ multi-channel distance field, each kerning pair carried over. It happens at
 build time, by hand or script. The library starts where the bake ends.
 
 \`\`\`bash
-npx -y -p msdf-bmfont-xml msdf-bmfont \\
-  -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
+${BAKE_COMMAND}
 \`\`\`
 
 **Lay out on the CPU.** A typed port of the classic BMFont pen walk: pairwise
@@ -88,7 +68,7 @@ last. Every node is exported, typed, and replaceable.
 - Include space and \`?\` in the charset; they back the runtime fallbacks.
 - Check the kerning count. Variable fonts bake with 0 pairs when their kerning
   lives in variable GPOS. Instance to a static weight first:
-  \`python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf\`.
+  \`${INSTANCE_COMMAND}\`.
 
 ## Effects
 

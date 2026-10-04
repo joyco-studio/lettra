@@ -1,20 +1,14 @@
-/** HTTP content negotiation for `Accept`, per RFC 9110 §12.5.1 and the
- * acceptmarkdown.com conventions. Pure and side-effect free so the proxy stays
- * a thin adapter over it. */
-
-/** Media types a document route can be represented as, most preferred first.
- * Ties in the client's `Accept` resolve toward the head of this list. */
-export const REPRESENTATIONS = ['text/html', 'text/markdown'] as const
-
-export type Representation = (typeof REPRESENTATIONS)[number]
+/** HTTP content negotiation for `Accept`, per the acceptmarkdown.com
+ * conventions. Pure and side-effect free so the proxy stays a thin adapter
+ * over it. Only two representations exist and HTML is the default: Markdown
+ * is served when the client ranks it strictly above HTML, everything else
+ * (including headers that name neither) gets HTML, as RFC 9110 permits. */
 
 export interface AcceptEntry {
   type: string
   q: number
   /** `*\/*` = 0, `type/*` = 1, `type/subtype` = 2. */
   specificity: number
-  /** Position in the header, used to break specificity ties. */
-  order: number
 }
 
 const clampQ = (value: string | undefined) => {
@@ -41,7 +35,7 @@ export function parseAccept(header: string): AcceptEntry[] {
       q = clampQ(param.slice(separator + 1).trim())
     }
 
-    entries.push({ type, q, specificity: specificityOf(type), order: entries.length })
+    entries.push({ type, q, specificity: specificityOf(type) })
   }
 
   return entries
@@ -53,44 +47,25 @@ const matches = (entry: AcceptEntry, candidate: string) => {
   return entry.type === candidate
 }
 
-/** The most specific entry that covers `candidate`, or null when none does. */
-const bestEntryFor = (entries: AcceptEntry[], candidate: string) => {
-  let best: AcceptEntry | null = null
+/** q of the most specific entry covering `candidate`, 0 when none does. */
+const qFor = (entries: AcceptEntry[], candidate: string) => {
+  let q = 0
+  let specificity = -1
   for (const entry of entries) {
     if (!matches(entry, candidate)) continue
-    if (best === null || entry.specificity > best.specificity) best = entry
-  }
-  return best
-}
-
-/** Which representation to serve, or null when the client accepts none of them
- * (the caller's cue to answer 406). A missing or empty header means the client
- * has no preference, so the default representation wins. */
-export function preferredType(
-  header: string | null | undefined,
-  produces: readonly Representation[] = REPRESENTATIONS
-): Representation | null {
-  if (!header?.trim()) return produces[0] ?? null
-
-  const entries = parseAccept(header)
-  if (entries.length === 0) return produces[0] ?? null
-
-  let chosen: Representation | null = null
-  let chosenQ = 0
-  let chosenOrder = Infinity
-
-  for (const candidate of produces) {
-    const entry = bestEntryFor(entries, candidate)
-    // q=0 is an explicit refusal, not a weak preference
-    if (!entry || entry.q === 0) continue
-    if (entry.q > chosenQ || (entry.q === chosenQ && entry.order < chosenOrder)) {
-      chosen = candidate
-      chosenQ = entry.q
-      chosenOrder = entry.order
+    if (entry.specificity > specificity) {
+      specificity = entry.specificity
+      q = entry.q
     }
   }
+  return q
+}
 
-  return chosen
+/** True when the header ranks text/markdown strictly above text/html. */
+export function prefersMarkdown(header: string | null | undefined): boolean {
+  if (!header?.trim()) return false
+  const entries = parseAccept(header)
+  return qFor(entries, 'text/markdown') > qFor(entries, 'text/html')
 }
 
 /** Adds `Accept` to an existing `Vary` without clobbering what is already
@@ -113,8 +88,6 @@ export type Decision =
   | { kind: 'html' }
   /** Serve the Markdown representation of the document route `document`. */
   | { kind: 'markdown'; document: string }
-  /** Nothing we produce is acceptable to the client. */
-  | { kind: 'not-acceptable' }
 
 /** True when the URL asks for the Markdown representation by name. */
 export const isMarkdownUrl = (pathname: string) => pathname.toLowerCase().endsWith('.md')
@@ -154,8 +127,6 @@ export function decide({ pathname, accept, isFlightRequest, method = 'GET' }: Ne
   if (isMarkdownUrl(pathname)) return { kind: 'markdown', document: documentPath(pathname) }
   if (isAssetPath(pathname)) return { kind: 'bypass' }
 
-  const chosen = preferredType(accept)
-  if (chosen === 'text/markdown') return { kind: 'markdown', document: documentPath(pathname) }
-  if (chosen === null) return { kind: 'not-acceptable' }
+  if (prefersMarkdown(accept)) return { kind: 'markdown', document: documentPath(pathname) }
   return { kind: 'html' }
 }

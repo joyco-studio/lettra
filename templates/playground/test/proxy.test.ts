@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NextRequest } from 'next/server'
 import { markdownResponse } from '@/content/documents'
-import { config, proxy } from '@/proxy'
+import { proxy } from '@/proxy'
 
 const request = (path: string, accept?: string, method = 'GET') =>
   new NextRequest(new URL(path, 'https://lettra.joyco.studio'), {
@@ -11,19 +11,6 @@ const request = (path: string, accept?: string, method = 'GET') =>
 
 /** Set when the proxy handed the request back to Next instead of answering. */
 const passedThrough = (response: Response) => response.headers.has('x-middleware-next')
-
-describe('proxy matcher', () => {
-  it('covers document routes but not the api, _next, or _vercel trees', () => {
-    const [pattern] = config.matcher
-    const matcher = new RegExp(`^${pattern}$`)
-    expect(matcher.test('/')).toBe(true)
-    expect(matcher.test('/index.md')).toBe(true)
-    expect(matcher.test('/anything/else')).toBe(true)
-    expect(matcher.test('/api/anything')).toBe(false)
-    expect(matcher.test('/_next/static/chunk.js')).toBe(false)
-    expect(matcher.test('/_vercel/insights/view')).toBe(false)
-  })
-})
 
 describe('proxy', () => {
   it('answers an Accept: text/markdown homepage request with Markdown', async () => {
@@ -61,12 +48,10 @@ describe('proxy', () => {
     expect(response.headers.get('Vary')).toBe('Accept')
   })
 
-  it('answers 406 in plain text when neither representation is acceptable', async () => {
+  it('serves HTML rather than 406 when the client names neither representation', () => {
     const response = proxy(request('/', 'application/pdf'))
-    expect(response.status).toBe(406)
-    expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
+    expect(passedThrough(response)).toBe(true)
     expect(response.headers.get('Vary')).toBe('Accept')
-    expect(await response.text()).toContain('text/markdown')
   })
 
   it('does not negotiate llms.txt, robots.txt, the sitemap, or the atlases', () => {

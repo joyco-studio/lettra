@@ -20,9 +20,6 @@ export const SITE_TITLE = 'Lettra · sharp MSDF text for Three.js WebGPU'
 export const SITE_DESCRIPTION =
   'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out. No wasm, no shaper, sharp at any scale.'
 
-export const SITE_SUMMARY =
-  'Runtime MSDF text for Three.js WebGPURenderer + TSL. Bake a font atlas once, then render sharp, kerned, animatable Latin text with no runtime shaper and no wasm, in about 5 KB gzipped.'
-
 export const REPO_URL = 'https://github.com/joyco-studio/lettra'
 export const README_URL = `${REPO_URL}#readme`
 export const ISSUES_URL = `${REPO_URL}/issues`

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { markdownResponse } from '@/content/documents'
-import { notAcceptableText } from '@/content/errors'
 import { appendVaryAccept, decide } from '@/lib/accept'
 
 /** Markdown content negotiation per acceptmarkdown.com: the same URL answers
@@ -20,12 +19,6 @@ export function proxy(request: NextRequest) {
   switch (decision.kind) {
     case 'markdown':
       return markdownResponse(decision.document, request.method)
-
-    case 'not-acceptable':
-      return new NextResponse(notAcceptableText, {
-        status: 406,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', Vary: 'Accept' },
-      })
 
     case 'html': {
       // Next recomputes `Vary` for anything it renders, so this only lands on

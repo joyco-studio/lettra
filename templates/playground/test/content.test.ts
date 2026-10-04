@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AGENT_PROMPT } from '@/content/agent-prompt'
-import { notAcceptableText, notFoundMarkdown, sanitizePath } from '@/content/errors'
+import { notFoundMarkdown, sanitizePath } from '@/content/errors'
 import { homeMarkdown } from '@/content/home'
 import { llmsTxt } from '@/content/llms'
 
@@ -140,13 +140,5 @@ describe('sanitizePath', () => {
 
   it('never returns an empty label', () => {
     expect(sanitizePath('')).toBe('/')
-  })
-})
-
-describe('notAcceptableText', () => {
-  it('names both representations so the client can retry', () => {
-    expect(notAcceptableText).toContain('text/html')
-    expect(notAcceptableText).toContain('text/markdown')
-    expect(notAcceptableText).toContain('406')
   })
 })

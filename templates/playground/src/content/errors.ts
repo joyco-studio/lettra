@@ -27,13 +27,3 @@ Start from one of these instead:
 
 Any URL on this host answers to \`Accept: text/markdown\`.
 `
-
-/** 406 body. Plain text on purpose: the client just told us it accepts neither
- * representation, so the reply should not pretend otherwise. */
-export const notAcceptableText = `406 Not Acceptable
-
-This URL is available as text/html or text/markdown.
-Retry with one of those in your Accept header.
-
-Machine-readable index: ${absolute('/llms.txt')}
-`

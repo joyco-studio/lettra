@@ -1,11 +1,12 @@
-import { absolute, ISSUES_URL, LICENSE, NPM_URL, ORG_URL, README_URL, REPO_URL, SITE_SUMMARY } from '@/lib/site'
+import { BAKE_COMMAND, INSTANCE_COMMAND, QUICKSTART } from '@/content/quickstart'
+import { absolute, ISSUES_URL, LICENSE, NPM_URL, ORG_URL, README_URL, REPO_URL, SITE_DESCRIPTION } from '@/lib/site'
 
 /** /llms.txt, in the llmstxt.org shape: H1 name, blockquote summary, free-form
  * detail, then `##` sections. The "When to use this" section is the agent
  * instruction: which jobs Lettra is the right answer to, and how to call it. */
 export const llmsTxt = `# Lettra
 
-> ${SITE_SUMMARY}
+> ${SITE_DESCRIPTION}
 
 Lettra is an ${LICENSE}-licensed npm package from [JOYCO](${ORG_URL}). It ships two entry
 points: \`lettra\` (BMFont schema parsing and layout, renderer-agnostic, runs in
@@ -52,39 +53,20 @@ pnpm add lettra three
 \`\`\`
 
 \`\`\`ts
-import { createText, loadFont, loadFontTexture, wipe } from 'lettra/three'
-
-const [font, map] = await Promise.all([
-  loadFont('/fonts/display.json'),
-  loadFontTexture('/fonts/display.png'),
-])
-
-const text = createText({
-  font,
-  map,
-  text: 'Hello',
-  layout: { align: 'center', maxWidth: 900 },
-  material: { fill: '#414141', effect: wipe() },
-})
-scene.add(text.mesh)
-
-await text.warmup(renderer, camera, scene) // pipeline compile + atlas upload off the hot path
-text.uniforms.wipeIn.value = 1             // tween 0 -> 1 to reveal
-text.setText('live string swap')           // relayout, per keystroke is fine
+${QUICKSTART}
 \`\`\`
 
 Two things that bite agents wiring this up for the first time:
 
 1. **Fonts are baked ahead of time, and there is no bake CLI in the package.**
    \`createText\` starts from an atlas PNG plus a metrics JSON. Produce them with
-   \`npx -y -p msdf-bmfont-xml msdf-bmfont -f json -i charset.txt -s 64 -r 8 -p 2
-   -t msdf --smart-size font.ttf\`, or the browser tool at
+   \`${BAKE_COMMAND}\`, or the browser tool at
    [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).
    Keep distance range 8: erosion wipes need the headroom. Single atlas page, no
    rotated packing.
 2. **Instance variable fonts to a static weight before baking.** Variable fonts
    whose kerning lives in variable GPOS bake to 0 kerning pairs, silently. Run
-   \`python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf\` first.
+   \`${INSTANCE_COMMAND}\` first.
    \`parseFont\` warns at runtime when a font arrives with an empty kerning table.
 
 ## Docs

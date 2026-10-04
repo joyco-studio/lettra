@@ -34,18 +34,14 @@ export const metadata: Metadata = {
   },
   // og:image / twitter:image come from the app/opengraph-image.png and
   // app/twitter-image.png file conventions (plus their .alt.txt files)
+  // title and description fall through from the fields above
   openGraph: {
     type: 'website',
     siteName: SITE_NAME,
     url: siteUrl,
-    title: SITE_TITLE,
-    description:
-      'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: SITE_TITLE,
-    description: 'Runtime MSDF text for Three.js WebGPURenderer + TSL. No wasm, no shaper, sharp at any scale.',
   },
 }
 

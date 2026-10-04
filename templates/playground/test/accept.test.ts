@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { appendVaryAccept, decide, documentPath, isAssetPath, parseAccept, preferredType } from '@/lib/accept'
+import { appendVaryAccept, decide, documentPath, isAssetPath, parseAccept, prefersMarkdown } from '@/lib/accept'
 
 describe('parseAccept', () => {
-  it('defaults q to 1 and records header order', () => {
+  it('defaults q to 1', () => {
     expect(parseAccept('text/markdown, text/html')).toEqual([
-      { type: 'text/markdown', q: 1, specificity: 2, order: 0 },
-      { type: 'text/html', q: 1, specificity: 2, order: 1 },
+      { type: 'text/markdown', q: 1, specificity: 2 },
+      { type: 'text/html', q: 1, specificity: 2 },
     ])
   })
 
@@ -30,61 +30,52 @@ describe('parseAccept', () => {
   })
 
   it('ignores parameters other than q', () => {
-    expect(parseAccept('text/markdown;variant=GFM;q=0.4')).toEqual([
-      { type: 'text/markdown', q: 0.4, specificity: 2, order: 0 },
-    ])
+    expect(parseAccept('text/markdown;variant=GFM;q=0.4')).toEqual([{ type: 'text/markdown', q: 0.4, specificity: 2 }])
   })
 })
 
-describe('preferredType', () => {
-  it('serves HTML when nothing is stated', () => {
-    expect(preferredType(null)).toBe('text/html')
-    expect(preferredType('')).toBe('text/html')
-    expect(preferredType('   ')).toBe('text/html')
+describe('prefersMarkdown', () => {
+  it('defaults to HTML when nothing is stated', () => {
+    expect(prefersMarkdown(null)).toBe(false)
+    expect(prefersMarkdown('')).toBe(false)
+    expect(prefersMarkdown('   ')).toBe(false)
   })
 
   it('serves Markdown for the bare agent header', () => {
-    expect(preferredType('text/markdown')).toBe('text/markdown')
+    expect(prefersMarkdown('text/markdown')).toBe(true)
   })
 
   it('serves HTML for a browser header', () => {
     const browser = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
-    expect(preferredType(browser)).toBe('text/html')
+    expect(prefersMarkdown(browser)).toBe(false)
   })
 
-  it('ranks by q before header order', () => {
-    expect(preferredType('text/html;q=0.5, text/markdown;q=0.9')).toBe('text/markdown')
-    expect(preferredType('text/markdown;q=0.2, text/html;q=0.7')).toBe('text/html')
+  it('ranks by q', () => {
+    expect(prefersMarkdown('text/html;q=0.5, text/markdown;q=0.9')).toBe(true)
+    expect(prefersMarkdown('text/markdown;q=0.2, text/html;q=0.7')).toBe(false)
   })
 
-  it('breaks q ties by header order', () => {
-    expect(preferredType('text/markdown, text/html')).toBe('text/markdown')
-    expect(preferredType('text/html, text/markdown')).toBe('text/html')
+  it('breaks ties toward HTML, the default representation', () => {
+    expect(prefersMarkdown('text/markdown, text/html')).toBe(false)
+    expect(prefersMarkdown('text/*')).toBe(false)
+    expect(prefersMarkdown('*/*')).toBe(false)
   })
 
-  it('prefers the specific entry over a wildcard that outranks it', () => {
+  it('scores each type by its most specific match', () => {
     // text/markdown;q=0.1 is the most specific match for Markdown, so Markdown
     // scores 0.1 while */*;q=1 lets HTML score 1
-    expect(preferredType('*/*, text/markdown;q=0.1')).toBe('text/html')
+    expect(prefersMarkdown('*/*, text/markdown;q=0.1')).toBe(false)
+    expect(prefersMarkdown('*/*;q=0.1, text/markdown')).toBe(true)
   })
 
-  it('treats q=0 as a refusal', () => {
-    expect(preferredType('text/markdown, text/html;q=0')).toBe('text/markdown')
-    expect(preferredType('*/*;q=0, text/markdown')).toBe('text/markdown')
-    expect(preferredType('text/html;q=0, text/markdown;q=0')).toBeNull()
+  it('treats q=0 as a refusal of that type', () => {
+    expect(prefersMarkdown('text/markdown, text/html;q=0')).toBe(true)
+    expect(prefersMarkdown('text/markdown;q=0, text/html')).toBe(false)
   })
 
-  it('resolves text/* to the first representation we produce', () => {
-    expect(preferredType('text/*')).toBe('text/html')
-  })
-
-  it('returns null when nothing we produce is acceptable', () => {
-    expect(preferredType('application/pdf')).toBeNull()
-    expect(preferredType('image/png, application/json;q=0.5')).toBeNull()
-  })
-
-  it('accepts */* from a default fetch client', () => {
-    expect(preferredType('*/*')).toBe('text/html')
+  it('falls back to HTML when the header names neither representation', () => {
+    expect(prefersMarkdown('application/pdf')).toBe(false)
+    expect(prefersMarkdown('image/png, application/json;q=0.5')).toBe(false)
   })
 })
 
@@ -164,6 +155,10 @@ describe('decide', () => {
     expect(decide({ pathname: '/', accept: null })).toEqual({ kind: 'html' })
   })
 
+  it('serves HTML rather than 406 when the client names neither representation', () => {
+    expect(decide({ pathname: '/', accept: 'application/pdf' })).toEqual({ kind: 'html' })
+  })
+
   it('routes unknown paths to Markdown too, so the 404 can be Markdown', () => {
     expect(decide({ pathname: '/__ora-404-probe', accept: 'text/markdown' })).toEqual({
       kind: 'markdown',
@@ -192,9 +187,5 @@ describe('decide', () => {
       kind: 'markdown',
       document: '/',
     })
-  })
-
-  it('answers 406 when the client accepts neither representation', () => {
-    expect(decide({ pathname: '/', accept: 'application/pdf' })).toEqual({ kind: 'not-acceptable' })
   })
 })
