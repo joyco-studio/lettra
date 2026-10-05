@@ -1,7 +1,6 @@
-/* EXPERIMENTAL — run-aware layout: one paragraph, several fonts (italic
- * spans, weight changes). Wrapping is whole-paragraph; kerning is dropped at
- * run boundaries; mixed bake sizes normalize to the first run's font and
- * baselines align to the deepest normalized base. */
+/* EXPERIMENTAL: one paragraph, several fonts. Wrapping is whole-paragraph,
+ * kerning drops at run boundaries, mixed bake sizes normalize to the first
+ * run's font, and baselines align to the deepest normalized base. */
 
 import { createGlyphResolver, createPenMeasure, placeLines } from './layout'
 import type { PenHooks } from './layout'
@@ -17,7 +16,7 @@ export interface LayoutRun {
 }
 
 export interface RunsLayoutResult {
-  /** Same order as the input runs; glyphs carry global `index` and `line`. */
+  /** Input order; glyphs carry global `index` and `line`. */
   runs: Array<{ run: number; glyphs: LayoutGlyph[] }>
   width: number
   height: number
@@ -30,8 +29,8 @@ function fail(message: string): never {
   throw new Error(`[lettra] ${message}`)
 }
 
-/** Lays out one string across font runs sharing a single pen, wrap pass and
- * line grid. Coordinates come out in the first run font's layout px. */
+/** One pen, wrap pass and line grid across runs. Coordinates come out in the
+ * first run font's layout px. */
 export function experimental_layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions = {}): RunsLayoutResult {
   if (runs.length === 0) fail('layoutRuns requires at least one run')
   let cursor = 0
@@ -50,8 +49,7 @@ export function experimental_layoutRuns(text: string, runs: LayoutRun[], opts: L
   const scales = runs.map((run) => refSize / run.font.size)
   const resolvers = runs.map((run) => createGlyphResolver(run.font, tabSize))
   const kernings = runs.map((run) => getFontLookup(run.font).kerning)
-  // Align every run to the deepest normalized baseline so mixed faces sit on
-  // one line; the paragraph line step defaults to the tallest normalized font.
+  // deepest baseline so mixed faces sit on one line
   const baseline = Math.max(...runs.map((run, r) => run.font.base * scales[r]))
   const lineHeight = opts.lineHeight ?? Math.max(...runs.map((run, r) => run.font.lineHeight * scales[r]))
   const yShifts = runs.map((run, r) => baseline - run.font.base * scales[r])

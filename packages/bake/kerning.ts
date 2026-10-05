@@ -1,13 +1,10 @@
-/* GPOS pair-kerning extraction via fontTools. msdf-bmfont-xml reads kerning
- * through opentype.js, which misses class-based PairPos (format 2) — the
- * format most modern fonts (Inter, Roboto Flex…) use, so bakes come out with
- * 0 pairs even from a correctly instanced static font. This recovers the
- * pairs from the font itself and injects them into the baked JSON. */
+/* opentype.js (inside msdf-bmfont-xml) misses class-based PairPos, the format
+ * most modern fonts use, so bakes come out with 0 pairs even from a correctly
+ * instanced static font. fontTools recovers them. */
 
 import { execFile } from 'node:child_process'
 
-/** Embedded so the published CLI is self-contained. Prints {"AV": -3.2, …}
- * (font units scaled to the baked px size) for the given charset. */
+/** Embedded so the published CLI is self-contained. */
 const EXTRACT_SCRIPT = `
 import json, sys
 from fontTools.ttLib import TTFont
@@ -81,8 +78,7 @@ if "GPOS" in font:
 print(json.dumps(pairs))
 `
 
-/** Extracts flattened GPOS kern pairs for `charset`, scaled to the baked
- * size. Returns {} when the font has none (or only contextual kerning). */
+/** Flattened GPOS pairs scaled to the baked size; {} when only contextual. */
 export function extractKerning(fontPath: string, size: number, charset: string): Promise<Record<string, number>> {
   return new Promise((resolve, reject) => {
     execFile(

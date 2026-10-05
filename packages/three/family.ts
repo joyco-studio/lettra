@@ -6,9 +6,8 @@ import { experimental_interpolateFont } from '../core/variable'
 import type { MSDFFont } from '../core/types'
 import { experimental_loadDeltaFontTexture, loadFontTexture } from './texture'
 
-/** One baked variant of a family. `weight` declares a static bake;
- * `weightRange` declares an experimental delta-channel bake covering a
- * continuous weight span. */
+/** `weight` declares a static bake; `weightRange` an experimental
+ * delta-channel bake covering a continuous span. */
 export type FamilyVariantSource = {
   json: string
   atlas: string
@@ -21,23 +20,24 @@ export interface FamilyVariant {
   readonly source: FamilyVariantSource
   /** Static weight, or the range midpoint for delta bakes. */
   readonly weight: number
+  /** Present for delta-channel bakes. */
+  readonly weightRange?: [number, number]
   readonly style: FontStyle
   readonly state: VariantState
   readonly error?: Error
 }
 
-/** A resolved, ready-to-render variant: feed it to `createText({ variant })`
- * or `text.setVariant`. The map is family-owned — never dispose it from a
- * text (the variant path defaults to leaving it alone). */
+/** Feed to `createText({ variant })` or `text.setVariant`. The map is
+ * family-owned; texts never dispose it. */
 export interface LoadedVariant {
   font: MSDFFont
   map: Texture
   /** The baked weight serving the request (clamped in-range for delta bakes). */
   weight: number
   style: FontStyle
-  /** Corrections for the requested key; zeros on an exact hit. */
+  /** Zeros on an exact hit. */
   synthetic: SyntheticCorrection
-  /** EXPERIMENTAL — interpolation t for delta-channel bakes. */
+  /** EXPERIMENTAL: interpolation t for delta-channel bakes. */
   weightT?: number
 }
 
@@ -45,8 +45,7 @@ export interface DefineFamilyOptions {
   src: FamilyVariantSource[]
   /** `false` → resolution misses throw instead of synthesizing. */
   synthesis?: SynthesisOptions | false
-  /** Transport seam (tests, KTX2…). Defaults: core `loadFont` and
-   * `loadFontTexture` (`experimental_loadDeltaFontTexture` for range bakes). */
+  /** Transport seam (tests, KTX2…). */
   loaders?: {
     font?: (url: string) => Promise<MSDFFont>
     texture?: (url: string, delta: boolean) => Promise<Texture>
@@ -55,20 +54,19 @@ export interface DefineFamilyOptions {
 
 export interface FontFamily {
   readonly variants: readonly FamilyVariant[]
-  /** Sorted unique declared weights (range bakes contribute their endpoints). */
+  /** Sorted unique declared weights; range bakes contribute their endpoints. */
   readonly weights: number[]
   readonly styles: FontStyle[]
-  /** True when the key hits a bake exactly (inside a range counts). */
+  /** Exact bakes only; inside a declared range counts. */
   has(key?: VariantKey): boolean
-  /** Resolves, loads the serving bake if needed, returns it with corrections.
-   * Concurrent loads of the same bake share one request. */
+  /** Resolves, loads the serving bake, returns it with corrections.
+   * Concurrent loads of one bake share a request. */
   load(key?: VariantKey): Promise<LoadedVariant>
   /** Loads every declared bake (optionally filtered). Results are exact. */
   loadAll(filter?: (variant: FamilyVariant) => boolean): Promise<LoadedVariant[]>
   /** Sync resolution; null until the serving bake is loaded. */
   get(key?: VariantKey): LoadedVariant | null
-  /** Uploads every loaded atlas to the GPU (pipeline compile stays on
-   * `text.warmup`). Call again after later loads — uploads are idempotent. */
+  /** Uploads loaded atlases; pipeline compile stays on `text.warmup`. */
   warmup(renderer: WebGPURenderer): void
   /** Disposes family-owned textures and resets to idle; reusable after. */
   dispose(): void
@@ -87,9 +85,8 @@ interface Slot {
   result?: { font: MSDFFont; map: Texture }
 }
 
-/** A resolution-facing descriptor: for range bakes the weight is the request
- * clamped into the range, so in-range requests match at distance 0 and
- * out-of-range ones compete from the nearest endpoint. */
+/** Range bakes clamp the request into their span, so in-range requests match
+ * at distance 0 and out-of-range ones compete from the nearest endpoint. */
 function toDescriptor(slot: Slot, requestedWeight: number) {
   const { source } = slot
   const weight = source.weightRange
@@ -133,13 +130,21 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
     }
   }
 
+  // bumped by dispose() so loads started before it can't resurrect the family
+  let generation = 0
+
   const ensureLoaded = (slot: Slot): Promise<{ font: MSDFFont; map: Texture }> => {
     if (slot.pending) return slot.pending
+    const startedAt = generation
     slot.state = 'loading'
     slot.error = undefined
     const delta = slot.source.weightRange !== undefined
     const pending = Promise.all([loadFontJson(slot.source.json), loadAtlas(slot.source.atlas, delta)]).then(
       ([font, map]) => {
+        if (startedAt !== generation) {
+          map.dispose()
+          return { font, map }
+        }
         slot.result = { font, map }
         slot.state = 'loaded'
         checkBakeConsistency()
@@ -147,6 +152,7 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
       }
     )
     pending.catch((error) => {
+      if (startedAt !== generation) return
       // evict so a retry reloads; keep the error for introspection
       slot.pending = undefined
       slot.state = 'error'
@@ -191,6 +197,7 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
         weight: slot.source.weightRange
           ? (slot.source.weightRange[0] + slot.source.weightRange[1]) / 2
           : slot.source.weight,
+        ...(slot.source.weightRange ? { weightRange: slot.source.weightRange } : {}),
         style: slot.style,
         state: slot.state,
         error: slot.error,
@@ -228,7 +235,8 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
       return toLoaded(slot, result, resolved.synthetic, weightT, resolved.source.weight)
     },
     async loadAll(filter) {
-      const chosen = filter ? slots.filter((_slot, i) => filter(family.variants[i])) : slots
+      const snapshot = filter ? family.variants : []
+      const chosen = filter ? slots.filter((_slot, i) => filter(snapshot[i])) : slots
       return Promise.all(
         chosen.map(async (slot) => {
           const result = await ensureLoaded(slot)
@@ -249,6 +257,7 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
       }
     },
     dispose() {
+      generation++
       for (const slot of slots) {
         slot.result?.map.dispose()
         slot.result = undefined

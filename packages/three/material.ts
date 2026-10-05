@@ -43,9 +43,8 @@ export const msdfThreshold = /* @__PURE__ */ defineNode(
   ({ erosion, aa }) => mix(float(0.5), aa.add(1.0), erosion)
 )
 
-/** Shifts the fill threshold down to dilate strokes (synthetic bold) or up to
- * thin them. `boldness` is in threshold units — convert from em via
- * `syntheticThresholdShift`. A no-op at 0. */
+/** Dilates strokes (synthetic bold). `boldness` is in threshold units, not
+ * em; `syntheticThresholdShift` converts. */
 export const msdfBolden = /* @__PURE__ */ defineNode(
   { name: 'msdfBolden', inputs: { threshold: 'float', boldness: 'float' }, output: 'float' },
   ({ threshold, boldness }) => threshold.sub(boldness)
@@ -57,10 +56,8 @@ export const msdfFill = /* @__PURE__ */ defineNode(
   ({ distance, threshold, aa }) => smoothstep(threshold.sub(aa), threshold.add(aa), distance)
 )
 
-/** EXPERIMENTAL — distance reconstruction for delta-channel variable bakes:
- * the RGB field is the wght-min instance and alpha stores the per-texel
- * median delta toward wght-max (decode: (a × 2 − 1) × deltaScale), so the
- * distance slides continuously with `weightT`. */
+/** EXPERIMENTAL: delta-channel bakes store the wght-min field in RGB and the
+ * per-texel delta toward wght-max in alpha. */
 export const experimental_msdfDeltaDistance = /* @__PURE__ */ defineNode(
   { name: 'msdfDeltaDistance', inputs: { msdf: 'vec4', weightT: 'float', deltaScale: 'float' }, output: 'float' },
   ({ msdf, weightT, deltaScale }) => msdfDistance({ msdf }).add(msdf.a.mul(2).sub(1).mul(deltaScale).mul(weightT))
@@ -131,8 +128,7 @@ export function createTextUniforms({ fill = '#ffffff', opacity = 1 }: TextUnifor
   return {
     fill: uniform(new Color(fill)),
     opacity: uniform(opacity),
-    /** Synthetic-bold threshold shift (see `msdfBolden`). In threshold units,
-     * not em — `syntheticThresholdShift` converts. 0 = the baked weight. */
+    /** Threshold units, not em; 0 = the baked weight. */
     boldness: uniform(0),
   }
 }
@@ -149,11 +145,9 @@ export interface TextGraphOptions {
   color?: ColorNode
   /** Base value of the `opacity` wire (default 1). */
   opacity?: FloatNode
-  /** Synthetic-bold threshold shift in threshold units (see `msdfBolden`);
-   * the default material feeds its `boldness` uniform here. */
+  /** Synthetic-bold shift; the default material feeds its uniform here. */
   boldness?: FloatNode
-  /** EXPERIMENTAL — delta-channel variable weight: reconstruct distance via
-   * `experimental_msdfDeltaDistance` with this interpolation t. */
+  /** EXPERIMENTAL: delta-channel variable weight. */
   experimental?: {
     weightT: FloatNode
     /** The font JSON's deltaScale. Default 1. */
@@ -240,9 +234,7 @@ export interface TextMaterialOptions<
   /** Opt-in pre-made effect (e.g. `wipe()` from `effects/wipe`); its
    * uniforms merge into the returned bag. */
   effect?: E
-  /** EXPERIMENTAL — delta-channel variable-weight atlas (font.deltaChannel):
-   * routes reconstruction through `experimental_msdfDeltaDistance` and adds a
-   * tweenable `weightT` uniform to the returned bag. */
+  /** EXPERIMENTAL: delta-channel atlas; adds a tweenable `weightT` uniform. */
   experimental?: {
     weightT?: number
     /** The font JSON's deltaScale. Default 1. */
@@ -252,8 +244,7 @@ export interface TextMaterialOptions<
 
 export interface TextMaterialResult<E extends TextEffect | undefined = undefined> {
   material: MeshBasicNodeMaterial
-  /** Tween `.value` on these directly. `weightT` is present only when the
-   * experimental delta-channel option is set. */
+  /** Tween `.value` on these directly. */
   uniforms: TextUniforms & EffectUniforms<E> & { weightT?: TextUniforms['opacity'] }
   /** The atlas sampler node — reassign `.value` to swap atlases atomically. */
   textureNode: TextureNode

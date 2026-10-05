@@ -1,7 +1,5 @@
-/* EXPERIMENTAL — one paragraph, several family variants (italic spans,
- * weight changes). One mesh + material per resolved variant bucket under a
- * single Group; wrapping, alignment and the wipe span stay paragraph-wide
- * via the shared run layout and bounds. */
+/* EXPERIMENTAL: one paragraph, several family variants. One mesh per variant
+ * bucket under a Group; wrapping and the wipe span stay paragraph-wide. */
 
 import { Group, Mesh } from 'three/webgpu'
 import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
@@ -19,8 +17,7 @@ import type { EffectUniforms, TextEffect, TextMaterialOptions, TextUniforms } fr
 import { warmup } from './lifecycle'
 
 export interface RichSpan extends VariantKey {
-  /** [start, end) in the text. Spans must not overlap; gaps fall back to the
-   * base `variant` key. */
+  /** [start, end). Must not overlap; gaps use the base `variant` key. */
   start: number
   end: number
 }
@@ -33,23 +30,22 @@ export interface CreateRichTextOptions<E extends TextEffect | undefined = undefi
   variant?: VariantKey
   layout?: LayoutOptions
   geometry?: Omit<TextGeometryOptions, 'bounds' | 'glyphIndexOffset' | 'slant'>
-  /** One uniform bag and one effect instance are shared across every bucket
-   * material. Font-dependent effects (scramble) only match the base variant. */
+  /** Shared across bucket materials. Font-bound effects (scramble) only
+   * match the base variant. */
   material?: Omit<TextMaterialOptions<E>, 'map' | 'uniforms' | 'experimental'>
 }
 
 export interface RichTextHandle<E extends TextEffect | undefined = undefined> {
   /** One child mesh per variant bucket. */
   group: Group
-  /** Shared across buckets. Per-bucket synthetic boldness is internal;
-   * `glyphIndex` ordinals are bucket-relative, not paragraph-global. */
-  uniforms: TextUniforms & EffectUniforms<E>
+  /** Shared across buckets. No `boldness`: each bucket's is owned by its own
+   * synthetic correction. `glyphIndex` ordinals are bucket-relative. */
+  uniforms: Omit<TextUniforms, 'boldness'> & EffectUniforms<E>
   readonly layout: RunsLayoutResult
   setText(text: string, spans?: RichSpan[], layoutOptions?: LayoutOptions): void
   warmup(renderer: WebGPURenderer, camera: Camera, scene?: Scene): Promise<void>
   onChange(listener: () => void): () => void
-  /** Disposes geometries and materials. Maps are family-owned: left alone
-   * unless `{ maps: true }` (then disposed once each, deduped). */
+  /** Maps are family-owned: left alone unless `{ maps: true }`. */
   dispose(options?: { maps?: boolean }): void
 }
 
@@ -57,7 +53,7 @@ function fail(message: string): never {
   throw new Error(`[lettra] ${message}`)
 }
 
-/** Sorts spans and fills the gaps with the base key so runs tile the text. */
+/** Sorts spans and fills gaps with the base key so runs tile the text. */
 function normalizeRuns(
   length: number,
   spans: RichSpan[],
@@ -181,9 +177,13 @@ export function experimental_createRichText<E extends TextEffect | undefined = u
 
   build()
 
+  // boldness is per-bucket (each variant's own correction), so it stays off
+  // the shared bag rather than pretending to be tweenable
+  const shared = { fill: sharedUniforms.fill, opacity: sharedUniforms.opacity }
+
   return {
     group,
-    uniforms: { ...sharedUniforms, ...effect?.uniforms } as RichTextHandle<E>['uniforms'],
+    uniforms: { ...shared, ...effect?.uniforms } as RichTextHandle<E>['uniforms'],
     get layout() {
       return currentLayout
     },

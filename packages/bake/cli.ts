@@ -14,13 +14,15 @@ import type { BakeResult, BakeSettings } from './bake'
 import { compositeDelta } from './delta'
 import { instanceFont } from './instance'
 import { extractKerning } from './kerning'
-import { hasKerningTables, isVariableFont, readTableTags } from './sfnt'
+import { hasKerningTables, isVariableFont, readTables, readWeightClass } from './sfnt'
 import type { MSDFFont } from '../core/types'
 
 interface CliOptions {
   fontPath: string
   delta: boolean
   weights: number[]
+  /** False when --weights was defaulted, so static faces self-report. */
+  weightsExplicit: boolean
   range?: [number, number]
   italicPath?: string
   out: string
@@ -125,12 +127,14 @@ function parseArgs(argv: string[]): CliOptions {
   if (!fontPath) fail('missing font file (see --help)')
   if (delta && !range) fail('delta mode requires --range min,max')
   if (!delta && range) fail('--range is only valid with the delta subcommand')
-  if (weights.length === 0) weights = [400]
+  const weightsExplicit = weights.length > 0
+  if (!weightsExplicit) weights = [400]
 
   return {
     fontPath: resolve(fontPath),
     delta,
     weights,
+    weightsExplicit,
     range,
     italicPath: italicPath ? resolve(italicPath) : undefined,
     out: out ?? join(process.cwd(), basename(fontPath).replace(/\.[^.]+$/, '')),
@@ -151,9 +155,8 @@ interface BakedVariant {
   atlasFile: string
 }
 
-/** Instances (when variable) and bakes one weight of one face, recovering
- * GPOS pair kerning that the baker's opentype.js reader misses (class-based
- * PairPos — Inter, Roboto Flex and most modern fonts). */
+/** Instances (when variable) and bakes one weight, recovering the class-based
+ * GPOS pairs the baker's opentype.js reader misses. */
 async function bakeWeight(
   fontPath: string,
   variable: boolean,
@@ -228,13 +231,17 @@ async function runStatic(options: CliOptions): Promise<void> {
       ...(options.italicPath ? [{ path: options.italicPath, style: 'italic' as const }] : []),
     ]
     for (const face of faces) {
-      const tags = readTableTags(readFileSync(face.path))
-      const variable = isVariableFont(tags)
-      const kerns = hasKerningTables(tags)
+      const data = readFileSync(face.path)
+      const tables = readTables(data)
+      const variable = isVariableFont(tables.tags)
+      const kerns = hasKerningTables(tables.tags)
       if (!variable && options.weights.length > 1) {
         fail(`${basename(face.path)} is a static font; it cannot be instanced at ${options.weights.join(', ')}`)
       }
-      for (const weight of options.weights) {
+      // a static face has one real weight: label it from OS/2, not the flag
+      const weights =
+        variable || !options.weightsExplicit ? options.weights : [readWeightClass(data, tables) ?? options.weights[0]]
+      for (const weight of weights) {
         const result = await bakeWeight(face.path, variable, kerns, weight, options.settings, tmp)
         const label = `${basename(face.path)} @ ${weight}${face.style === 'italic' ? ' italic' : ''}`
         validateBake(label, result, kerns)
@@ -250,20 +257,18 @@ async function runStatic(options: CliOptions): Promise<void> {
 
 async function runDelta(options: CliOptions): Promise<void> {
   const [min, max] = options.range!
-  const tags = readTableTags(readFileSync(options.fontPath))
-  if (!isVariableFont(tags)) fail('delta mode requires a variable font (no fvar table found)')
+  const tables = readTables(readFileSync(options.fontPath))
+  if (!isVariableFont(tables.tags)) fail('delta mode requires a variable font (no fvar table found)')
   const tmp = mkdtempSync(join(tmpdir(), 'lettra-bake-'))
   try {
     // fixed grid, no smart-size: both bakes must share texture dimensions
     const settings: BakeSettings = { ...options.settings, smartSize: false }
     console.log(`[lettra-bake] baking wght=${max} (canonical grid) and wght=${min}…`)
-    const kerns = hasKerningTables(tags)
-    const [maxBake, minBake] = [
-      await bakeWeight(options.fontPath, true, kerns, max, settings, tmp),
-      await bakeWeight(options.fontPath, true, kerns, min, settings, tmp),
-    ]
-    validateBake(`wght=${max}`, maxBake, hasKerningTables(tags))
-    validateBake(`wght=${min}`, minBake, hasKerningTables(tags))
+    const kerns = hasKerningTables(tables.tags)
+    const maxBake = await bakeWeight(options.fontPath, true, kerns, max, settings, tmp)
+    const minBake = await bakeWeight(options.fontPath, true, kerns, min, settings, tmp)
+    validateBake(`wght=${max}`, maxBake, kerns)
+    validateBake(`wght=${min}`, minBake, kerns)
 
     const composite = compositeDelta({
       min: { font: minBake.font, png: PNG.sync.read(minBake.png) },

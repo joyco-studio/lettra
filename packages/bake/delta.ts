@@ -1,10 +1,6 @@
-/* Delta-channel compositing: two bakes of the same charset at the weight
- * extremes become one RGBA atlas. Convention (mirrors MSDFFont's docs):
- * the grid is the MAX bake's packing, RGB holds the MIN field re-gridded
- * into the max rects, alpha holds the per-texel median delta (max − min),
- * and JSON deltas are max − min with min metrics as the base. Offsets are
- * frozen to the max frame (rects are range-constant), so glyph deltas carry
- * only Δxadvance. */
+/* Two bakes at the weight extremes become one RGBA atlas: the grid is the max
+ * bake's packing, RGB the min field re-gridded into it, alpha the per-texel
+ * median delta. JSON deltas are max − min over min-metric bases. */
 
 import { PNG } from 'pngjs'
 import type { GlyphDeltaTuple, GlyphTuple, MSDFFont } from '../core/types'
@@ -17,7 +13,7 @@ export function median(r: number, g: number, b: number): number {
   return Math.max(Math.min(r, g), Math.min(Math.max(r, g), b))
 }
 
-/** Alpha encoding: byte 128 ≈ zero delta, full range spans ±deltaScale. */
+/** Byte 128 ≈ zero delta; the full range spans ±deltaScale. */
 export function encodeDeltaByte(delta: number, deltaScale: number): number {
   if (deltaScale === 0) return 128
   const normalized = Math.max(-1, Math.min(1, delta / deltaScale))
@@ -28,19 +24,13 @@ export function decodeDeltaByte(byte: number, deltaScale: number): number {
   return ((byte / 255) * 2 - 1) * deltaScale
 }
 
-/** Texel-frame offset mapping max-rect coordinates onto the min rect: output
- * texel (u, v) of a max rect samples min texel (u + dx, v + dy). Offsets are
- * pen-relative, so the shift is just the offset difference. */
+/** Output texel (u, v) of a max rect samples min texel (u + dx, v + dy). */
 export function mapFrame(maxGlyph: GlyphTuple, minGlyph: GlyphTuple): { dx: number; dy: number } {
   return { dx: maxGlyph[4] - minGlyph[4], dy: maxGlyph[5] - minGlyph[5] }
 }
 
-/** The min bake's ink must land inside the max rect (weight-axis bakes
- * almost always do — bolder ink contains lighter ink). Both rects carry the
- * same distance-padding ring, so an overflow within `tolerance` texels only
- * loses near-edge field values that clamp-extension approximates fine.
- * Returns an error string instead of throwing so the caller can name every
- * failing glyph. */
+/** Min ink must land inside the max rect; the shared padding ring absorbs an
+ * overflow within `tolerance`. Returns the error so callers can batch them. */
 export function checkFit(char: string, maxGlyph: GlyphTuple, minGlyph: GlyphTuple, tolerance = 0): string | null {
   const { dx, dy } = mapFrame(maxGlyph, minGlyph)
   const [maxW, maxH] = [maxGlyph[2], maxGlyph[3]]
@@ -63,8 +53,7 @@ export interface CompositeResult {
   deltaScale: number
 }
 
-/** Field values are bytes / 255; a delta magnitude near the field ceiling
- * means the bake's pxrange clipped it — recommend raising --pxrange. */
+/** A delta near the field ceiling means the bake's pxrange clipped it. */
 const SATURATION_WARN = 0.5
 
 export function compositeDelta({ min, max, weightRange }: CompositeInput): CompositeResult {
@@ -99,8 +88,9 @@ export function compositeDelta({ min, max, weightRange }: CompositeInput): Compo
     }
   }
 
+  // left zero outside glyph rects: copying the max field there would bleed a
+  // bolder bias into the min-field base when sampling a rect's outer texel
   const out = new PNG({ width: max.png.width, height: max.png.height })
-  max.png.data.copy(out.data)
 
   // min texel (clamped into the min rect) for an output texel of a max rect
   const sampleMin = (minGlyph: GlyphTuple, u: number, v: number): [number, number, number] => {
@@ -123,7 +113,7 @@ export function compositeDelta({ min, max, weightRange }: CompositeInput): Compo
       for (let u = 0; u < gw; u++) {
         const outIdx = ((gy + v) * out.width + (gx + u)) * 4
         const [r, g, b] = sampleMin(minGlyph, u + dx, v + dy)
-        const maxMedian = median(out.data[outIdx], out.data[outIdx + 1], out.data[outIdx + 2]) / 255
+        const maxMedian = median(max.png.data[outIdx], max.png.data[outIdx + 1], max.png.data[outIdx + 2]) / 255
         out.data[outIdx] = r
         out.data[outIdx + 1] = g
         out.data[outIdx + 2] = b
@@ -148,8 +138,7 @@ export function compositeDelta({ min, max, weightRange }: CompositeInput): Compo
   return { font: buildDeltaFont(min.font, max.font, weightRange, deltaScale), png: out, deltaScale }
 }
 
-/** Extended lettra JSON for the composite: max grid, min metrics as base,
- * deltas = max − min, zero entries omitted. */
+/** Max grid, min metrics as base, zero deltas omitted. */
 export function buildDeltaFont(
   minFont: MSDFFont,
   maxFont: MSDFFont,

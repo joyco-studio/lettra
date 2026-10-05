@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-/* The `lettra` bin: a paper-thin command router. Heavy tooling lives in
- * separate packages (lettra-bake bundles native msdfgen binaries) so the
- * runtime library's install stays lean; npx fetches them on demand. */
+/* Command router. Heavy tooling lives in separate packages (lettra-bake
+ * bundles native msdfgen binaries) so the runtime install stays lean. */
 
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'

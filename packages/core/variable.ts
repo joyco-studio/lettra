@@ -1,8 +1,6 @@
-/* EXPERIMENTAL — delta-channel variable weight. A variable bake carries the
- * wght-min instance plus max−min deltas (see MSDFFont); interpolation
- * materializes a derived font at a given t for layout, while the continuous
- * animated path is the shader's weightT uniform (advances stay frozen
- * mid-animation by design — re-layout via swapFont at rest points). */
+/* EXPERIMENTAL: delta-channel variable weight. Interpolation materializes a
+ * derived font at t for layout; the continuous animated path is the shader's
+ * weightT uniform, which leaves advances frozen until the next re-layout. */
 
 import type { GlyphTuple, MSDFFont } from './types'
 
@@ -18,15 +16,14 @@ export function weightToT(font: MSDFFont, weight: number): number {
   return Math.min(1, Math.max(0, (weight - min) / (max - min)))
 }
 
-/** Memoized per (font, quantized t) so derived fonts keep a stable object
- * identity — getFontLookup's WeakMap and atlas-sharing caches stay hot. */
+/** Quantized so derived fonts keep a stable identity for getFontLookup's
+ * WeakMap; capped so sweeping the full range can't retain every step. */
 const interpolationCache = new WeakMap<MSDFFont, Map<number, MSDFFont>>()
-/** Quantization step for cache keys; finer t differences don't reflow visibly. */
 const T_STEPS = 256
+const MAX_CACHED_STEPS = 32
 
-/** Materializes the font's metrics at weight t: glyph xoffset/yoffset/xadvance,
- * kerning, lineHeight and base move by t × delta. Rects and UVs are shared
- * across the range, so the atlas is reused as-is. */
+/** Materializes metrics at weight t; rects and UVs are range-constant, so the
+ * atlas is reused as-is. */
 export function experimental_interpolateFont(font: MSDFFont, t: number): MSDFFont {
   if (!isVariableFont(font)) return font
   const quantized = Math.round(Math.min(1, Math.max(0, t)) * T_STEPS) / T_STEPS
@@ -69,6 +66,7 @@ export function experimental_interpolateFont(font: MSDFFont, t: number): MSDFFon
     glyphs,
     kerning,
   }
+  if (byT.size >= MAX_CACHED_STEPS) byT.delete(byT.keys().next().value!)
   byT.set(quantized, derived)
   return derived
 }

@@ -53,6 +53,13 @@ describe('variable fonts', () => {
     expect(experimental_interpolateFont(font, 0.75)).not.toBe(a)
   })
 
+  it('caps the per-font interpolation cache', () => {
+    const first = experimental_interpolateFont(font, 1 / 64)
+    for (let i = 2; i <= 64; i++) experimental_interpolateFont(font, i / 64)
+    // sweeping the range evicts early steps rather than retaining every one
+    expect(experimental_interpolateFont(font, 1 / 64)).not.toBe(first)
+  })
+
   it('lays out through the derived font with interpolated advances', () => {
     // H advance at t=1 is 12 instead of 10
     const base = layout(font, 'HH')

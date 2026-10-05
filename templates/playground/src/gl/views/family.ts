@@ -27,9 +27,8 @@ export interface FamilyView {
 
 const TEXT = 'Sphinx of black quartz,\njudge my vow'
 
-/** fig. 02: one family, every weight, baked variants with synthetic
- * corrections between them, or one delta-channel atlas interpolating
- * continuously on the GPU. A rich-text line mixes variants in one layout. */
+/** fig. 02: baked variants with synthetic corrections between them, or one
+ * delta-channel atlas interpolating continuously on the GPU. */
 export async function createFamilyView(stage: Stage, el: HTMLElement, initial: FamilyState): Promise<FamilyView> {
   const scene = new Scene()
   const camera = new PerspectiveCamera(35, 1, 0.1, 100)
@@ -48,8 +47,7 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
     src: [{ json: '/fonts/inter-vf.json', atlas: '/fonts/inter-vf.png', weightRange: [300, 800] }],
   })
 
-  // the demo exercises every variant, so loadAll is the point here; a page
-  // using two of them would family.load() those two instead
+  // the demo exercises every variant; a page would family.load() what it uses
   await Promise.all([inter.loadAll(), interVf.loadAll()])
   inter.warmup(stage.renderer)
   interVf.warmup(stage.renderer)

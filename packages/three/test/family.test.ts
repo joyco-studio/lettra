@@ -159,6 +159,35 @@ describe('defineFamily', () => {
     await expect(family.load({ weight: 400 })).resolves.toBeDefined()
   })
 
+  it('drops a load that lands after dispose instead of resurrecting the family', async () => {
+    let release!: (font: MSDFFont) => void
+    const map = new Texture()
+    const disposed = vi.spyOn(map, 'dispose')
+    const family = defineFamily({
+      src: [SRC[0]],
+      loaders: {
+        font: () => new Promise<MSDFFont>((resolve) => (release = resolve)),
+        texture: () => Promise.resolve(map),
+      },
+    })
+    const pending = family.load({ weight: 400 })
+    family.dispose()
+    release(makeFont('regular'))
+    await pending
+    expect(family.variants[0].state).toBe('idle')
+    expect(family.get({ weight: 400 })).toBeNull()
+    expect(disposed).toHaveBeenCalled()
+  })
+
+  it('exposes weightRange on delta variants so sliders can mark the span', () => {
+    const family = defineFamily({
+      src: [{ json: '/vf.json', atlas: '/vf.png', weightRange: [300, 800] }],
+      loaders: { font: () => Promise.resolve(makeFont('vf')), texture: () => Promise.resolve(new Texture()) },
+    })
+    expect(family.variants[0].weightRange).toEqual([300, 800])
+    expect(family.weights).toEqual([300, 800])
+  })
+
   it('warns when loaded variants were baked inconsistently', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const mixed: Record<string, MSDFFont> = {

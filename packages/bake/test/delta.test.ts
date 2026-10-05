@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { PNG } from 'pngjs'
 import { buildDeltaFont, checkFit, compositeDelta, decodeDeltaByte, encodeDeltaByte, mapFrame, median } from '../delta'
-import { readTableTags, isVariableFont, hasKerningTables } from '../sfnt'
+import { readTableTags, readTables, readWeightClass, isVariableFont, hasKerningTables } from '../sfnt'
 import type { GlyphTuple, MSDFFont } from '../../core/types'
 
 describe('delta math', () => {
@@ -129,6 +129,18 @@ describe('sfnt preflight', () => {
     expect(hasKerningTables(tags)).toBe(true)
     expect(hasKerningTables(['glyf', 'kern'])).toBe(true)
     expect(isVariableFont(['glyf'])).toBe(false)
+  })
+
+  it('reads usWeightClass so static faces self-report their weight', () => {
+    const data = new Uint8Array(28 + 6)
+    const view = new DataView(data.buffer)
+    view.setUint32(0, 0x00010000)
+    view.setUint16(4, 1)
+    for (let c = 0; c < 4; c++) data[12 + c] = 'OS/2'.charCodeAt(c)
+    view.setUint32(12 + 8, 28)
+    view.setUint16(28 + 4, 700)
+    expect(readWeightClass(data, readTables(data))).toBe(700)
+    expect(readWeightClass(data, readTables(sfnt(['glyf'])))).toBeNull()
   })
 
   it('rejects collections and non-fonts', () => {

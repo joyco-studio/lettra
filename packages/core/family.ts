@@ -1,6 +1,5 @@
-/* Variant resolution for font families: CSS-like nearest matching plus the
- * synthetic corrections (faux bold / faux oblique) for misses. Pure data —
- * loading and textures live in the three entry. */
+/* CSS-like variant resolution plus the synthetic corrections for misses.
+ * Pure data; loading and textures live in the three entry. */
 
 import type { MSDFFont } from './types'
 
@@ -12,29 +11,26 @@ export interface VariantKey {
   style?: FontStyle
 }
 
-/** The declarative half of a family source entry — what resolution needs. */
+/** The declarative half of a family source entry. */
 export interface VariantDescriptor {
   weight: number
   style?: FontStyle
 }
 
 export interface SynthesisOptions {
-  /** Faux-bold strength: em of stroke dilation per side per 100 weight units
-   * of mismatch. Default 0.007 (≈0.021em for a 400→700 miss). */
+  /** Em of stroke dilation per side per 100 weight units of miss. Default
+   * 0.007 (≈0.021em for a 400→700 miss). */
   boldnessPerHundredWeight?: number
-  /** Faux-oblique shear as tan(angle). Default tan(14°), the browsers'
-   * synthetic-oblique angle. */
+  /** Shear as tan(angle). Default tan(14°), matching browsers. */
   slant?: number
 }
 
-/** Corrections a renderer applies on top of the nearest baked variant. */
+/** Applied on top of the nearest baked variant. */
 export interface SyntheticCorrection {
-  /** Stroke dilation in em per side, never negative — thinning is not
-   * synthesized (it crumbles strokes), heavier bakes serve as-is instead.
-   * Advances are not adjusted — a strong faux bold sits optically tighter
-   * than a real bake. */
+  /** Em per side, never negative: thinning is not synthesized. Advances are
+   * unchanged, so a strong faux bold sits optically tighter than a real bake. */
   boldness: number
-  /** Shear as tan(angle); 0 when the bake already matches the requested style. */
+  /** Shear as tan(angle); 0 when the bake already matches the style. */
   slant: number
 }
 
@@ -54,22 +50,15 @@ function fail(message: string): never {
   throw new Error(`[lettra] ${message}`)
 }
 
-/** Isolated so range sources (weightRange bakes) can later match at distance
- * 0 anywhere inside their range. */
+/** Isolated so range bakes can match at distance 0 anywhere in range. */
 function weightDistance(source: VariantDescriptor, weight: number): number {
   return Math.abs(source.weight - weight)
 }
 
-/** Picks the baked source serving a requested variant key.
- *
- * Style first: the requested style's pool, falling back to the other style
- * (italic miss → normal bake + synthetic slant; normal miss → italic bake
- * as-is, since a bake cannot be un-slanted). Then weight, bolden-only like
- * browsers: the gap up from the nearest lighter bake is covered with
- * synthetic boldness, but thinning is never synthesized — threshold-thinning
- * crumbles strokes — so when the nearest bake is heavier (or nothing lighter
- * exists) it serves unmodified. `synthesis: false` turns any miss into a
- * throw instead. */
+/** Style first (a bake cannot be un-slanted, so a normal request served by an
+ * italic-only family keeps the slant), then weight. Bolden-only like browsers:
+ * the gap up from the nearest lighter bake gets synthetic boldness, while a
+ * nearer-heavier bake serves unmodified. */
 export function resolveVariant<T extends VariantDescriptor>(
   sources: readonly T[],
   request: VariantKey = {},
@@ -113,15 +102,12 @@ export function resolveVariant<T extends VariantDescriptor>(
   }
 }
 
-/** The shifted iso-edge must stay inside the representable distance field. */
+/** The shifted iso-edge must stay inside the representable field. */
 const MAX_THRESHOLD_SHIFT = 0.4
 let warnedClamp = false
 
-/** Converts a boldness in em (per side) into an MSDF threshold shift: the
- * field spans `distanceRange` atlas px across 0..1, so Δt = em × size /
- * distanceRange. Clamped to ±0.4 — past that the edge leaves the field (and
- * heavy dilation can bleed into neighboring atlas cells when bake padding is
- * tight). */
+/** Em per side → MSDF threshold shift: the field spans `distanceRange` atlas
+ * px across 0..1, so Δt = em × size / distanceRange. */
 export function syntheticThresholdShift(boldnessEm: number, font: Pick<MSDFFont, 'size' | 'distanceRange'>): number {
   const shift = (boldnessEm * font.size) / font.distanceRange
   if (Math.abs(shift) <= MAX_THRESHOLD_SHIFT) return shift

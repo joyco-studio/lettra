@@ -2,7 +2,7 @@ import generateBMFont from 'msdf-bmfont-xml'
 import { fromBMFont } from '../core/parse'
 import type { BMFontJson, MSDFFont } from '../core/types'
 
-/** msdf-bmfont-xml's default Western charset, mirrored for kerning extraction. */
+/** Mirrors msdf-bmfont-xml's default, for kerning extraction. */
 export const DEFAULT_CHARSET =
   ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
 
@@ -13,18 +13,17 @@ export interface BakeSettings {
   size: number
   /** Distance-field pixel range. */
   distanceRange: number
-  /** Atlas dimensions. Fixed (no smart-size) so delta bakes share a grid. */
+  /** Atlas dimensions. */
   textureSize: [number, number]
   texturePadding: number
-  /** Shrink the atlas to the smallest square — fine for static bakes,
-   * forbidden for delta pairs (the two grids must agree). */
+  /** Forbidden for delta pairs: the two grids must agree. */
   smartSize?: boolean
 }
 
 export interface BakeResult {
-  /** lettra-native minified schema (fromBMFont). */
+  /** lettra-native minified schema. */
   font: MSDFFont
-  /** The raw BMFont JSON, for delta compositing. */
+  /** Raw BMFont JSON, for delta compositing. */
   bmfont: BMFontJson
   /** Atlas PNG. */
   png: Buffer

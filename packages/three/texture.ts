@@ -24,9 +24,7 @@ export async function loadFontTexture(url: string): Promise<Texture> {
   return configureFontTexture(texture)
 }
 
-/** EXPERIMENTAL — loads a delta-channel atlas via ImageBitmap with decode
- * options pinned so the alpha-stored distance delta survives: no alpha
- * premultiplication, no color-space conversion during image decode. */
+/** EXPERIMENTAL: decode options pinned so the alpha-stored delta survives. */
 export async function experimental_loadDeltaFontTexture(url: string): Promise<Texture> {
   const response = await fetch(url)
   if (!response.ok) {
