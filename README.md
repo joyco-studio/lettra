@@ -6,6 +6,12 @@ Runtime MSDF text for Three.js `WebGPURenderer` + TSL. Bake a font atlas once
 (dev-time, manual for now), then render sharp, kerned, animatable text with
 zero runtime dependencies. No wasm, no shaping engine, ~5 KB gzipped.
 
+[lettra.joyco.studio](https://lettra.joyco.studio) is the live specimen and
+docs site. If you are an agent, start at
+[llms.txt](https://lettra.joyco.studio/llms.txt): it says when lettra is the
+right answer and how to call it. Every page there also answers to
+`Accept: text/markdown`, so you can read the site without parsing HTML.
+
 The WebGL-era text stacks (troika, three-bmfont-text) don't speak TSL node
 materials, and runtime shapers ship megabytes you don't need for Latin UI
 text. lettra covers the common case: a baked atlas, per-glyph metrics
