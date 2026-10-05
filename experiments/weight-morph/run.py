@@ -3,7 +3,9 @@ import json, sys, numpy as np
 sys.path.insert(0, 'experiments/weight-morph')
 from methods import *
 
-MID = [w for w in WEIGHTS if w not in (BASE, TARGET)]
+# every weight, endpoints included: excluding them hid the single-bake warps'
+# worst failures, since at w=1 the warp has to do the whole job unaided
+MID = list(WEIGHTS)
 
 def wlin(target):
     return (target - BASE) / (TARGET - BASE)

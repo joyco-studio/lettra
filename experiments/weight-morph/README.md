@@ -28,15 +28,19 @@ Two other traps found along the way:
   gives em-space, where `pixel = (unit + translate) * scale` and
   `pixel_y = size - (y + ty) * scale` without `-yflip`.
 
-## Results (12 glyphs, weights 450-650, Inter)
+## Results (12 glyphs, weights 400-700 inclusive, Inter)
 
 | method | worst edge px | IoU | visual defects |
 | --- | --- | --- | --- |
-| snap to nearest bake | 2.42 | 0.795 | 32.9 |
-| **two bakes + gvar warp** | **0.34** | **0.9976** | **0** |
-| two bakes, linear blend | 0.67 | 0.9916 | 0 |
-| one bake + nearest warp | 1.35 | 0.9942 | 1.2 (41 worst) |
-| one bake + smooth warp | 1.40 | 0.9819 | 0.8 (25 worst) |
+| snap to nearest bake | 2.41 | 0.805 | 51.6 |
+| **two bakes + gvar warp** | **0.24** | **0.9983** | **0** |
+| two bakes, linear blend | 0.48 | 0.9940 | 0 |
+| one bake + nearest warp | 1.33 | 0.9930 | 4.1 (322 total) |
+| one bake + smooth warp | 1.37 | 0.9809 | 2.2 (184 total) |
+
+Score every weight, endpoints included. Restricting to 450-650 flatters the
+single-bake warps badly: at w=1 the warp has to reproduce the target unaided,
+and that is where it comes apart (W: 0 defects at 550, 134 at 700).
 
 "Visual defects" counts holes punched in solid ink plus specks left in the
 background. It exists because IoU scored a visibly torn stem at 0.9942: the
