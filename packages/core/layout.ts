@@ -50,7 +50,7 @@ export function createGlyphResolver(font: MSDFFont, tabSize: number): GlyphResol
 }
 
 /** Index-aware hooks the pen walk runs against. `layout` wraps them with
- * constant-font closures; `experimental_layoutRuns` switches them per run.
+ * constant-font closures; `layoutRuns` switches them per run.
  * Scales normalize mixed bake sizes into reference layout px: quad metrics
  * multiply by scale while atlas rects stay raw for UVs. */
 export interface PenHooks {

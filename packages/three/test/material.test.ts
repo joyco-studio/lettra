@@ -5,7 +5,6 @@ import {
   buildTextGraph,
   createTextUniforms,
   defineNode,
-  experimental_msdfDeltaDistance,
   msdfAA,
   msdfBolden,
   msdfDistance,
@@ -27,20 +26,7 @@ describe('node contracts', () => {
     expect(Object.isFrozen(wipeErosion.definition.inputs)).toBe(true)
     expect(msdfDistance.definition.inputs).toEqual({ msdf: 'vec4' })
     expect(msdfBolden.definition.inputs).toEqual({ threshold: 'float', boldness: 'float' })
-    expect(experimental_msdfDeltaDistance.definition.inputs).toEqual({
-      msdf: 'vec4',
-      weightT: 'float',
-      deltaScale: 'float',
-    })
-    for (const node of [
-      msdfDistance,
-      msdfAA,
-      msdfFill,
-      msdfThreshold,
-      msdfBolden,
-      experimental_msdfDeltaDistance,
-      wipeErosion,
-    ]) {
+    for (const node of [msdfDistance, msdfAA, msdfFill, msdfThreshold, msdfBolden, wipeErosion]) {
       expect(node.definition.output).toBe('float')
       expect(typeof node.definition.name).toBe('string')
     }
@@ -58,12 +44,7 @@ describe('node contracts', () => {
     const erosion = wipeErosion(erosionInputs)
     const bolded = msdfBolden({ threshold: msdfThreshold({ erosion, aa }), boldness: float(0.1) })
     const coverage = msdfFill({ distance, threshold: bolded, aa })
-    const deltaDistance = experimental_msdfDeltaDistance({
-      msdf: vec4(0.2, 0.5, 0.8, 0.5),
-      weightT: float(0.5),
-      deltaScale: float(2),
-    })
-    for (const node of [distance, aa, erosion, bolded, coverage, deltaDistance]) {
+    for (const node of [distance, aa, erosion, bolded, coverage]) {
       expect(node).toBeDefined()
       expect((node as { isNode?: boolean }).isNode).toBe(true)
     }

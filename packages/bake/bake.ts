@@ -16,15 +16,11 @@ export interface BakeSettings {
   /** Atlas dimensions. */
   textureSize: [number, number]
   texturePadding: number
-  /** Forbidden for delta pairs: the two grids must agree. */
-  smartSize?: boolean
 }
 
 export interface BakeResult {
   /** lettra-native minified schema. */
   font: MSDFFont
-  /** Raw BMFont JSON, for delta compositing. */
-  bmfont: BMFontJson
   /** Atlas PNG. */
   png: Buffer
 }
@@ -45,7 +41,7 @@ export function bakeFont(fontPath: string, settings: BakeSettings): Promise<Bake
         distanceRange: settings.distanceRange,
         textureSize: settings.textureSize,
         texturePadding: settings.texturePadding,
-        smartSize: settings.smartSize ?? false,
+        smartSize: false,
         ...(settings.charset ? { charset: settings.charset } : {}),
       },
       (error, textures, fontFile) => {
@@ -55,7 +51,7 @@ export function bakeFont(fontPath: string, settings: BakeSettings): Promise<Bake
             fail(`bake produced ${textures.length} atlas pages; raise --texture so every glyph fits one page`)
           }
           const bmfont = JSON.parse(fontFile.data) as BMFontJson
-          resolve({ font: fromBMFont(bmfont), bmfont, png: textures[0].texture })
+          resolve({ font: fromBMFont(bmfont), png: textures[0].texture })
         } catch (parseError) {
           reject(parseError)
         }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { layout } from '../layout'
 import { parseFont } from '../parse'
-import { experimental_layoutRuns } from '../runs'
+import { layoutRuns } from '../runs'
 import type { MSDFFont } from '../types'
 import miniFont from './fixtures/mini-font.json'
 
@@ -37,10 +37,10 @@ const shallow: MSDFFont = {
   kerning: mini.kerning,
 }
 
-describe('experimental_layoutRuns', () => {
+describe('layoutRuns', () => {
   it('matches layout() glyph-for-glyph with a single run', () => {
     const single = layout(mini, 'HH HH HH', { maxWidth: 25 })
-    const runs = experimental_layoutRuns('HH HH HH', [{ font: mini, start: 0, end: 8 }], { maxWidth: 25 })
+    const runs = layoutRuns('HH HH HH', [{ font: mini, start: 0, end: 8 }], { maxWidth: 25 })
     expect(runs.runs[0].glyphs).toEqual(single.glyphs)
     expect(runs.width).toBe(single.width)
     expect(runs.metrics).toEqual(single.metrics)
@@ -48,7 +48,7 @@ describe('experimental_layoutRuns', () => {
 
   it('wraps on whole-paragraph width across a run boundary', () => {
     const single = layout(mini, 'HH HH HH', { maxWidth: 25 })
-    const result = experimental_layoutRuns(
+    const result = layoutRuns(
       'HH HH HH',
       [
         { font: mini, start: 0, end: 4 },
@@ -61,9 +61,9 @@ describe('experimental_layoutRuns', () => {
   })
 
   it('kerns within a run but drops pairs across the boundary', () => {
-    const together = experimental_layoutRuns('AV', [{ font: mini, start: 0, end: 2 }])
+    const together = layoutRuns('AV', [{ font: mini, start: 0, end: 2 }])
     expect(together.runs[0].glyphs[1].x).toBe(5) // 9 advance + AV kern -4
-    const split = experimental_layoutRuns('AV', [
+    const split = layoutRuns('AV', [
       { font: mini, start: 0, end: 1 },
       { font: mini, start: 1, end: 2 },
     ])
@@ -71,7 +71,7 @@ describe('experimental_layoutRuns', () => {
   })
 
   it('normalizes mixed bake sizes to the first run font', () => {
-    const result = experimental_layoutRuns('HH', [
+    const result = layoutRuns('HH', [
       { font: mini, start: 0, end: 1 },
       { font: big, start: 1, end: 2 },
     ])
@@ -83,7 +83,7 @@ describe('experimental_layoutRuns', () => {
   })
 
   it('aligns shallower baselines down to the deepest run', () => {
-    const result = experimental_layoutRuns('HH', [
+    const result = layoutRuns('HH', [
       { font: mini, start: 0, end: 1 },
       { font: shallow, start: 1, end: 2 },
     ])
@@ -93,7 +93,7 @@ describe('experimental_layoutRuns', () => {
   })
 
   it('keeps global index and line continuity across buckets', () => {
-    const result = experimental_layoutRuns(
+    const result = layoutRuns(
       'HH HH',
       [
         { font: mini, start: 0, end: 3 },
@@ -107,13 +107,13 @@ describe('experimental_layoutRuns', () => {
   })
 
   it('rejects runs that do not tile the text', () => {
-    expect(() => experimental_layoutRuns('HH', [{ font: mini, start: 0, end: 1 }])).toThrow(/length/)
+    expect(() => layoutRuns('HH', [{ font: mini, start: 0, end: 1 }])).toThrow(/length/)
     expect(() =>
-      experimental_layoutRuns('HH', [
+      layoutRuns('HH', [
         { font: mini, start: 1, end: 2 },
         { font: mini, start: 0, end: 1 },
       ])
     ).toThrow(/contiguously/)
-    expect(() => experimental_layoutRuns('H', [])).toThrow(/at least one run/)
+    expect(() => layoutRuns('H', [])).toThrow(/at least one run/)
   })
 })

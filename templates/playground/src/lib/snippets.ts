@@ -102,24 +102,6 @@ const text = createText({
 
 /** The code a consumer would write to reproduce the family figure. */
 export function familySnippet(state: FamilyState): string {
-  if (state.vf) {
-    return `import { createText, defineFamily } from 'lettra/three'
-
-// EXPERIMENTAL: one atlas covers wght 300-800. RGB is the
-// light field, alpha a per-texel delta toward the bold end.
-// Baked with: lettra bake delta Inter.ttf --range 300,800
-const inter = defineFamily({
-  src: [{ json: '/fonts/inter-vf.json', atlas: '/fonts/inter-vf.png', weightRange: [300, 800] }],
-})
-
-const text = createText({ variant: await inter.load({ weight: ${state.weight} }), text, layout })
-
-// re-layout at a resting weight…
-text.setVariant(await inter.load({ weight: ${state.weight} }))
-// …or slide the GPU field continuously (advances stay put)
-text.experimental_setWeightT(${Math.min(1, Math.max(0, (state.weight - 300) / 500)).toFixed(2)})`
-  }
-
   const key = state.style === 'italic' ? `{ weight: ${state.weight}, style: 'italic' }` : `{ weight: ${state.weight} }`
   return `import { createText, defineFamily } from 'lettra/three'
 
@@ -149,11 +131,34 @@ export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
 npx lettra bake Inter.ttf --weights 400,700 \\
   --italic Inter-Italic.ttf --charset latin-es \\
   --size 64 --pxrange 8 --out public/fonts/inter
+`
 
-# experimental: one atlas, continuous weight 300-800
-# (alpha channel carries the per-texel weight delta)
-npx lettra bake delta Inter.ttf --range 300,800 \\
-  --pxrange 12 --texture 1024 --out public/fonts/inter`
+export const richTextSnippet = `import { createRichText, defineFamily } from 'lettra/three'
+
+const inter = defineFamily({
+  src: [
+    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
+  ],
+})
+
+// spans resolve through the family, so an italic run inside a sentence is
+// one layout: wrapping, alignment and the baseline stay paragraph-wide
+await inter.loadAll()
+
+const rich = createRichText({
+  family: inter,
+  text: 'one layout, regular to bold to italic',
+  spans: [
+    { start: 23, end: 27, weight: 700 },
+    { start: 31, end: 37, style: 'italic' },
+  ],
+  layout: { align: 'center' },
+})
+scene.add(rich.group)
+
+// one mesh per distinct variant, so two italic spans still cost one draw`
 
 /** Static code blocks highlighted server-side at build. */
 export interface HighlightedSnippets {

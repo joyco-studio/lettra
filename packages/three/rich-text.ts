@@ -1,10 +1,10 @@
-/* EXPERIMENTAL: one paragraph, several family variants. One mesh per variant
+/* One paragraph, several family variants (italic or weight spans). One mesh per variant
  * bucket under a Group; wrapping and the wipe span stay paragraph-wide. */
 
 import { Group, Mesh } from 'three/webgpu'
 import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
 import { uniform } from 'three/tsl'
-import { experimental_layoutRuns } from '../core/runs'
+import { layoutRuns } from '../core/runs'
 import type { RunsLayoutResult } from '../core/runs'
 import { syntheticThresholdShift } from '../core/family'
 import type { VariantKey } from '../core/family'
@@ -38,8 +38,8 @@ export interface CreateRichTextOptions<E extends TextEffect | undefined = undefi
 export interface RichTextHandle<E extends TextEffect | undefined = undefined> {
   /** One child mesh per variant bucket. */
   group: Group
-  /** Shared across buckets. No `boldness`: each bucket's is owned by its own
-   * synthetic correction. `glyphIndex` ordinals are bucket-relative. */
+  /** Shared across buckets. No `boldness`: each bucket owns its own synthetic
+   * correction. */
   uniforms: Omit<TextUniforms, 'boldness'> & EffectUniforms<E>
   readonly layout: RunsLayoutResult
   setText(text: string, spans?: RichSpan[], layoutOptions?: LayoutOptions): void
@@ -73,7 +73,7 @@ function normalizeRuns(
   return runs
 }
 
-export function experimental_createRichText<E extends TextEffect | undefined = undefined>(
+export function createRichText<E extends TextEffect | undefined = undefined>(
   options: CreateRichTextOptions<E>
 ): RichTextHandle<E> {
   const { family } = options
@@ -115,7 +115,7 @@ export function experimental_createRichText<E extends TextEffect | undefined = u
       return variant
     })
 
-    currentLayout = experimental_layoutRuns(
+    currentLayout = layoutRuns(
       text,
       runKeys.map((key, i) => ({ font: variants[i].font, start: key.start, end: key.end })),
       layoutOptions
@@ -144,6 +144,8 @@ export function experimental_createRichText<E extends TextEffect | undefined = u
 
     clearMeshes()
     maps = []
+    // keep glyphIndex paragraph-global so stagger effects don't restart per bucket
+    let glyphIndexOffset = 0
     for (const byMap of buckets.values()) {
       for (const bucket of byMap.values()) {
         const { variant } = bucket
@@ -159,7 +161,9 @@ export function experimental_createRichText<E extends TextEffect | undefined = u
           ...geometryOptions,
           bounds,
           slant: variant.synthetic.slant,
+          glyphIndexOffset,
         })
+        glyphIndexOffset += bucket.glyphs.length
         // share fill/opacity; boldness is the bucket's synthetic correction
         const { material } = createTextMaterial({
           map: variant.map,

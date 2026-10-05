@@ -56,13 +56,6 @@ export const msdfFill = /* @__PURE__ */ defineNode(
   ({ distance, threshold, aa }) => smoothstep(threshold.sub(aa), threshold.add(aa), distance)
 )
 
-/** EXPERIMENTAL: delta-channel bakes store the wght-min field in RGB and the
- * per-texel delta toward wght-max in alpha. */
-export const experimental_msdfDeltaDistance = /* @__PURE__ */ defineNode(
-  { name: 'msdfDeltaDistance', inputs: { msdf: 'vec4', weightT: 'float', deltaScale: 'float' }, output: 'float' },
-  ({ msdf, weightT, deltaScale }) => msdfDistance({ msdf }).add(msdf.a.mul(2).sub(1).mul(deltaScale).mul(weightT))
-)
-
 /** Upstream values handed to post-sample field stages (`erosion`). */
 export interface TextFieldContext {
   /** Signed distance recovered from the atlas sample. */
@@ -147,12 +140,6 @@ export interface TextGraphOptions {
   opacity?: FloatNode
   /** Synthetic-bold shift; the default material feeds its uniform here. */
   boldness?: FloatNode
-  /** EXPERIMENTAL: delta-channel variable weight. */
-  experimental?: {
-    weightT: FloatNode
-    /** The font JSON's deltaScale. Default 1. */
-    deltaScale?: number
-  }
 }
 
 /** Every stage of the text graph as plain TSL nodes. Wire any of them into
@@ -189,13 +176,7 @@ export function buildTextGraph(options: TextGraphOptions): TextGraph {
 
   const sampleUv = stages?.uv ? stages.uv(uv()) : uv()
   const textureNode = texture(options.map, sampleUv)
-  const distance = options.experimental
-    ? experimental_msdfDeltaDistance({
-        msdf: textureNode,
-        weightT: options.experimental.weightT,
-        deltaScale: float(options.experimental.deltaScale ?? 1),
-      })
-    : msdfDistance({ msdf: textureNode })
+  const distance = msdfDistance({ msdf: textureNode })
   const aa = msdfAA({ distance })
 
   const field: TextFieldContext = { distance, aa }
@@ -234,18 +215,12 @@ export interface TextMaterialOptions<
   /** Opt-in pre-made effect (e.g. `wipe()` from `effects/wipe`); its
    * uniforms merge into the returned bag. */
   effect?: E
-  /** EXPERIMENTAL: delta-channel atlas; adds a tweenable `weightT` uniform. */
-  experimental?: {
-    weightT?: number
-    /** The font JSON's deltaScale. Default 1. */
-    deltaScale?: number
-  }
 }
 
 export interface TextMaterialResult<E extends TextEffect | undefined = undefined> {
   material: MeshBasicNodeMaterial
   /** Tween `.value` on these directly. */
-  uniforms: TextUniforms & EffectUniforms<E> & { weightT?: TextUniforms['opacity'] }
+  uniforms: TextUniforms & EffectUniforms<E>
   /** The atlas sampler node — reassign `.value` to swap atlases atomically. */
   textureNode: TextureNode
   /** The material's graph stages (see `TextGraph`), reusable in other slots
@@ -263,14 +238,12 @@ export function createTextMaterial<E extends TextEffect | undefined = undefined>
   options: TextMaterialOptions<E>
 ): TextMaterialResult<E> {
   const base = options.uniforms ?? createTextUniforms(options)
-  const weightT = options.experimental ? uniform(options.experimental.weightT ?? 0) : undefined
   const nodes = buildTextGraph({
     map: options.map,
     effect: options.effect,
     color: base.fill,
     opacity: base.opacity,
     boldness: base.boldness,
-    ...(weightT ? { experimental: { weightT, deltaScale: options.experimental?.deltaScale } } : {}),
   })
 
   const material = new MeshBasicNodeMaterial()
@@ -281,11 +254,7 @@ export function createTextMaterial<E extends TextEffect | undefined = undefined>
 
   return {
     material,
-    uniforms: {
-      ...base,
-      ...options.effect?.uniforms,
-      ...(weightT ? { weightT } : {}),
-    } as TextMaterialResult<E>['uniforms'],
+    uniforms: { ...base, ...options.effect?.uniforms } as TextMaterialResult<E>['uniforms'],
     textureNode: nodes.textureNode,
     nodes,
   }

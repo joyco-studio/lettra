@@ -213,7 +213,7 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
   )
 }
 
-const FAMILY_INITIAL: FamilyState = { weight: 400, style: 'normal', vf: false }
+const FAMILY_INITIAL: FamilyState = { weight: 400, style: 'normal' }
 /** The weights actually baked; the slider magnetizes to these in baked mode. */
 const BAKED_STOPS = [200, 400, 700]
 
@@ -260,24 +260,14 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <ControlBar>
-            <ControlCell label="source">
-              <Segment active={!state.vf} onClick={() => patch({ vf: false })}>
-                baked
+            <ControlCell label="style">
+              <Segment active={state.style === 'normal'} onClick={() => patch({ style: 'normal' })}>
+                roman
               </Segment>
-              <Segment active={state.vf} onClick={() => patch({ vf: true })}>
-                variable
+              <Segment active={state.style === 'italic'} onClick={() => patch({ style: 'italic' })}>
+                italic
               </Segment>
             </ControlCell>
-            {!state.vf && (
-              <ControlCell label="style">
-                <Segment active={state.style === 'normal'} onClick={() => patch({ style: 'normal' })}>
-                  roman
-                </Segment>
-                <Segment active={state.style === 'italic'} onClick={() => patch({ style: 'italic' })}>
-                  italic
-                </Segment>
-              </ControlCell>
-            )}
             <ControlCell label="weight" grow>
               <Slider
                 value={[state.weight]}
@@ -286,10 +276,8 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
                 step={10}
                 className="min-w-16 flex-1"
                 onValueChange={([value]) => {
-                  // baked mode magnetizes to the baked stops so exact hits
-                  // are reachable; vf slides the GPU field live instead
-                  const weight = state.vf ? value : (BAKED_STOPS.find((stop) => Math.abs(value - stop) <= 25) ?? value)
-                  view?.setLiveWeight(weight)
+                  // magnetize to the baked stops so exact hits are reachable
+                  const weight = BAKED_STOPS.find((stop) => Math.abs(value - stop) <= 25) ?? value
                   patch({ weight })
                 }}
               />

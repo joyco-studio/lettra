@@ -314,21 +314,49 @@ inter.dispose()                  // the family owns its atlases, texts never do
 family at one size and distance range; `defineFamily` warns when loaded
 bakes disagree.
 
-Experimental, shipped behind `experimental_` prefixes:
+## Italic spans inside one text
 
-- **Continuous weight from one atlas.** `lettra bake delta` encodes the
-  light-to-black stroke delta in the atlas alpha channel; a variant declares
-  `weightRange: [300, 800]` instead of `weight`, resolution returns the
-  interpolation `t`, and `text.experimental_setWeightT(t)` slides the GPU
-  field continuously (advances re-layout on `setVariant`, not per frame).
-- **Style runs.** `experimental_createRichText({ family, text, spans })`
-  lays out one paragraph across variants (italic or weight spans), wrapping
-  paragraph-wide, one draw call per distinct variant. Kerning drops at span
-  boundaries; font-bound effects follow the base variant.
+`createRichText` lays out one paragraph across several variants, so an
+italic run inside a sentence is still a single layout: wrapping, alignment
+and the baseline are paragraph-wide, not per span.
+
+```ts
+import { createRichText, defineFamily } from 'lettra/three'
+
+await inter.loadAll()                     // spans resolve synchronously
+
+const rich = createRichText({
+  family: inter,
+  text: 'one layout, regular to bold to italic',
+  spans: [
+    { start: 23, end: 27, weight: 700 },
+    { start: 31, end: 37, style: 'italic' },
+  ],
+  layout: { align: 'center' },
+})
+scene.add(rich.group)
+```
+
+Spans carry the same `{ weight, style }` keys `family.load` takes, so they
+resolve through the same CSS-like path, synthetic corrections included. Gaps
+between spans use the base `variant` key. Runs bucket by resolved variant,
+so two italic spans cost one draw call, not two.
+
+Worth knowing:
+
+- Variants must be loaded first — `createRichText` resolves through the
+  synchronous `family.get` and throws naming the missing weight and style.
+- Kerning drops at span boundaries; the pair tables are per font.
+- Mixed bake sizes normalise to the first run's font, and baselines align to
+  the deepest one.
+- `fill` and `opacity` are shared across buckets; `boldness` is not, since
+  each bucket carries its own synthetic correction.
+- Font-bound effects (`scramble`) build their pool from one font, so they
+  only match the base variant.
 
 ## Baking fonts
 
-Dev-time, one command. `npx lettra bake` (the `lettra-bake` package under the hood) preflights the font, instances
+Dev-time, one command. `npx lettra bake` preflights the font, instances
 variable fonts to static weights with fontTools (Python; the step that
 keeps GPOS kerning alive), bakes with pinned MSDF settings, recovers
 class-based GPOS pairs that the generator's parser misses, and emits the
@@ -338,10 +366,6 @@ minified lettra JSON plus a ready `defineFamily` block:
 pip install fonttools   # one-time prerequisite for variable fonts
 npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
   --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
-
-# experimental: one atlas, continuous weight
-npx lettra bake delta Inter.ttf --range 300,800 --pxrange 12 --texture 1024 \
-  --out public/fonts/inter
 ```
 
 Manual routes still work: raw msdf-bmfont-xml, or the browser tool

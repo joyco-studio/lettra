@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fromBMFont, getFontLookup, isBMFont, loadFont, parseFont } from '../parse'
 import miniFont from './fixtures/mini-font.json'
-import miniVariableFont from './fixtures/mini-variable-font.json'
 import bmfontSample from './fixtures/bmfont-sample.json'
 
 describe('fromBMFont', () => {
@@ -73,33 +72,6 @@ describe('parseFont', () => {
     expect(warn.mock.calls.flat().join(' ')).toMatch(/space/)
     expect(warn.mock.calls.flat().join(' ')).toMatch(/\?/)
     warn.mockRestore()
-  })
-})
-
-describe('parseFont delta-channel fields', () => {
-  it('round-trips the optional variable-bake fields', () => {
-    const font = parseFont(miniVariableFont)
-    expect(font.weightRange).toEqual([300, 800])
-    expect(font.deltaChannel).toBe(true)
-    expect(font.deltaScale).toBe(2)
-    expect(font.glyphDeltas?.['H']).toEqual([1, -1, 2])
-    expect(font.kerningDeltas?.['AV']).toBe(2)
-    expect(font.metricsDelta).toEqual([4, 2])
-  })
-
-  it('leaves legacy fonts without delta fields', () => {
-    const font = parseFont(miniFont)
-    expect('weightRange' in font).toBe(false)
-    expect('glyphDeltas' in font).toBe(false)
-  })
-
-  it('throws descriptive errors for malformed delta fields', () => {
-    expect(() => parseFont({ ...miniVariableFont, weightRange: [800, 300] })).toThrow(/min < max/)
-    expect(() => parseFont({ ...miniVariableFont, weightRange: [400] })).toThrow(/weightRange/)
-    expect(() => parseFont({ ...miniVariableFont, glyphDeltas: { H: [1, 2] } })).toThrow(/tuple of 3/)
-    expect(() => parseFont({ ...miniVariableFont, glyphDeltas: { Z: [1, 2, 3] } })).toThrow(/no matching glyph/)
-    expect(() => parseFont({ ...miniVariableFont, kerningDeltas: { AV: 'x' } })).toThrow(/kerningDeltas/)
-    expect(() => parseFont({ ...miniVariableFont, metricsDelta: [1] })).toThrow(/metricsDelta/)
   })
 })
 

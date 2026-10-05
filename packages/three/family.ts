@@ -2,26 +2,21 @@ import type { Texture, WebGPURenderer } from 'three/webgpu'
 import { loadFont } from '../core/parse'
 import { resolveVariant } from '../core/family'
 import type { FontStyle, SynthesisOptions, SyntheticCorrection, VariantKey } from '../core/family'
-import { experimental_interpolateFont } from '../core/variable'
 import type { MSDFFont } from '../core/types'
-import { experimental_loadDeltaFontTexture, loadFontTexture } from './texture'
+import { loadFontTexture } from './texture'
 
-/** `weight` declares a static bake; `weightRange` an experimental
- * delta-channel bake covering a continuous span. */
-export type FamilyVariantSource = {
+export interface FamilyVariantSource {
   json: string
   atlas: string
+  weight: number
   style?: FontStyle
-} & ({ weight: number; weightRange?: never } | { weightRange: [number, number]; weight?: never })
+}
 
 export type VariantState = 'idle' | 'loading' | 'loaded' | 'error'
 
 export interface FamilyVariant {
   readonly source: FamilyVariantSource
-  /** Static weight, or the range midpoint for delta bakes. */
   readonly weight: number
-  /** Present for delta-channel bakes. */
-  readonly weightRange?: [number, number]
   readonly style: FontStyle
   readonly state: VariantState
   readonly error?: Error
@@ -32,13 +27,11 @@ export interface FamilyVariant {
 export interface LoadedVariant {
   font: MSDFFont
   map: Texture
-  /** The baked weight serving the request (clamped in-range for delta bakes). */
+  /** The baked weight serving the request. */
   weight: number
   style: FontStyle
   /** Zeros on an exact hit. */
   synthetic: SyntheticCorrection
-  /** EXPERIMENTAL: interpolation t for delta-channel bakes. */
-  weightT?: number
 }
 
 export interface DefineFamilyOptions {
@@ -48,16 +41,16 @@ export interface DefineFamilyOptions {
   /** Transport seam (tests, KTX2…). */
   loaders?: {
     font?: (url: string) => Promise<MSDFFont>
-    texture?: (url: string, delta: boolean) => Promise<Texture>
+    texture?: (url: string) => Promise<Texture>
   }
 }
 
 export interface FontFamily {
   readonly variants: readonly FamilyVariant[]
-  /** Sorted unique declared weights; range bakes contribute their endpoints. */
+  /** Sorted unique declared weights. */
   readonly weights: number[]
   readonly styles: FontStyle[]
-  /** Exact bakes only; inside a declared range counts. */
+  /** Exact bakes only. */
   has(key?: VariantKey): boolean
   /** Resolves, loads the serving bake, returns it with corrections.
    * Concurrent loads of one bake share a request. */
@@ -85,32 +78,20 @@ interface Slot {
   result?: { font: MSDFFont; map: Texture }
 }
 
-/** Range bakes clamp the request into their span, so in-range requests match
- * at distance 0 and out-of-range ones compete from the nearest endpoint. */
-function toDescriptor(slot: Slot, requestedWeight: number) {
-  const { source } = slot
-  const weight = source.weightRange
-    ? Math.min(source.weightRange[1], Math.max(source.weightRange[0], requestedWeight))
-    : source.weight
-  return { weight, style: slot.style, slot }
-}
-
 export function defineFamily(options: DefineFamilyOptions): FontFamily {
   if (!options.src || options.src.length === 0) fail('defineFamily requires at least one src entry')
 
   const loadFontJson = options.loaders?.font ?? loadFont
-  const loadAtlas =
-    options.loaders?.texture ??
-    ((url: string, delta: boolean) => (delta ? experimental_loadDeltaFontTexture(url) : loadFontTexture(url)))
+  const loadAtlas = options.loaders?.texture ?? loadFontTexture
 
   const slots: Slot[] = options.src.map((source) => ({ source, style: source.style ?? 'normal', state: 'idle' }))
   for (let i = 0; i < slots.length; i++) {
     for (let j = i + 1; j < slots.length; j++) {
       const a = slots[i]
       const b = slots[j]
-      const aKey = a.source.weightRange ? `r${a.source.weightRange.join('-')}` : `w${a.source.weight}`
-      const bKey = b.source.weightRange ? `r${b.source.weightRange.join('-')}` : `w${b.source.weight}`
-      if (aKey === bKey && a.style === b.style) fail(`duplicate variant ${aKey.slice(1)} ${a.style}`)
+      if (a.source.weight === b.source.weight && a.style === b.style) {
+        fail(`duplicate variant ${a.source.weight} ${a.style}`)
+      }
     }
   }
 
@@ -138,19 +119,16 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
     const startedAt = generation
     slot.state = 'loading'
     slot.error = undefined
-    const delta = slot.source.weightRange !== undefined
-    const pending = Promise.all([loadFontJson(slot.source.json), loadAtlas(slot.source.atlas, delta)]).then(
-      ([font, map]) => {
-        if (startedAt !== generation) {
-          map.dispose()
-          return { font, map }
-        }
-        slot.result = { font, map }
-        slot.state = 'loaded'
-        checkBakeConsistency()
-        return slot.result
+    const pending = Promise.all([loadFontJson(slot.source.json), loadAtlas(slot.source.atlas)]).then(([font, map]) => {
+      if (startedAt !== generation) {
+        map.dispose()
+        return { font, map }
       }
-    )
+      slot.result = { font, map }
+      slot.state = 'loaded'
+      checkBakeConsistency()
+      return slot.result
+    })
     pending.catch((error) => {
       if (startedAt !== generation) return
       // evict so a retry reloads; keep the error for introspection
@@ -163,57 +141,36 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
   }
 
   const resolveSlot = (key: VariantKey = {}) => {
-    const weight = key.weight ?? 400
-    const descriptors = slots.map((slot) => toDescriptor(slot, weight))
+    const descriptors = slots.map((slot) => ({ weight: slot.source.weight, style: slot.style, slot }))
     const resolved = resolveVariant(descriptors, key, options.synthesis)
-    const slot = resolved.source.slot
-    const weightT = slot.source.weightRange
-      ? (resolved.source.weight - slot.source.weightRange[0]) /
-        (slot.source.weightRange[1] - slot.source.weightRange[0])
-      : undefined
-    return { slot, resolved, weightT }
+    return { slot: resolved.source.slot, resolved }
   }
 
   const toLoaded = (
     slot: Slot,
     result: { font: MSDFFont; map: Texture },
     synthetic: SyntheticCorrection,
-    weightT: number | undefined,
     servedWeight: number
   ): LoadedVariant => ({
-    // interpolate layout metrics at the serving t; the atlas is shared
-    font: weightT !== undefined ? experimental_interpolateFont(result.font, weightT) : result.font,
+    font: result.font,
     map: result.map,
     weight: servedWeight,
     style: slot.style,
     synthetic,
-    ...(weightT !== undefined ? { weightT } : {}),
   })
 
   const family: FontFamily = {
     get variants() {
       return slots.map((slot) => ({
         source: slot.source,
-        weight: slot.source.weightRange
-          ? (slot.source.weightRange[0] + slot.source.weightRange[1]) / 2
-          : slot.source.weight,
-        ...(slot.source.weightRange ? { weightRange: slot.source.weightRange } : {}),
+        weight: slot.source.weight,
         style: slot.style,
         state: slot.state,
         error: slot.error,
       }))
     },
     get weights() {
-      const weights = new Set<number>()
-      for (const slot of slots) {
-        if (slot.source.weightRange) {
-          weights.add(slot.source.weightRange[0])
-          weights.add(slot.source.weightRange[1])
-        } else {
-          weights.add(slot.source.weight)
-        }
-      }
-      return [...weights].sort((a, b) => a - b)
+      return [...new Set(slots.map((slot) => slot.source.weight))].sort((a, b) => a - b)
     },
     get styles() {
       return [...new Set(slots.map((slot) => slot.style))]
@@ -221,18 +178,12 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
     has(key = {}) {
       const weight = key.weight ?? 400
       const style = key.style ?? 'normal'
-      return slots.some((slot) => {
-        if (slot.style !== style) return false
-        if (slot.source.weightRange) {
-          return weight >= slot.source.weightRange[0] && weight <= slot.source.weightRange[1]
-        }
-        return slot.source.weight === weight
-      })
+      return slots.some((slot) => slot.style === style && slot.source.weight === weight)
     },
     async load(key = {}) {
-      const { slot, resolved, weightT } = resolveSlot(key)
+      const { slot, resolved } = resolveSlot(key)
       const result = await ensureLoaded(slot)
-      return toLoaded(slot, result, resolved.synthetic, weightT, resolved.source.weight)
+      return toLoaded(slot, result, resolved.synthetic, resolved.source.weight)
     },
     async loadAll(filter) {
       const snapshot = filter ? family.variants : []
@@ -240,16 +191,14 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
       return Promise.all(
         chosen.map(async (slot) => {
           const result = await ensureLoaded(slot)
-          const weightT = slot.source.weightRange ? 0 : undefined
-          const weight = slot.source.weightRange ? slot.source.weightRange[0] : slot.source.weight
-          return toLoaded(slot, result, { boldness: 0, slant: 0 }, weightT, weight)
+          return toLoaded(slot, result, { boldness: 0, slant: 0 }, slot.source.weight)
         })
       )
     },
     get(key = {}) {
-      const { slot, resolved, weightT } = resolveSlot(key)
+      const { slot, resolved } = resolveSlot(key)
       if (!slot.result) return null
-      return toLoaded(slot, slot.result, resolved.synthetic, weightT, resolved.source.weight)
+      return toLoaded(slot, slot.result, resolved.synthetic, resolved.source.weight)
     },
     warmup(renderer) {
       for (const slot of slots) {

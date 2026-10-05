@@ -2,18 +2,8 @@
  * Atlas pixels, y-down, origin at the atlas top-left. */
 export type GlyphTuple = [number, number, number, number, number, number, number]
 
-/** Per-glyph metric delta for delta-channel variable bakes:
- * [Δxoffset, Δyoffset, Δxadvance] from the wght-min base toward wght-max.
- * Rects (x, y, w, h) are shared between both ends by construction. */
-export type GlyphDeltaTuple = [number, number, number]
-
 /** The minified font schema lettra consumes — the output of an MSDF bake
- * (atlas PNG + this JSON). Produce it from a BMFont JSON via `fromBMFont`.
- *
- * Delta-channel variable bakes (experimental) add the optional fields below:
- * metrics and the RGB field are the wght-min instance, every delta is
- * max − min, and the atlas alpha channel stores the per-texel median-distance
- * delta (decode: (a × 2 − 1) × deltaScale). */
+ * (atlas PNG + this JSON). Produce it from a BMFont JSON via `fromBMFont`. */
 export interface MSDFFont {
   name: string
   /** Font size (px) the atlas was baked at. Scale factor between layout px and em. */
@@ -29,18 +19,6 @@ export interface MSDFFont {
   glyphs: Record<string, GlyphTuple>
   /** Keyed by the two characters of the pair concatenated, e.g. "AV" → -3. */
   kerning: Record<string, number>
-  /** Present on delta-channel variable bakes: [wghtMin, wghtMax]. */
-  weightRange?: [number, number]
-  /** True when the atlas alpha channel carries the weight-delta field. */
-  deltaChannel?: boolean
-  /** Decode scale for the alpha delta. Default 1. */
-  deltaScale?: number
-  /** Keyed by char; glyphs absent here have zero metric delta. */
-  glyphDeltas?: Record<string, GlyphDeltaTuple>
-  /** Keyed like `kerning`; pairs absent here have zero delta. */
-  kerningDeltas?: Record<string, number>
-  /** [ΔlineHeight, Δbase] from min to max weight. */
-  metricsDelta?: [number, number]
 }
 
 /** Anything `parseFont` accepts: an already-parsed font (passes through

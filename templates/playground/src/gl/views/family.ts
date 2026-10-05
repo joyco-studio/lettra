@@ -1,5 +1,5 @@
 import { PerspectiveCamera, Scene } from 'three/webgpu'
-import { createText, defineFamily, experimental_createRichText, weightToT } from 'lettra/three'
+import { createRichText, createText, defineFamily } from 'lettra/three'
 import type { FontFamily, TextHandle } from 'lettra/three'
 import type { Stage } from '../stage'
 import { frameText } from '../stage'
@@ -7,28 +7,24 @@ import { frameText } from '../stage'
 export interface FamilyState {
   weight: number
   style: 'normal' | 'italic'
-  /** true → the single delta-channel atlas; false → the static bakes. */
-  vf: boolean
 }
 
 /** Resolution readout for the DOM overlay. */
 export interface FamilyInfo {
   served: string
-  mode: 'baked' | 'synthetic' | 'interpolated'
+  mode: 'baked' | 'synthetic'
   details: string
 }
 
 export interface FamilyView {
   apply(state: FamilyState): Promise<FamilyInfo | null>
-  /** vf only: slides the weight uniform without re-layout (per-frame safe). */
-  setLiveWeight(weight: number): void
   dispose(): void
 }
 
 const TEXT = 'Sphinx of black quartz,\njudge my vow'
 
-/** fig. 02: baked variants with synthetic corrections between them, or one
- * delta-channel atlas interpolating continuously on the GPU. */
+/** fig. 02: a family resolving weight and style, with a rich-text line below
+ * mixing three variants in one layout. */
 export async function createFamilyView(stage: Stage, el: HTMLElement, initial: FamilyState): Promise<FamilyView> {
   const scene = new Scene()
   const camera = new PerspectiveCamera(35, 1, 0.1, 100)
@@ -43,19 +39,13 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
       { json: '/fonts/inter-700i.json', atlas: '/fonts/inter-700i.png', weight: 700, style: 'italic' },
     ],
   })
-  const interVf: FontFamily = defineFamily({
-    src: [{ json: '/fonts/inter-vf.json', atlas: '/fonts/inter-vf.png', weightRange: [300, 800] }],
-  })
 
   // the demo exercises every variant; a page would family.load() what it uses
-  await Promise.all([inter.loadAll(), interVf.loadAll()])
+  await inter.loadAll()
   inter.warmup(stage.renderer)
-  interVf.warmup(stage.renderer)
 
   let current = initial
-  const initialVariant = current.vf
-    ? await interVf.load({ weight: current.weight })
-    : await inter.load({ weight: current.weight, style: current.style })
+  const initialVariant = await inter.load({ weight: current.weight, style: current.style })
 
   const text: TextHandle = createText({
     variant: initialVariant,
@@ -66,7 +56,7 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
   scene.add(text.mesh)
 
   // one paragraph, three variants; spans resolve through the same family
-  const rich = experimental_createRichText({
+  const rich = createRichText({
     family: inter,
     text: 'one layout, regular to bold to italic',
     spans: [
@@ -110,13 +100,6 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
   let token = 0
 
   const describe = (state: FamilyState, variant: Awaited<ReturnType<FontFamily['load']>>): FamilyInfo => {
-    if (state.vf) {
-      return {
-        served: `one atlas, wght ${variant.weight}`,
-        mode: 'interpolated',
-        details: `t = ${(variant.weightT ?? 0).toFixed(2)} · advances from deltas, strokes from the alpha field`,
-      }
-    }
     const servedStyle = variant.style === 'italic' ? ' italic' : ''
     const corrections: string[] = []
     if (variant.synthetic.boldness !== 0)
@@ -141,27 +124,17 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
     async apply(next) {
       const mine = ++token
       current = next
-      const variant = next.vf
-        ? await interVf.load({ weight: next.weight })
-        : await inter.load({ weight: next.weight, style: next.style })
+      const variant = await inter.load({ weight: next.weight, style: next.style })
       if (mine !== token) return null // a newer apply superseded this one
       text.setVariant(variant)
       frame()
       return describe(next, variant)
-    },
-    setLiveWeight(weight) {
-      if (!current.vf) return
-      const vf = interVf.get({ weight })
-      if (!vf) return
-      text.experimental_setWeightT(weightToT(vf.font, weight))
-      handle.invalidate()
     },
     dispose() {
       handle.dispose()
       text.dispose() // family-owned atlas: skipped automatically
       rich.dispose()
       inter.dispose()
-      interVf.dispose()
     },
   }
 }

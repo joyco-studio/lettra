@@ -13,7 +13,6 @@ export {
   msdfFill,
   msdfThreshold,
   msdfBolden,
-  experimental_msdfDeltaDistance,
   textStageOrder,
 } from './material'
 export type {
@@ -52,7 +51,6 @@ export type {
   LoadedVariant,
   VariantState,
 } from './family'
-export { experimental_loadDeltaFontTexture } from './texture'
 export { resolveVariant, syntheticThresholdShift, DEFAULT_SYNTHESIS } from '../core/family'
 export type {
   FontStyle,
@@ -62,6 +60,5 @@ export type {
   SyntheticCorrection,
   ResolvedVariant,
 } from '../core/family'
-export { isVariableFont, weightToT, experimental_interpolateFont } from '../core/variable'
-export { experimental_createRichText } from './rich-text'
+export { createRichText } from './rich-text'
 export type { CreateRichTextOptions, RichSpan, RichTextHandle } from './rich-text'

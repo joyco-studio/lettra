@@ -179,15 +179,6 @@ describe('defineFamily', () => {
     expect(disposed).toHaveBeenCalled()
   })
 
-  it('exposes weightRange on delta variants so sliders can mark the span', () => {
-    const family = defineFamily({
-      src: [{ json: '/vf.json', atlas: '/vf.png', weightRange: [300, 800] }],
-      loaders: { font: () => Promise.resolve(makeFont('vf')), texture: () => Promise.resolve(new Texture()) },
-    })
-    expect(family.variants[0].weightRange).toEqual([300, 800])
-    expect(family.weights).toEqual([300, 800])
-  })
-
   it('warns when loaded variants were baked inconsistently', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const mixed: Record<string, MSDFFont> = {
@@ -201,25 +192,5 @@ describe('defineFamily', () => {
     await family.loadAll()
     expect(warn.mock.calls.flat().join(' ')).toMatch(/baked inconsistently/)
     warn.mockRestore()
-  })
-
-  it('serves weightRange bakes in-range with weightT and interpolated metrics', async () => {
-    const vf = makeFont('vf', {
-      weightRange: [300, 800],
-      deltaChannel: true,
-      glyphDeltas: { H: [0, 0, 4] },
-    })
-    const family = defineFamily({
-      src: [{ json: '/vf.json', atlas: '/vf.png', weightRange: [300, 800] }],
-      loaders: { font: () => Promise.resolve(vf), texture: () => Promise.resolve(new Texture()) },
-    })
-    expect(family.has({ weight: 550 })).toBe(true)
-    const mid = await family.load({ weight: 550 })
-    expect(mid.weightT).toBeCloseTo(0.5)
-    expect(mid.synthetic.boldness).toBe(0)
-    expect(mid.font.glyphs['H'][6]).toBeCloseTo(12) // advance 10 + 0.5 × 4
-    const out = await family.load({ weight: 900 })
-    expect(out.weightT).toBe(1)
-    expect(out.synthetic.boldness).toBeCloseTo(0.007) // 100 past the range end
   })
 })

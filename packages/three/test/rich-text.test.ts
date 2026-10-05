@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { Texture } from 'three/webgpu'
 import type { Mesh } from 'three/webgpu'
 import { defineFamily } from '../family'
-import { experimental_createRichText } from '../rich-text'
+import { createRichText } from '../rich-text'
 import type { MSDFFont } from '../../core/types'
 
 const makeFont = (name: string): MSDFFont => ({
@@ -38,10 +38,10 @@ async function loadedFamily() {
   return family
 }
 
-describe('experimental_createRichText', () => {
+describe('createRichText', () => {
   it('buckets spans by variant into one mesh each under a group', async () => {
     const family = await loadedFamily()
-    const handle = experimental_createRichText({
+    const handle = createRichText({
       family,
       text: 'Ha Ha Ha',
       spans: [
@@ -60,7 +60,7 @@ describe('experimental_createRichText', () => {
   it('throws when a span variant is not loaded', async () => {
     const family = await loadedFamily()
     expect(() =>
-      experimental_createRichText({
+      createRichText({
         family,
         text: 'Ha',
         spans: [{ start: 0, end: 1, weight: 700 }],
@@ -70,13 +70,39 @@ describe('experimental_createRichText', () => {
       src: [{ json: '/f-400.json', atlas: '/f-400.png', weight: 400 }],
       loaders: { font: (url) => Promise.resolve(fonts[url]), texture: () => Promise.resolve(new Texture()) },
     })
-    expect(() => experimental_createRichText({ family: empty, text: 'Ha' })).toThrow(/not loaded/)
+    expect(() => createRichText({ family: empty, text: 'Ha' })).toThrow(/not loaded/)
+  })
+
+  it('keeps glyphIndex paragraph-global across buckets', async () => {
+    const family = await loadedFamily()
+    const handle = createRichText({
+      family,
+      text: 'Ha Ha',
+      spans: [{ start: 3, end: 5, style: 'italic' }],
+    })
+    const indices = handle.group.children.flatMap((child) =>
+      Array.from((child as Mesh).geometry.getAttribute('glyphIndex').array)
+    )
+    // 4 visible glyphs over 2 buckets: ordinals must not restart per bucket
+    expect([...new Set(indices)].sort((a, b) => a - b)).toEqual([0, 1, 2, 3])
+    handle.dispose()
+  })
+
+  it('exposes a flattened glyphs array so the layout reads like a single-font one', async () => {
+    const family = await loadedFamily()
+    const handle = createRichText({
+      family,
+      text: 'Ha Ha',
+      spans: [{ start: 3, end: 5, style: 'italic' }],
+    })
+    expect(handle.layout.glyphs.map((g) => g.index)).toEqual([0, 1, 3, 4])
+    handle.dispose()
   })
 
   it('rejects overlapping spans', async () => {
     const family = await loadedFamily()
     expect(() =>
-      experimental_createRichText({
+      createRichText({
         family,
         text: 'HaHa',
         spans: [
@@ -89,7 +115,7 @@ describe('experimental_createRichText', () => {
 
   it('rebuilds on setText and notifies listeners', async () => {
     const family = await loadedFamily()
-    const handle = experimental_createRichText({ family, text: 'Ha' })
+    const handle = createRichText({ family, text: 'Ha' })
     let fired = 0
     handle.onChange(() => fired++)
     handle.setText('Ha Ha', [{ start: 3, end: 5, style: 'italic' }])

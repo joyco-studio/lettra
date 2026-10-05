@@ -3,7 +3,7 @@ import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
 import { layout } from '../core/layout'
 import { parseFont } from '../core/parse'
 import { syntheticThresholdShift } from '../core/family'
-import type { FontInput, LayoutOptions, LayoutResult, MSDFFont } from '../core/types'
+import type { FontInput, LayoutOptions, LayoutResult } from '../core/types'
 import type { LoadedVariant } from './family'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
@@ -50,7 +50,7 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
   mesh: Mesh
   /** Tween `.value` on these: fill, opacity, boldness, plus whatever the
    * material's effect contributes (e.g. wipeIn/wipeOut from `wipe()`). */
-  uniforms: TextUniforms & EffectUniforms<E> & { weightT?: TextUniforms['opacity'] }
+  uniforms: TextUniforms & EffectUniforms<E>
   /** The material's graph stages as plain TSL nodes (see `TextGraph`) —
    * reuse them in other slots and materials. */
   nodes: TextGraph
@@ -63,10 +63,6 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
   /** Swaps to a family-resolved variant: font, atlas, synthetic boldness and
    * slant, all in the same synchronous block (`swapFont` underneath). */
   setVariant(variant: LoadedVariant, next?: { text?: string; layout?: LayoutOptions }): void
-  /** EXPERIMENTAL — slides the delta-channel weight uniform only (per-frame
-   * safe). Advances don't reflow mid-animation; call `setVariant` with the
-   * resting weight to re-layout. Requires a delta-channel variant. */
-  experimental_setWeightT(t: number): void
   /** Uploads the atlas and compiles the pipeline off the hot path. */
   warmup(renderer: WebGPURenderer, camera: Camera, scene?: Scene): Promise<void>
   /** Fires whenever the rendered output changed (text set, font swapped,
@@ -76,15 +72,6 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
    * text owns it — i.e. it came in as `{ font, map }` — and left alone when
    * it came from a family variant; `{ map }` overrides either default. */
   dispose(options?: { map?: boolean }): void
-}
-
-let warnedStaticWeightT = false
-function warnStaticWeightT() {
-  if (warnedStaticWeightT) return
-  warnedStaticWeightT = true
-  console.warn(
-    '[lettra] weightT ignored: this text was not created from a delta-channel variant, so the material has no weight interpolation path'
-  )
 }
 
 /** High-level text object: owns layout → geometry → material wiring and the
@@ -103,28 +90,10 @@ export function createText<E extends TextEffect | undefined = undefined>(options
 
   let currentLayout = layout(font, text, layoutOptions)
 
-  // one bag across material rebuilds, so callers keep their uniform references
+  // one bag, so a shared bag passed in via material.uniforms stays the thing
+  // setVariant writes boldness to
   const uniformBag = options.material?.uniforms ?? createTextUniforms(options.material)
-  const uniforms = {} as TextHandle<E>['uniforms']
-
-  const deltaOptions = (source: { font: MSDFFont; weightT?: number } | undefined) =>
-    source?.font.deltaChannel ? { weightT: source.weightT ?? 0, deltaScale: source.font.deltaScale ?? 1 } : undefined
-
-  const buildMaterial = (experimental: TextMaterialOptions<E>['experimental']) => {
-    const built = createTextMaterial({
-      ...options.material,
-      map,
-      uniforms: uniformBag,
-      experimental: options.material?.experimental ?? experimental,
-    } as TextMaterialOptions<E>)
-    for (const key of Object.keys(uniforms)) {
-      if (!(key in built.uniforms)) delete (uniforms as Record<string, unknown>)[key]
-    }
-    Object.assign(uniforms, built.uniforms)
-    return built
-  }
-
-  let active = buildMaterial(deltaOptions(initialVariant))
+  const active = createTextMaterial({ ...options.material, map, uniforms: uniformBag } as TextMaterialOptions<E>)
   if (initialVariant) uniformBag.boldness.value = syntheticThresholdShift(initialVariant.synthetic.boldness, font)
   const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), active.material)
 
@@ -151,10 +120,8 @@ export function createText<E extends TextEffect | undefined = undefined>(options
 
   return {
     mesh,
-    uniforms,
-    get nodes() {
-      return active.nodes
-    },
+    uniforms: active.uniforms,
+    nodes: active.nodes,
     get layout() {
       return currentLayout
     },
@@ -170,23 +137,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
       uniformBag.boldness.value = syntheticThresholdShift(variant.synthetic.boldness, variant.font)
       geometryOptions = { ...geometryOptions, slant: variant.synthetic.slant }
       ownsMap = false
-      const delta = deltaOptions(variant)
-      if (!!delta !== !!uniforms.weightT) {
-        // the delta term is compiled in, so crossing that line needs a rebuild
-        const previous = active.material
-        map = variant.map
-        active = buildMaterial(delta)
-        mesh.material = active.material
-        previous.dispose()
-      } else if (uniforms.weightT) {
-        uniforms.weightT.value = variant.weightT ?? 0
-      }
       swapFont({ font: variant.font, map: variant.map, ...next })
-    },
-    experimental_setWeightT(t) {
-      if (!uniforms.weightT) return warnStaticWeightT()
-      uniforms.weightT.value = t
-      notify()
     },
     async warmup(renderer, camera, scene) {
       await warmup(renderer, mesh, camera, { scene, textures: [map] })

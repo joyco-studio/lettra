@@ -1,4 +1,4 @@
-/* EXPERIMENTAL: one paragraph, several fonts. Wrapping is whole-paragraph,
+/* One paragraph, several fonts. Wrapping is whole-paragraph,
  * kerning drops at run boundaries, mixed bake sizes normalize to the first
  * run's font, and baselines align to the deepest normalized base. */
 
@@ -6,7 +6,7 @@ import { createGlyphResolver, createPenMeasure, placeLines } from './layout'
 import type { PenHooks } from './layout'
 import { getFontLookup } from './parse'
 import { wrapLines } from './wrap'
-import type { LayoutGlyph, LayoutMetrics, LayoutOptions, MSDFFont } from './types'
+import type { LayoutGlyph, LayoutOptions, LayoutResult, MSDFFont } from './types'
 
 export interface LayoutRun {
   font: MSDFFont
@@ -15,14 +15,11 @@ export interface LayoutRun {
   end: number
 }
 
-export interface RunsLayoutResult {
+/** A `LayoutResult` plus the per-run split, so anything that accepts a
+ * single-font layout accepts this too. */
+export interface RunsLayoutResult extends LayoutResult {
   /** Input order; glyphs carry global `index` and `line`. */
   runs: Array<{ run: number; glyphs: LayoutGlyph[] }>
-  width: number
-  height: number
-  inkOrigin: { x: number; y: number }
-  /** fontSize is the first run's — the normalization reference. */
-  metrics: LayoutMetrics
 }
 
 function fail(message: string): never {
@@ -31,7 +28,7 @@ function fail(message: string): never {
 
 /** One pen, wrap pass and line grid across runs. Coordinates come out in the
  * first run font's layout px. */
-export function experimental_layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions = {}): RunsLayoutResult {
+export function layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions = {}): RunsLayoutResult {
   if (runs.length === 0) fail('layoutRuns requires at least one run')
   let cursor = 0
   for (const run of runs) {
@@ -83,6 +80,7 @@ export function experimental_layoutRuns(text: string, runs: LayoutRun[], opts: L
   const { hasInk } = placed
   return {
     runs: buckets.map((glyphs, run) => ({ run, glyphs })),
+    glyphs: buckets.flat().sort((a, b) => a.index - b.index),
     width: hasInk ? placed.maxX - placed.minX : 0,
     height: hasInk ? placed.maxY - placed.minY : 0,
     inkOrigin: { x: hasInk ? placed.minX : 0, y: hasInk ? placed.minY : 0 },

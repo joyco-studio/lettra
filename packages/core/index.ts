@@ -16,6 +16,5 @@ export type {
   SyntheticCorrection,
   ResolvedVariant,
 } from './family'
-export { isVariableFont, weightToT, experimental_interpolateFont } from './variable'
-export { experimental_layoutRuns } from './runs'
+export { layoutRuns } from './runs'
 export type { LayoutRun, RunsLayoutResult } from './runs'

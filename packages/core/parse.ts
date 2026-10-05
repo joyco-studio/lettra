@@ -127,8 +127,7 @@ function validateMSDFFont(data: Record<string, unknown>): MSDFFont {
     }
   }
   if (data.kerning !== undefined && !isRecord(data.kerning)) fail('font.kerning must be an object')
-  validateDeltaFields(data)
-  const font: MSDFFont = {
+  return {
     name: typeof data.name === 'string' ? data.name : 'unknown',
     size: data.size as number,
     lineHeight: data.lineHeight as number,
@@ -137,57 +136,6 @@ function validateMSDFFont(data: Record<string, unknown>): MSDFFont {
     atlas: { width: atlas.width, height: atlas.height },
     glyphs: data.glyphs as Record<string, GlyphTuple>,
     kerning: (data.kerning ?? {}) as Record<string, number>,
-  }
-  for (const key of [
-    'weightRange',
-    'deltaChannel',
-    'deltaScale',
-    'glyphDeltas',
-    'kerningDeltas',
-    'metricsDelta',
-  ] as const) {
-    if (data[key] !== undefined) (font as unknown as Record<string, unknown>)[key] = data[key]
-  }
-  return font
-}
-
-/** Validates the optional delta-channel fields when present (see MSDFFont). */
-function validateDeltaFields(data: Record<string, unknown>): void {
-  const range = data.weightRange
-  if (range !== undefined) {
-    if (
-      !Array.isArray(range) ||
-      range.length !== 2 ||
-      range.some((n) => typeof n !== 'number') ||
-      range[0] >= range[1]
-    ) {
-      fail('font.weightRange must be [min, max] with min < max')
-    }
-  }
-  if (data.deltaChannel !== undefined && typeof data.deltaChannel !== 'boolean')
-    fail('font.deltaChannel must be a boolean')
-  if (data.deltaScale !== undefined && typeof data.deltaScale !== 'number') fail('font.deltaScale must be a number')
-  if (data.metricsDelta !== undefined) {
-    const d = data.metricsDelta
-    if (!Array.isArray(d) || d.length !== 2 || d.some((n) => typeof n !== 'number')) {
-      fail('font.metricsDelta must be [ΔlineHeight, Δbase]')
-    }
-  }
-  if (data.glyphDeltas !== undefined) {
-    if (!isRecord(data.glyphDeltas)) fail('font.glyphDeltas must be an object')
-    const glyphs = data.glyphs as Record<string, unknown>
-    for (const [char, tuple] of Object.entries(data.glyphDeltas)) {
-      if (!Array.isArray(tuple) || tuple.length !== 3 || tuple.some((n) => typeof n !== 'number')) {
-        fail(`font.glyphDeltas[${JSON.stringify(char)}] must be a tuple of 3 numbers [Δxoffset, Δyoffset, Δxadvance]`)
-      }
-      if (!(char in glyphs)) fail(`font.glyphDeltas[${JSON.stringify(char)}] has no matching glyph`)
-    }
-  }
-  if (data.kerningDeltas !== undefined) {
-    if (!isRecord(data.kerningDeltas)) fail('font.kerningDeltas must be an object')
-    for (const [pair, amount] of Object.entries(data.kerningDeltas)) {
-      if (typeof amount !== 'number') fail(`font.kerningDeltas[${JSON.stringify(pair)}] must be a number`)
-    }
   }
 }
 
