@@ -12,7 +12,7 @@ export interface FamilyState {
 /** Resolution readout for the DOM overlay. */
 export interface FamilyInfo {
   served: string
-  mode: 'baked' | 'synthetic'
+  mode: 'exact' | 'fallback'
   details: string
 }
 
@@ -101,21 +101,16 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
 
   const describe = (state: FamilyState, variant: Awaited<ReturnType<FontFamily['load']>>): FamilyInfo => {
     const servedStyle = variant.style === 'italic' ? ' italic' : ''
-    const corrections: string[] = []
-    if (variant.synthetic.boldness !== 0)
-      corrections.push(
-        `boldness ${variant.synthetic.boldness > 0 ? '+' : ''}${variant.synthetic.boldness.toFixed(4)}em`
-      )
-    if (variant.synthetic.slant !== 0) corrections.push('synthetic oblique 14°')
+    const exact = variant.weight === state.weight && variant.style === state.style
     const details =
-      corrections.length > 0
-        ? corrections.join(' · ')
-        : variant.weight === state.weight
+      variant.synthetic.slant !== 0
+        ? 'synthetic oblique 14°'
+        : exact
           ? 'exact variant hit'
-          : 'nearest bake as-is · thinning is never synthesized'
+          : 'closest bake, served as-is'
     return {
       served: `bake ${variant.weight}${servedStyle}`,
-      mode: corrections.length > 0 ? 'synthetic' : 'baked',
+      mode: exact ? 'exact' : 'fallback',
       details,
     }
   }

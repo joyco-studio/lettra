@@ -43,13 +43,6 @@ export const msdfThreshold = /* @__PURE__ */ defineNode(
   ({ erosion, aa }) => mix(float(0.5), aa.add(1.0), erosion)
 )
 
-/** Dilates strokes (synthetic bold). `boldness` is in threshold units, not
- * em; `syntheticThresholdShift` converts. */
-export const msdfBolden = /* @__PURE__ */ defineNode(
-  { name: 'msdfBolden', inputs: { threshold: 'float', boldness: 'float' }, output: 'float' },
-  ({ threshold, boldness }) => threshold.sub(boldness)
-)
-
 /** Coverage in [0, 1]: smoothstep of the distance around the threshold. */
 export const msdfFill = /* @__PURE__ */ defineNode(
   { name: 'msdfFill', inputs: { distance: 'float', threshold: 'float', aa: 'float' }, output: 'float' },
@@ -121,8 +114,6 @@ export function createTextUniforms({ fill = '#ffffff', opacity = 1 }: TextUnifor
   return {
     fill: uniform(new Color(fill)),
     opacity: uniform(opacity),
-    /** Threshold units, not em; 0 = the baked weight. */
-    boldness: uniform(0),
   }
 }
 
@@ -138,8 +129,6 @@ export interface TextGraphOptions {
   color?: ColorNode
   /** Base value of the `opacity` wire (default 1). */
   opacity?: FloatNode
-  /** Synthetic-bold shift; the default material feeds its uniform here. */
-  boldness?: FloatNode
 }
 
 /** Every stage of the text graph as plain TSL nodes. Wire any of them into
@@ -181,10 +170,7 @@ export function buildTextGraph(options: TextGraphOptions): TextGraph {
 
   const field: TextFieldContext = { distance, aa }
   const erosion = stages?.erosion ? saturate(stages.erosion(float(0), field)) : undefined
-  const baseThreshold = erosion ? msdfThreshold({ erosion, aa }) : float(0.5)
-  const threshold = options.boldness
-    ? msdfBolden({ threshold: baseThreshold, boldness: options.boldness })
-    : baseThreshold
+  const threshold = erosion ? msdfThreshold({ erosion, aa }) : float(0.5)
   const coverage = msdfFill({ distance, threshold, aa })
 
   const shade: TextShadeContext = { ...field, erosion: erosion ?? float(0), coverage }
@@ -243,7 +229,6 @@ export function createTextMaterial<E extends TextEffect | undefined = undefined>
     effect: options.effect,
     color: base.fill,
     opacity: base.opacity,
-    boldness: base.boldness,
   })
 
   const material = new MeshBasicNodeMaterial()

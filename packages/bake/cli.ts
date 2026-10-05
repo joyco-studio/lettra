@@ -4,7 +4,7 @@
  * instancing for variable fonts (which keeps GPOS kerning alive), pinned
  * msdf-bmfont-xml settings, lettra-native JSON output. */
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { DEFAULT_CHARSET, bakeFont } from './bake'
@@ -18,7 +18,7 @@ import type { MSDFFont } from '../core/types'
 interface CliOptions {
   fontPath: string
   weights: number[]
-  /** False when --weights was defaulted, so static faces self-report. */
+  /** Whether --weights was passed; static faces self-report from OS/2 either way. */
   weightsExplicit: boolean
   italicPath?: string
   out: string
@@ -31,7 +31,8 @@ Usage:
   lettra bake <font.ttf> [options]            bake static variants
 
 Options:
-  --weights 400,700     weights to instance + bake (default 400; variable fonts only)
+  --weights 400,700     weights to instance + bake (variable fonts only; a static
+                        face is always labelled from its OS/2 weight)
   --italic file.ttf     companion italic font, baked at the same weights
   --charset <set>       preset name, file path, or literal string
                         presets: ${Object.keys(CHARSET_PRESETS).join(', ')}
@@ -74,6 +75,12 @@ function parseArgs(argv: string[]): CliOptions {
     return value
   }
 
+  const num = (flag: string, min: number): number => {
+    const value = Number(next(flag))
+    if (!Number.isFinite(value) || value < min) fail(`${flag} expects a number >= ${min}`)
+    return value
+  }
+
   while (args.length > 0) {
     const arg = args.shift()!
     switch (arg) {
@@ -88,16 +95,16 @@ function parseArgs(argv: string[]): CliOptions {
         charsetPath = next(arg)
         break
       case '--size':
-        size = Number(next(arg))
+        size = num(arg, 1)
         break
       case '--pxrange':
-        pxrange = Number(next(arg))
+        pxrange = num(arg, 1)
         break
       case '--padding':
-        padding = Number(next(arg))
+        padding = num(arg, 0)
         break
       case '--texture':
-        texture = Number(next(arg))
+        texture = num(arg, 1)
         break
       case '--out':
         out = next(arg)
@@ -220,6 +227,8 @@ function withCoverage(settings: BakeSettings, data: Buffer, tables: ReturnType<t
 }
 
 async function runStatic(options: CliOptions): Promise<void> {
+  // fail before baking rather than after, when --out points somewhere new
+  mkdirSync(dirname(options.out), { recursive: true })
   const tmp = mkdtempSync(join(tmpdir(), 'lettra-bake.'))
   try {
     const variants: BakedVariant[] = []
@@ -236,9 +245,13 @@ async function runStatic(options: CliOptions): Promise<void> {
         fail(`${basename(face.path)} is a static font; it cannot be instanced at ${options.weights.join(', ')}`)
       }
       const settings = withCoverage(options.settings, data, tables, basename(face.path))
-      // a static face has one real weight: label it from OS/2, not the flag
-      const weights =
-        variable || !options.weightsExplicit ? options.weights : [readWeightClass(data, tables) ?? options.weights[0]]
+      // a static face has one real weight: label it from OS/2, never from the flag
+      const weights = variable ? options.weights : [readWeightClass(data, tables) ?? options.weights[0]]
+      if (!variable && options.weightsExplicit && weights[0] !== options.weights[0]) {
+        console.warn(
+          `[lettra] ${basename(face.path)} is static at weight ${weights[0]}; ignoring --weights ${options.weights.join(',')}`
+        )
+      }
       for (const weight of weights) {
         const result = await bakeWeight(face.path, variable, kerns, weight, settings, tmp)
         const label = `${basename(face.path)} @ ${weight}${face.style === 'italic' ? ' italic' : ''}`

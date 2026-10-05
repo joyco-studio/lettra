@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry } from 'three/webgpu'
-import type { LayoutResult } from '../core/types'
+import type { LayoutGlyph, LayoutResult } from '../core/types'
 
 export type TextAnchor = 'ink-center' | 'baseline-left'
 
@@ -17,9 +17,10 @@ export interface TextGeometryOptions {
    * `layoutX` — pass the combined paragraph bounds when building one
    * geometry per run so every run agrees on origin and wipe span. */
   bounds?: { inkOrigin: { x: number; y: number }; width: number; height: number; baseline: number }
-  /** Starting ordinal for `glyphIndex`, to keep indices globally sequential
-   * across per-run geometries. */
-  glyphIndexOffset?: number
+  /** Overrides a quad's `glyphIndex`. Defaults to its position in this
+   * geometry; pass the paragraph-wide rank when building one geometry per run,
+   * so stagger effects stay in text order instead of bucket order. */
+  glyphIndexOf?: (glyph: LayoutGlyph) => number
 }
 
 /** Builds an indexed quad-per-glyph geometry from a layout result.
@@ -38,7 +39,7 @@ export function buildTextGeometry(layout: LayoutResult, options: TextGeometryOpt
   const scale = options.scale ?? 1 / layout.metrics.fontSize
   const anchor = options.anchor ?? 'ink-center'
   const slant = options.slant ?? 0
-  const glyphIndexOffset = options.glyphIndexOffset ?? 0
+  const glyphIndexOf = options.glyphIndexOf
 
   const inkOrigin = options.bounds?.inkOrigin ?? layout.inkOrigin
   const inkW = options.bounds?.width ?? layout.width
@@ -85,7 +86,7 @@ export function buildTextGeometry(layout: LayoutResult, options: TextGeometryOpt
     const lx1 = inkWidth > 0 ? (glyph.x + glyph.w - inkMinX) / inkWidth : 0
     layoutXs.set([lx0, lx1, lx1, lx0], q * 4)
 
-    glyphIndices.fill(q + glyphIndexOffset, q * 4, q * 4 + 4)
+    glyphIndices.fill(glyphIndexOf ? glyphIndexOf(glyph) : q, q * 4, q * 4 + 4)
     lineIndices.fill(glyph.line, q * 4, q * 4 + 4)
 
     const v = q * 4

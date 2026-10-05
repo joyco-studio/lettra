@@ -6,7 +6,6 @@ import {
   createTextUniforms,
   defineNode,
   msdfAA,
-  msdfBolden,
   msdfDistance,
   msdfFill,
   msdfThreshold,
@@ -25,8 +24,7 @@ describe('node contracts', () => {
     expect(Object.isFrozen(wipeErosion.definition)).toBe(true)
     expect(Object.isFrozen(wipeErosion.definition.inputs)).toBe(true)
     expect(msdfDistance.definition.inputs).toEqual({ msdf: 'vec4' })
-    expect(msdfBolden.definition.inputs).toEqual({ threshold: 'float', boldness: 'float' })
-    for (const node of [msdfDistance, msdfAA, msdfFill, msdfThreshold, msdfBolden, wipeErosion]) {
+    for (const node of [msdfDistance, msdfAA, msdfFill, msdfThreshold, wipeErosion]) {
       expect(node.definition.output).toBe('float')
       expect(typeof node.definition.name).toBe('string')
     }
@@ -42,17 +40,16 @@ describe('node contracts', () => {
       band: float(0.25),
     } satisfies NodeInputs<typeof wipeErosion>
     const erosion = wipeErosion(erosionInputs)
-    const bolded = msdfBolden({ threshold: msdfThreshold({ erosion, aa }), boldness: float(0.1) })
-    const coverage = msdfFill({ distance, threshold: bolded, aa })
-    for (const node of [distance, aa, erosion, bolded, coverage]) {
+    const threshold = msdfThreshold({ erosion, aa })
+    const coverage = msdfFill({ distance, threshold, aa })
+    for (const node of [distance, aa, erosion, threshold, coverage]) {
       expect(node).toBeDefined()
       expect((node as { isNode?: boolean }).isNode).toBe(true)
     }
   })
 
   it('keeps the base uniform bag lean; wipe lands as an opt-in effect', () => {
-    expect(Object.keys(createTextUniforms())).toEqual(['fill', 'opacity', 'boldness'])
-    expect(createTextUniforms().boldness.value).toBe(0)
+    expect(Object.keys(createTextUniforms())).toEqual(['fill', 'opacity'])
 
     const effect = wipe()
     expect(Object.keys(effect.uniforms)).toEqual(['wipeIn', 'wipeOut'])

@@ -67,8 +67,36 @@ last. Every node is exported, typed, and replaceable.
 - Distance range \`-r 8\`, for AA quality and erosion headroom.
 - Include space and \`?\` in the charset; they back the runtime fallbacks.
 - Check the kerning count. Variable fonts bake with 0 pairs when their kerning
-  lives in variable GPOS. Instance to a static weight first:
-  \`${INSTANCE_COMMAND}\`.
+  lives in variable GPOS. \`npx lettra bake\` instances them first, which is what
+  keeps the pairs; baking by hand means running
+  \`${INSTANCE_COMMAND}\` yourself.
+
+## Families and italics
+
+\`\`\`ts
+import { createRichText, createText, defineFamily } from 'lettra/three'
+
+const inter = defineFamily({
+  src: [
+    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
+  ],
+})
+
+const text = createText({ variant: await inter.load({ weight: 500 }), text: 'Hello' })
+text.setVariant(await inter.load({ weight: 700, style: 'italic' }))
+\`\`\`
+
+Resolution is CSS-like: an exact hit serves its atlas, a weight in between
+serves the closest bake unmodified, and an italic request with no italic bake
+gets a sheared one. Weight itself is never synthesized: bake the weights you
+want.
+
+\`createRichText({ family, text, spans })\` puts several variants in one
+paragraph, so an italic or bold run inside a sentence keeps the paragraph's
+wrapping, alignment and baseline. Spans take the same \`{ weight, style }\` keys
+and bucket by resolved variant, so repeated spans share a draw call.
 
 ## Effects
 

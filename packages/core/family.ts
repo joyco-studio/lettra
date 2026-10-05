@@ -1,7 +1,5 @@
-/* CSS-like variant resolution plus the synthetic corrections for misses.
+/* CSS-like variant resolution plus the synthetic oblique for italic misses.
  * Pure data; loading and textures live in the three entry. */
-
-import type { MSDFFont } from './types'
 
 export type FontStyle = 'normal' | 'italic'
 
@@ -18,18 +16,12 @@ export interface VariantDescriptor {
 }
 
 export interface SynthesisOptions {
-  /** Em of stroke dilation per side per 100 weight units of miss. Default
-   * 0.007 (≈0.021em for a 400→700 miss). */
-  boldnessPerHundredWeight?: number
   /** Shear as tan(angle). Default tan(14°), matching browsers. */
   slant?: number
 }
 
-/** Applied on top of the nearest baked variant. */
+/** Applied on top of the serving baked variant. */
 export interface SyntheticCorrection {
-  /** Em per side, never negative: thinning is not synthesized. Advances are
-   * unchanged, so a strong faux bold sits optically tighter than a real bake. */
-  boldness: number
   /** Shear as tan(angle); 0 when the bake already matches the style. */
   slant: number
 }
@@ -42,7 +34,6 @@ export interface ResolvedVariant<T extends VariantDescriptor> {
 }
 
 export const DEFAULT_SYNTHESIS: Required<SynthesisOptions> = {
-  boldnessPerHundredWeight: 0.007,
   slant: Math.tan((14 * Math.PI) / 180),
 }
 
@@ -50,15 +41,46 @@ function fail(message: string): never {
   throw new Error(`[lettra] ${message}`)
 }
 
-/** Isolated so range bakes can match at distance 0 anywhere in range. */
-function weightDistance(source: VariantDescriptor, weight: number): number {
-  return Math.abs(source.weight - weight)
+/** Nearest candidate in one direction, `weight` itself included or not. */
+function nearest<T extends VariantDescriptor>(
+  pool: readonly T[],
+  weight: number,
+  direction: 'up' | 'down',
+  inclusive: boolean
+): T | undefined {
+  let best: T | undefined
+  for (const candidate of pool) {
+    const eligible =
+      direction === 'up'
+        ? inclusive
+          ? candidate.weight >= weight
+          : candidate.weight > weight
+        : inclusive
+          ? candidate.weight <= weight
+          : candidate.weight < weight
+    if (!eligible) continue
+    if (!best || (direction === 'up' ? candidate.weight < best.weight : candidate.weight > best.weight)) {
+      best = candidate
+    }
+  }
+  return best
+}
+
+/** CSS Fonts 4 weight matching: above 500 search heavier first, below 400
+ * lighter first, and inside 400..500 climb only as far as 500 before falling
+ * back to lighter bakes. */
+function pickWeight<T extends VariantDescriptor>(pool: readonly T[], weight: number): T {
+  if (weight > 500) return (nearest(pool, weight, 'up', true) ?? nearest(pool, weight, 'down', false))!
+  if (weight < 400) return (nearest(pool, weight, 'down', true) ?? nearest(pool, weight, 'up', false))!
+  const up = nearest(pool, weight, 'up', true)
+  if (up && up.weight <= 500) return up
+  return (nearest(pool, weight, 'down', false) ?? up)!
 }
 
 /** Style first (a bake cannot be un-slanted, so a normal request served by an
- * italic-only family keeps the slant), then weight. Bolden-only like browsers:
- * the gap up from the nearest lighter bake gets synthetic boldness, while a
- * nearer-heavier bake serves unmodified. */
+ * italic-only family keeps the slant), then weight per `pickWeight`. A weight
+ * the family has no bake for serves its neighbour unmodified: weight is never
+ * synthesized, only the oblique is. */
 export function resolveVariant<T extends VariantDescriptor>(
   sources: readonly T[],
   request: VariantKey = {},
@@ -72,17 +94,7 @@ export function resolveVariant<T extends VariantDescriptor>(
   const styleSynthetic = pool.length === 0
   if (styleSynthetic) pool = sources.slice()
 
-  let below: T | undefined
-  let above: T | undefined
-  for (const candidate of pool) {
-    if (candidate.weight <= weight && (!below || candidate.weight > below.weight)) below = candidate
-    if (candidate.weight > weight && (!above || candidate.weight < above.weight)) above = candidate
-  }
-  // nearer-lighter boldens; nearer-heavier (or no lighter bake) serves as-is
-  let best: T
-  if (!below) best = above!
-  else if (!above) best = below
-  else best = weightDistance(below, weight) <= weightDistance(above, weight) ? below : above
+  const best = pickWeight(pool, weight)
 
   const needsSlant = styleSynthetic && style === 'italic'
   const exact = best.weight === weight && !styleSynthetic
@@ -95,27 +107,6 @@ export function resolveVariant<T extends VariantDescriptor>(
   return {
     source: best,
     exact,
-    synthetic: {
-      boldness: best.weight < weight ? ((weight - best.weight) / 100) * options.boldnessPerHundredWeight : 0,
-      slant: needsSlant ? options.slant : 0,
-    },
+    synthetic: { slant: needsSlant ? options.slant : 0 },
   }
-}
-
-/** The shifted iso-edge must stay inside the representable field. */
-const MAX_THRESHOLD_SHIFT = 0.4
-let warnedClamp = false
-
-/** Em per side → MSDF threshold shift: the field spans `distanceRange` atlas
- * px across 0..1, so Δt = em × size / distanceRange. */
-export function syntheticThresholdShift(boldnessEm: number, font: Pick<MSDFFont, 'size' | 'distanceRange'>): number {
-  const shift = (boldnessEm * font.size) / font.distanceRange
-  if (Math.abs(shift) <= MAX_THRESHOLD_SHIFT) return shift
-  if (!warnedClamp) {
-    warnedClamp = true
-    console.warn(
-      `[lettra] synthetic boldness clamped (threshold shift ${shift.toFixed(2)} exceeds ±${MAX_THRESHOLD_SHIFT}); bake a closer weight or raise the bake's distance range`
-    )
-  }
-  return Math.sign(shift) * MAX_THRESHOLD_SHIFT
 }

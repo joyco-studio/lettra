@@ -12,7 +12,6 @@ export {
   msdfAA,
   msdfFill,
   msdfThreshold,
-  msdfBolden,
   textStageOrder,
 } from './material'
 export type {
@@ -51,7 +50,7 @@ export type {
   LoadedVariant,
   VariantState,
 } from './family'
-export { resolveVariant, syntheticThresholdShift, DEFAULT_SYNTHESIS } from '../core/family'
+export { resolveVariant, DEFAULT_SYNTHESIS } from '../core/family'
 export type {
   FontStyle,
   VariantKey,

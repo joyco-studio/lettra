@@ -106,8 +106,8 @@ describe('buildTextGeometry', () => {
     expect(Math.max(...attr(stretched, 'layoutX'))).toBeCloseTo(0.5)
   })
 
-  it('offsets glyphIndex for per-run geometries', () => {
-    const geometry = buildTextGeometry(layout(font, 'Ha'), { glyphIndexOffset: 3 })
+  it('takes glyphIndex from a resolver, for per-run geometries', () => {
+    const geometry = buildTextGeometry(layout(font, 'Ha'), { glyphIndexOf: (glyph) => glyph.index + 3 })
     expect(attr(geometry, 'glyphIndex')).toEqual([3, 3, 3, 3, 4, 4, 4, 4])
   })
 

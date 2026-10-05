@@ -284,9 +284,13 @@ Two interactions worth knowing:
 
 ## Families and variants
 
-A family declares its bakes next/font style and resolves CSS-like: exact
-hits serve the atlas, misses serve the nearest bake plus synthetic
-corrections (a threshold-shift bold, a sheared oblique).
+A family declares its bakes next/font style and resolves CSS-like: an exact
+hit serves its atlas, a weight with no bake serves its neighbour unmodified,
+and an italic request with no italic bake gets a sheared oblique. Weight
+search follows CSS Fonts 4: above 500 heavier bakes are tried first, below
+400 lighter ones, and inside 400..500 the climb stops at 500 before falling
+back to lighter. So with 400 and 700 baked, 450 serves the 400 and 550
+serves the 700.
 
 ```ts
 import { createText, defineFamily } from 'lettra/three'
@@ -299,7 +303,7 @@ const inter = defineFamily({
   ],
 })
 
-// load is the only async point; weight 500 serves the 400 bake + boldness
+// load is the only async point; weight 500 serves the 400 bake
 const text = createText({ variant: await inter.load({ weight: 500 }), text: 'Hello' })
 text.setVariant(await inter.load({ weight: 700, style: 'italic' })) // atomic swap
 
@@ -310,9 +314,10 @@ inter.warmup(renderer)           // uploads every loaded atlas
 inter.dispose()                  // the family owns its atlases, texts never do
 ```
 
-`synthesis: false` makes misses throw instead. Bake every variant of a
-family at one size and distance range; `defineFamily` warns when loaded
-bakes disagree.
+Weight is never synthesized: bake the weights you want. `synthesis: false`
+makes any miss throw instead of resolving. Bake every variant of a family at
+one size and distance range; `defineFamily` warns when loaded bakes
+disagree.
 
 ## Italic spans inside one text
 
@@ -338,7 +343,7 @@ scene.add(rich.group)
 ```
 
 Spans carry the same `{ weight, style }` keys `family.load` takes, so they
-resolve through the same CSS-like path, synthetic corrections included. Gaps
+resolve through the same CSS-like path, the synthetic oblique included. Gaps
 between spans use the base `variant` key. Runs bucket by resolved variant,
 so two italic spans cost one draw call, not two.
 
@@ -349,8 +354,6 @@ Worth knowing:
 - Kerning drops at span boundaries; the pair tables are per font.
 - Mixed bake sizes normalise to the first run's font, and baselines align to
   the deepest one.
-- `fill` and `opacity` are shared across buckets; `boldness` is not, since
-  each bucket carries its own synthetic correction.
 - Font-bound effects (`scramble`) build their pool from one font, so they
   only match the base variant.
 
@@ -363,7 +366,7 @@ class-based GPOS pairs that the generator's parser misses, and emits the
 minified lettra JSON plus a ready `defineFamily` block:
 
 ```bash
-pip install fonttools   # one-time prerequisite for variable fonts
+pip3 install fonttools  # one-time prerequisite for variable fonts
 npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
   --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
 ```

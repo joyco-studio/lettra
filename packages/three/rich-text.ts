@@ -3,10 +3,8 @@
 
 import { Group, Mesh } from 'three/webgpu'
 import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
-import { uniform } from 'three/tsl'
 import { layoutRuns } from '../core/runs'
 import type { RunsLayoutResult } from '../core/runs'
-import { syntheticThresholdShift } from '../core/family'
 import type { VariantKey } from '../core/family'
 import type { LayoutGlyph, LayoutOptions, LayoutResult, MSDFFont } from '../core/types'
 import type { FontFamily, LoadedVariant } from './family'
@@ -29,18 +27,17 @@ export interface CreateRichTextOptions<E extends TextEffect | undefined = undefi
   /** Base variant for text outside any span. Default weight 400 normal. */
   variant?: VariantKey
   layout?: LayoutOptions
-  geometry?: Omit<TextGeometryOptions, 'bounds' | 'glyphIndexOffset' | 'slant'>
+  geometry?: Omit<TextGeometryOptions, 'bounds' | 'glyphIndexOf' | 'slant'>
   /** Shared across bucket materials. Font-bound effects (scramble) only
    * match the base variant. */
-  material?: Omit<TextMaterialOptions<E>, 'map' | 'uniforms' | 'experimental'>
+  material?: Omit<TextMaterialOptions<E>, 'map' | 'uniforms'>
 }
 
 export interface RichTextHandle<E extends TextEffect | undefined = undefined> {
   /** One child mesh per variant bucket. */
   group: Group
-  /** Shared across buckets. No `boldness`: each bucket owns its own synthetic
-   * correction. */
-  uniforms: Omit<TextUniforms, 'boldness'> & EffectUniforms<E>
+  /** Shared across every bucket. */
+  uniforms: TextUniforms & EffectUniforms<E>
   readonly layout: RunsLayoutResult
   setText(text: string, spans?: RichSpan[], layoutOptions?: LayoutOptions): void
   warmup(renderer: WebGPURenderer, camera: Camera, scene?: Scene): Promise<void>
@@ -124,6 +121,8 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
     // bucket runs by (font, map) identity so repeated spans share one draw
     const buckets = new Map<MSDFFont, Map<Texture, { variant: LoadedVariant; glyphs: LayoutGlyph[] }>>()
     currentLayout.runs.forEach(({ run, glyphs }) => {
+      // a run of pure whitespace places no quads; it gets no mesh
+      if (glyphs.length === 0) return
       const variant = variants[run]
       let byMap = buckets.get(variant.font)
       if (!byMap) {
@@ -144,8 +143,10 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
 
     clearMeshes()
     maps = []
-    // keep glyphIndex paragraph-global so stagger effects don't restart per bucket
-    let glyphIndexOffset = 0
+    // paragraph-wide rank, so a stagger runs in text order and not bucket order
+    const rank = new Map<number, number>()
+    currentLayout.glyphs.forEach((glyph, ordinal) => rank.set(glyph.index, ordinal))
+    const glyphIndexOf = (glyph: LayoutGlyph) => rank.get(glyph.index) ?? 0
     for (const byMap of buckets.values()) {
       for (const bucket of byMap.values()) {
         const { variant } = bucket
@@ -161,18 +162,10 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
           ...geometryOptions,
           bounds,
           slant: variant.synthetic.slant,
-          glyphIndexOffset,
+          glyphIndexOf,
         })
-        glyphIndexOffset += bucket.glyphs.length
-        // share fill/opacity; boldness is the bucket's synthetic correction
-        const { material } = createTextMaterial({
-          map: variant.map,
-          effect,
-          uniforms: {
-            ...sharedUniforms,
-            boldness: uniform(syntheticThresholdShift(variant.synthetic.boldness, variant.font)),
-          },
-        })
+        // one shared bag, so a tween moves every bucket at once
+        const { material } = createTextMaterial({ map: variant.map, effect, uniforms: sharedUniforms })
         group.add(new Mesh(geometry, material))
         maps.push(variant.map)
       }
@@ -181,13 +174,9 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
 
   build()
 
-  // boldness is per-bucket (each variant's own correction), so it stays off
-  // the shared bag rather than pretending to be tweenable
-  const shared = { fill: sharedUniforms.fill, opacity: sharedUniforms.opacity }
-
   return {
     group,
-    uniforms: { ...shared, ...effect?.uniforms } as RichTextHandle<E>['uniforms'],
+    uniforms: { ...sharedUniforms, ...effect?.uniforms } as RichTextHandle<E>['uniforms'],
     get layout() {
       return currentLayout
     },

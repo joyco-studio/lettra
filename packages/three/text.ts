@@ -2,12 +2,11 @@ import { Mesh } from 'three/webgpu'
 import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
 import { layout } from '../core/layout'
 import { parseFont } from '../core/parse'
-import { syntheticThresholdShift } from '../core/family'
 import type { FontInput, LayoutOptions, LayoutResult } from '../core/types'
 import type { LoadedVariant } from './family'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
-import { createTextMaterial, createTextUniforms } from './material'
+import { createTextMaterial } from './material'
 import type { EffectUniforms, TextEffect, TextGraph, TextMaterialOptions, TextUniforms } from './material'
 import { warmup } from './lifecycle'
 
@@ -23,8 +22,8 @@ export type TextSource =
       variant?: never
     }
   | {
-      /** A family-resolved variant (see `defineFamily().load`). Synthetic
-       * boldness/slant corrections apply automatically. */
+      /** A family-resolved variant (see `defineFamily().load`). A synthetic
+       * oblique applies automatically when the family had no italic bake. */
       variant: LoadedVariant
       font?: never
       map?: never
@@ -48,8 +47,8 @@ export interface SwapFontOptions {
 
 export interface TextHandle<E extends TextEffect | undefined = undefined> {
   mesh: Mesh
-  /** Tween `.value` on these: fill, opacity, boldness, plus whatever the
-   * material's effect contributes (e.g. wipeIn/wipeOut from `wipe()`). */
+  /** Tween `.value` on these: fill, opacity, plus whatever the material's
+   * effect contributes (e.g. wipeIn/wipeOut from `wipe()`). */
   uniforms: TextUniforms & EffectUniforms<E>
   /** The material's graph stages as plain TSL nodes (see `TextGraph`) —
    * reuse them in other slots and materials. */
@@ -58,10 +57,11 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
   /** Re-lays out and rebuilds geometry in place. Safe per keystroke. */
   setText(text: string, layoutOptions?: LayoutOptions): void
   /** Swaps font + atlas + geometry in one synchronous block, so no frame can
-   * render the new atlas with the old geometry (or vice versa). */
+   * render the new atlas with the old geometry (or vice versa). The outgoing
+   * atlas is left to you: dispose it yourself if nothing else holds it. */
   swapFont(next: SwapFontOptions): void
-  /** Swaps to a family-resolved variant: font, atlas, synthetic boldness and
-   * slant, all in the same synchronous block (`swapFont` underneath). */
+  /** Swaps to a family-resolved variant: font, atlas and synthetic slant, all
+   * in the same synchronous block (`swapFont` underneath). */
   setVariant(variant: LoadedVariant, next?: { text?: string; layout?: LayoutOptions }): void
   /** Uploads the atlas and compiles the pipeline off the hot path. */
   warmup(renderer: WebGPURenderer, camera: Camera, scene?: Scene): Promise<void>
@@ -69,8 +69,8 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
    * warmup finished) — invalidate a frame in demand-driven loops. */
   onChange(listener: () => void): () => void
   /** Disposes geometry and material. The atlas is disposed too when this
-   * text owns it — i.e. it came in as `{ font, map }` — and left alone when
-   * it came from a family variant; `{ map }` overrides either default. */
+   * text owns it — i.e. the current one came in as `{ font, map }` — and left
+   * alone when it came from a family variant; `{ map }` overrides either. */
   dispose(options?: { map?: boolean }): void
 }
 
@@ -90,11 +90,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
 
   let currentLayout = layout(font, text, layoutOptions)
 
-  // one bag, so a shared bag passed in via material.uniforms stays the thing
-  // setVariant writes boldness to
-  const uniformBag = options.material?.uniforms ?? createTextUniforms(options.material)
-  const active = createTextMaterial({ ...options.material, map, uniforms: uniformBag } as TextMaterialOptions<E>)
-  if (initialVariant) uniformBag.boldness.value = syntheticThresholdShift(initialVariant.synthetic.boldness, font)
+  const active = createTextMaterial({ ...options.material, map } as TextMaterialOptions<E>)
   const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), active.material)
 
   const listeners = new Set<() => void>()
@@ -106,9 +102,12 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     previous.dispose()
   }
 
-  const swapFont = (next: SwapFontOptions) => {
+  // `owns` tracks the incoming atlas, so dispose() follows the current map and
+  // not whatever the text started with
+  const applyFont = (next: SwapFontOptions, owns: boolean) => {
     font = parseFont(next.font)
     map = next.map
+    ownsMap = owns
     if (next.text !== undefined) text = next.text
     if (next.layout) layoutOptions = next.layout
     currentLayout = layout(font, text, layoutOptions)
@@ -117,6 +116,8 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     rebuildGeometry()
     notify()
   }
+
+  const swapFont = (next: SwapFontOptions) => applyFont(next, true)
 
   return {
     mesh,
@@ -134,10 +135,8 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     },
     swapFont,
     setVariant(variant, next = {}) {
-      uniformBag.boldness.value = syntheticThresholdShift(variant.synthetic.boldness, variant.font)
       geometryOptions = { ...geometryOptions, slant: variant.synthetic.slant }
-      ownsMap = false
-      swapFont({ font: variant.font, map: variant.map, ...next })
+      applyFont({ font: variant.font, map: variant.map, ...next }, false)
     },
     async warmup(renderer, camera, scene) {
       await warmup(renderer, mesh, camera, { scene, textures: [map] })

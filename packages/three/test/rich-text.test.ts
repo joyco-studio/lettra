@@ -73,18 +73,25 @@ describe('createRichText', () => {
     expect(() => createRichText({ family: empty, text: 'Ha' })).toThrow(/not loaded/)
   })
 
-  it('keeps glyphIndex paragraph-global across buckets', async () => {
+  it('ranks glyphIndex in text order, not bucket order', async () => {
     const family = await loadedFamily()
-    const handle = createRichText({
-      family,
-      text: 'Ha Ha',
-      spans: [{ start: 3, end: 5, style: 'italic' }],
-    })
-    const indices = handle.group.children.flatMap((child) =>
-      Array.from((child as Mesh).geometry.getAttribute('glyphIndex').array)
-    )
-    // 4 visible glyphs over 2 buckets: ordinals must not restart per bucket
-    expect([...new Set(indices)].sort((a, b) => a - b)).toEqual([0, 1, 2, 3])
+    // italic span in the middle: the regular bucket holds chars 0,1 and 4,5
+    const handle = createRichText({ family, text: 'HaHaHa', spans: [{ start: 2, end: 4, style: 'italic' }] })
+    const byBucket = handle.group.children.map((child) => [
+      ...new Set(Array.from((child as Mesh).geometry.getAttribute('glyphIndex').array)),
+    ])
+    // the middle span must own the middle ordinals, or staggers run out of order
+    expect(byBucket).toEqual([
+      [0, 1, 4, 5],
+      [2, 3],
+    ])
+    handle.dispose()
+  })
+
+  it('gives a whitespace-only span no mesh', async () => {
+    const family = await loadedFamily()
+    const handle = createRichText({ family, text: 'Ha Ha', spans: [{ start: 2, end: 3, style: 'italic' }] })
+    expect(handle.group.children).toHaveLength(1)
     handle.dispose()
   })
 

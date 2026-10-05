@@ -7,7 +7,7 @@ export type { FontLookup } from './parse'
 export { wrapLines } from './wrap'
 export type { WrappedLine, MeasureFn, WrapOptions } from './wrap'
 export { layout } from './layout'
-export { resolveVariant, syntheticThresholdShift, DEFAULT_SYNTHESIS } from './family'
+export { resolveVariant, DEFAULT_SYNTHESIS } from './family'
 export type {
   FontStyle,
   VariantKey,

@@ -28,11 +28,9 @@ const SECTIONS: TocSection[] = [
   { id: 'specimen', index: '01', label: 'Specimen' },
   { id: 'family', index: '02', label: 'Families' },
   { id: 'pipeline', index: '03', label: 'Pipeline' },
-  { id: 'wipe', index: '04', label: 'Wipe' },
-  { id: 'scramble', index: '05', label: 'Scramble' },
-  { id: 'liquid', index: '06', label: 'Water trail' },
-  { id: 'implementation', index: '07', label: 'Implementation' },
-  { id: 'colophon', index: '08', label: 'Colophon' },
+  { id: 'effects', index: '04', label: 'Effects' },
+  { id: 'composition', index: '05', label: 'Composition' },
+  { id: 'ecosystem', index: '06', label: 'Ecosystem' },
 ]
 
 const INSTALL_COMMAND = 'pnpm add lettra three'

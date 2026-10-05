@@ -77,19 +77,17 @@ describe('defineFamily', () => {
     expect(fontLoads).toHaveBeenCalledTimes(1)
   })
 
-  it('returns the nearest bake with synthetic corrections for misses', async () => {
+  it('serves the resolved bake for misses, shearing only when no italic exists', async () => {
     const { family } = testFamily()
     const variant = await family.load({ weight: 500, style: 'italic' })
     expect(variant.weight).toBe(400)
     expect(variant.style).toBe('italic')
-    expect(variant.synthetic.boldness).toBeCloseTo(0.007)
     expect(variant.synthetic.slant).toBe(0) // italic bake exists at 400
     // style pool wins over weight distance: 700 italic serves the 400 italic
     const styleFirst = await family.load({ weight: 700, style: 'italic' })
     expect(styleFirst.style).toBe('italic')
-    expect(styleFirst.synthetic.boldness).toBeCloseTo(0.021)
     expect(styleFirst.synthetic.slant).toBe(0)
-    // no italic bake at all → nearest normal + synthetic slant
+    // no italic bake at all → closest normal + synthetic slant
     const noItalics = defineFamily({
       src: [SRC[0], SRC[2]],
       loaders: { font: (url) => Promise.resolve(fonts[url]), texture: () => Promise.resolve(new Texture()) },
@@ -127,7 +125,7 @@ describe('defineFamily', () => {
     const { family, fontLoads } = testFamily()
     const loaded = await family.loadAll((variant) => variant.style === 'normal')
     expect(loaded).toHaveLength(2)
-    expect(loaded.every((v) => v.synthetic.boldness === 0 && v.synthetic.slant === 0)).toBe(true)
+    expect(loaded.every((v) => v.synthetic.slant === 0)).toBe(true)
     expect(fontLoads).toHaveBeenCalledTimes(2)
   })
 
@@ -137,8 +135,8 @@ describe('defineFamily', () => {
     await family.load({ weight: 700 })
     const variant = family.get({ weight: 600 })
     expect(variant).not.toBeNull()
-    expect(variant!.weight).toBe(700) // nearer-heavier bake, served as-is
-    expect(variant!.synthetic.boldness).toBe(0)
+    expect(variant!.weight).toBe(700) // above 500, heavier bakes come first
+    expect(variant!.synthetic.slant).toBe(0)
   })
 
   it('warmup inits every loaded atlas', async () => {
@@ -173,7 +171,8 @@ describe('defineFamily', () => {
     const pending = family.load({ weight: 400 })
     family.dispose()
     release(makeFont('regular'))
-    await pending
+    // rejects rather than handing back the texture dispose() just killed
+    await expect(pending).rejects.toThrow(/disposed while variant/)
     expect(family.variants[0].state).toBe('idle')
     expect(family.get({ weight: 400 })).toBeNull()
     expect(disposed).toHaveBeenCalled()

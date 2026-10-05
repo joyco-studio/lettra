@@ -214,7 +214,8 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
 }
 
 const FAMILY_INITIAL: FamilyState = { weight: 400, style: 'normal' }
-/** The weights actually baked; the slider magnetizes to these in baked mode. */
+/** The weights actually baked; the slider magnetizes to these so exact hits
+ * are reachable by drag. */
 const BAKED_STOPS = [200, 400, 700]
 
 export function FamilyExample({ stage }: { stage: Stage | null }) {
@@ -248,14 +249,14 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
     >
       <div className="flex items-start gap-1">
         <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
-          Families &amp; variable weight
+          Families &amp; italics
         </h2>
         <Caption>[family]</Caption>
       </div>
       <Prose className="mt-5">
-        Declare the bakes you have, ask for any weight or style. Exact hits render their atlas; anything else falls back
-        to the closest bake, corrected when it helps. Flip to variable and a single atlas drives the whole weight range
-        live on the GPU. The small line below mixes three variants in one layout.
+        Three weights and two italics are baked here. Ask for any weight or style and the readout below says which atlas
+        answered: a weight in between serves the closest bake, and an italic request with no italic bake gets a sheared
+        one. The small line underneath puts regular, bold and italic in a single layout.
       </Prose>
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
@@ -289,7 +290,7 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
           <div className="flex items-center gap-3 bg-paper px-3 py-2.5 font-mono text-[11px] tracking-[0.02em]">
             <span
               className={`inline-block w-[96px] px-1.5 py-0.5 text-center ${
-                info?.mode === 'baked' ? 'bg-ink/10 text-ink' : 'bg-[#b4542a]/15 text-[#b4542a]'
+                info?.mode === 'exact' ? 'bg-ink/10 text-ink' : 'bg-[#b4542a]/15 text-[#b4542a]'
               }`}
             >
               {info?.mode ?? '…'}
@@ -299,7 +300,7 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
           </div>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 02 · one family, every weight · defineFamily + setVariant</FigCaption>
+          <FigCaption>fig. 02 · weights and italics from one family · defineFamily + createRichText</FigCaption>
         </figcaption>
       </figure>
     </Row>

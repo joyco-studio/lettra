@@ -100,10 +100,11 @@ const text = createText({
 // the sim is view code, not library code -- swap it for a wipe
 // front or an audio level and nothing else changes`
 
-/** The code a consumer would write to reproduce the family figure. */
+/** The code a consumer would write to reproduce the family figure: the big
+ * block above, then the mixed line below it. */
 export function familySnippet(state: FamilyState): string {
   const key = state.style === 'italic' ? `{ weight: ${state.weight}, style: 'italic' }` : `{ weight: ${state.weight} }`
-  return `import { createText, defineFamily } from 'lettra/three'
+  return `import { createRichText, createText, defineFamily } from 'lettra/three'
 
 // next/font-style declaration; bakes come from \`npx lettra bake\`
 const inter = defineFamily({
@@ -116,35 +117,16 @@ const inter = defineFamily({
   ],
 })
 
-// CSS-like resolution: nearest bake + synthetic corrections
-// (threshold-shift bold, sheared oblique) cover the misses
+// CSS-like resolution: the closest bake serves, and an italic
+// request with no italic bake gets a sheared oblique
 const variant = await inter.load(${key})
 const text = createText({ variant, text, layout })
 
 // weight changes ride the atomic swapFont path
-text.setVariant(await inter.load({ weight: 700 }))`
-}
+text.setVariant(await inter.load({ weight: 700 }))
 
-export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
-# (variable GPOS kerning survives), pinned MSDF settings,
-# lettra-native JSON, a ready defineFamily src block
-npx lettra bake Inter.ttf --weights 400,700 \\
-  --italic Inter-Italic.ttf --charset latin-es \\
-  --size 64 --pxrange 8 --out public/fonts/inter
-`
-
-export const richTextSnippet = `import { createRichText, defineFamily } from 'lettra/three'
-
-const inter = defineFamily({
-  src: [
-    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
-    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
-    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
-  ],
-})
-
-// spans resolve through the family, so an italic run inside a sentence is
-// one layout: wrapping, alignment and the baseline stay paragraph-wide
+// the line below: spans resolve through the same family, in one layout,
+// so wrapping and the baseline stay paragraph-wide
 await inter.loadAll()
 
 const rich = createRichText({
@@ -156,9 +138,16 @@ const rich = createRichText({
   ],
   layout: { align: 'center' },
 })
-scene.add(rich.group)
+scene.add(rich.group)`
+}
 
-// one mesh per distinct variant, so two italic spans still cost one draw`
+export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
+# (variable GPOS kerning survives), pinned MSDF settings,
+# lettra-native JSON, a ready defineFamily src block
+npx lettra bake Inter.ttf --weights 400,700 \\
+  --italic Inter-Italic.ttf --charset latin-es \\
+  --size 64 --pxrange 8 --out public/fonts/inter
+`
 
 /** Static code blocks highlighted server-side at build. */
 export interface HighlightedSnippets {

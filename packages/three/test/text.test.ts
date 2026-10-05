@@ -15,7 +15,7 @@ const font = (name: string): MSDFFont => ({
   kerning: { AV: -4 },
 })
 
-const variant = (name: string, synthetic = { boldness: 0, slant: 0 }): LoadedVariant => ({
+const variant = (name: string, synthetic = { slant: 0 }): LoadedVariant => ({
   font: font(name),
   map: new Texture(),
   weight: 400,
@@ -34,12 +34,13 @@ describe('createText variants', () => {
     text.dispose()
   })
 
-  it('applies the synthetic boldness correction to the shared uniform', () => {
-    const text = createText({ variant: variant('regular'), text: 'H' })
-    expect(text.uniforms.boldness.value).toBe(0)
-    text.setVariant(variant('bold', { boldness: 0.01, slant: 0 }))
-    // em → threshold units: 0.01 * size 10 / distanceRange 8
-    expect(text.uniforms.boldness.value).toBeCloseTo(0.0125)
+  it('shears the geometry for a synthetic oblique variant', () => {
+    const text = createText({ variant: variant('regular'), text: 'H', geometry: { anchor: 'baseline-left' } })
+    const upright = Array.from(text.mesh.geometry.getAttribute('position').array as Float32Array)
+    text.setVariant(variant('oblique', { slant: 0.25 }))
+    const sheared = Array.from(text.mesh.geometry.getAttribute('position').array as Float32Array)
+    // the top of the quad leans right of where it sat upright
+    expect(sheared[0]).toBeGreaterThan(upright[0])
     text.dispose()
   })
 
@@ -50,5 +51,25 @@ describe('createText variants', () => {
     v.map.addEventListener('dispose', () => (disposed = true))
     text.dispose()
     expect(disposed).toBe(false)
+  })
+
+  it('tracks atlas ownership through swaps in both directions', () => {
+    // owned -> family: dispose must not touch the family's map
+    const familyMap = new Texture()
+    let familyDisposed = false
+    familyMap.addEventListener('dispose', () => (familyDisposed = true))
+    const owned = createText({ font: font('a'), map: new Texture(), text: 'H' })
+    owned.setVariant({ ...variant('b'), map: familyMap })
+    owned.dispose()
+    expect(familyDisposed).toBe(false)
+
+    // family -> owned: dispose must claim the raw map it was handed
+    const raw = new Texture()
+    let rawDisposed = false
+    raw.addEventListener('dispose', () => (rawDisposed = true))
+    const borrowed = createText({ variant: variant('c'), text: 'H' })
+    borrowed.swapFont({ font: font('d'), map: raw })
+    borrowed.dispose()
+    expect(rawDisposed).toBe(true)
   })
 })

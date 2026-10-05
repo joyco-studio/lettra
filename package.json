@@ -64,7 +64,6 @@
     "@changesets/cli": "^2.27.11",
     "@eslint/js": "^9.18.0",
     "@types/node": "^20.11.24",
-    "@types/pngjs": "^6.0.5",
     "@types/three": "^0.186.0",
     "@typescript-eslint/eslint-plugin": "^8.21.0",
     "@typescript-eslint/parser": "^8.21.0",
@@ -88,7 +87,6 @@
     }
   },
   "dependencies": {
-    "msdf-bmfont-xml": "^2.7.0",
-    "pngjs": "^7.0.0"
+    "msdf-bmfont-xml": "^2.7.0"
   }
 }

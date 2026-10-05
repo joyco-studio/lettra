@@ -36,7 +36,8 @@ export interface LoadedVariant {
 
 export interface DefineFamilyOptions {
   src: FamilyVariantSource[]
-  /** `false` → resolution misses throw instead of synthesizing. */
+  /** `false` → resolution misses throw instead of serving a neighbouring
+   * bake or a sheared oblique. */
   synthesis?: SynthesisOptions | false
   /** Transport seam (tests, KTX2…). */
   loaders?: {
@@ -121,8 +122,9 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
     slot.error = undefined
     const pending = Promise.all([loadFontJson(slot.source.json), loadAtlas(slot.source.atlas)]).then(([font, map]) => {
       if (startedAt !== generation) {
+        // never hand back a texture dispose() already killed
         map.dispose()
-        return { font, map }
+        fail(`family was disposed while variant ${slot.source.weight} ${slot.style} was loading`)
       }
       slot.result = { font, map }
       slot.state = 'loaded'
@@ -191,7 +193,7 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
       return Promise.all(
         chosen.map(async (slot) => {
           const result = await ensureLoaded(slot)
-          return toLoaded(slot, result, { boldness: 0, slant: 0 }, slot.source.weight)
+          return toLoaded(slot, result, { slant: 0 }, slot.source.weight)
         })
       )
     },
