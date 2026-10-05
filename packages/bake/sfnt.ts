@@ -45,6 +45,72 @@ export function hasKerningTables(tags: string[]): boolean {
   return tags.includes('GPOS') || tags.includes('kern')
 }
 
+/** Code points the font actually maps to a glyph. Anything outside this set
+ * bakes as .notdef tofu, so the CLI drops it and says so. */
+export function readCmapCoverage(data: Uint8Array, tables: SfntTables): Set<number> {
+  const covered = new Set<number>()
+  const cmap = tables.offsets.get('cmap')
+  if (cmap === undefined || cmap + 4 > data.byteLength) return covered
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
+
+  // prefer full-repertoire (3,10) over BMP (3,1), then any Unicode subtable
+  let best = -1
+  let bestScore = -1
+  const count = view.getUint16(cmap + 2)
+  for (let i = 0; i < count; i++) {
+    const record = cmap + 4 + i * 8
+    if (record + 8 > data.byteLength) break
+    const platform = view.getUint16(record)
+    const encoding = view.getUint16(record + 2)
+    const score = platform === 3 && encoding === 10 ? 3 : platform === 3 && encoding === 1 ? 2 : platform === 0 ? 1 : 0
+    if (score > bestScore) {
+      bestScore = score
+      best = cmap + view.getUint32(record + 4)
+    }
+  }
+  if (best < 0 || best + 4 > data.byteLength) return covered
+
+  const format = view.getUint16(best)
+  if (format === 4) {
+    const segCount = view.getUint16(best + 6) / 2
+    const ends = best + 14
+    const starts = ends + segCount * 2 + 2
+    const deltas = starts + segCount * 2
+    const rangeOffsets = deltas + segCount * 2
+    for (let s = 0; s < segCount; s++) {
+      const end = view.getUint16(ends + s * 2)
+      const start = view.getUint16(starts + s * 2)
+      if (start > end || start === 0xffff) continue
+      const delta = view.getUint16(deltas + s * 2)
+      const rangeOffset = view.getUint16(rangeOffsets + s * 2)
+      for (let code = start; code <= end; code++) {
+        let glyph: number
+        if (rangeOffset === 0) {
+          glyph = (code + delta) & 0xffff
+        } else {
+          const at = rangeOffsets + s * 2 + rangeOffset + (code - start) * 2
+          if (at + 2 > data.byteLength) continue
+          const raw = view.getUint16(at)
+          glyph = raw === 0 ? 0 : (raw + delta) & 0xffff
+        }
+        if (glyph !== 0) covered.add(code)
+      }
+    }
+  } else if (format === 12) {
+    const groups = view.getUint32(best + 12)
+    for (let g = 0; g < groups; g++) {
+      const at = best + 16 + g * 12
+      if (at + 12 > data.byteLength) break
+      const start = view.getUint32(at)
+      const end = view.getUint32(at + 4)
+      const startGlyph = view.getUint32(at + 8)
+      if (startGlyph === 0 || end < start) continue
+      for (let code = start; code <= end; code++) covered.add(code)
+    }
+  }
+  return covered
+}
+
 /** OS/2 usWeightClass, so static faces are labelled by their real weight
  * instead of a default. Null when the table is missing or malformed. */
 export function readWeightClass(data: Uint8Array, tables: SfntTables): number | null {

@@ -337,7 +337,7 @@ minified lettra JSON plus a ready `defineFamily` block:
 ```bash
 pip install fonttools   # one-time prerequisite for variable fonts
 npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
-  --charset charset.txt --size 64 --pxrange 8 --out public/fonts/inter
+  --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
 
 # experimental: one atlas, continuous weight
 npx lettra bake delta Inter.ttf --range 300,800 --pxrange 12 --texture 1024 \
@@ -361,7 +361,7 @@ Rules of thumb (the parser enforces the hard ones):
 - **No rotated glyph packing.**
 - **`-r 8`** distance range, for AA quality and wipe headroom.
 - Include **space and `?`** in the charset; they back the runtime fallbacks
-  (missing characters render as `?`).
+  (missing characters render as `?`). Every preset does.
 - **Check the kerning count** in the output. Variable fonts bake with **0
   pairs** when their kerning lives in variable GPOS; the generator's parser
   can't resolve the deltas, and Playfair Display loses all 2362 pairs this
@@ -378,8 +378,23 @@ Rules of thumb (the parser enforces the hard ones):
   `flipY: false`, linear filters, **no mipmaps**, `NoColorSpace` (the atlas
   is data; sRGB decode would warp the distance field).
 
-Charset preset used by the playground (`latin-es`):
-ASCII printable + `áéíóúüñÁÉÍÓÚÜÑ¿¡—–“”‘’`.
+### Charsets
+
+`--charset` takes a preset name, a file path, or a literal string:
+
+```bash
+npx lettra bake font.ttf --charset latin-es          # preset
+npx lettra bake font.ttf --charset ./charset.txt     # file
+npx lettra bake font.ttf --charset 'LETTRA 0123'     # literal, for a logotype
+```
+
+Presets are ASCII printable plus curly quotes, dashes and the ellipsis,
+then the language's accents: `ascii`, `latin`, `latin-es`, `latin-pt`,
+`latin-fr`, `latin-de`, `latin-ext` (all of them in one bake).
+
+Characters the font has no glyph for are dropped with a warning rather than
+baked. Without that check they pack as `.notdef` tofu, waste atlas space and
+ship as boxes; dropping them lets the runtime's `?` fallback do its job.
 
 ## Layout
 

@@ -147,8 +147,8 @@ export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
 # (variable GPOS kerning survives), pinned MSDF settings,
 # lettra-native JSON, a ready defineFamily src block
 npx lettra bake Inter.ttf --weights 400,700 \\
-  --italic Inter-Italic.ttf --size 64 --pxrange 8 \\
-  --out public/fonts/inter
+  --italic Inter-Italic.ttf --charset latin-es \\
+  --size 64 --pxrange 8 --out public/fonts/inter
 
 # experimental: one atlas, continuous weight 300-800
 # (alpha channel carries the per-texel weight delta)

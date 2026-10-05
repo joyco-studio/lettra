@@ -14,7 +14,8 @@ import type { BakeResult, BakeSettings } from './bake'
 import { compositeDelta } from './delta'
 import { instanceFont } from './instance'
 import { extractKerning } from './kerning'
-import { hasKerningTables, isVariableFont, readTables, readWeightClass } from './sfnt'
+import { hasKerningTables, isVariableFont, readCmapCoverage, readTables, readWeightClass } from './sfnt'
+import { CHARSET_PRESETS, partitionByCoverage, resolveCharset } from './charset'
 import type { MSDFFont } from '../core/types'
 
 interface CliOptions {
@@ -41,7 +42,8 @@ Options:
   --weights 400,700     weights to instance + bake (default 400; variable fonts only)
   --italic file.ttf     companion italic font, baked at the same weights
   --range min,max       delta mode: the weight span to encode
-  --charset file.txt    characters to bake (default: Western)
+  --charset <set>       preset name, file path, or literal string
+                        presets: ${Object.keys(CHARSET_PRESETS).join(', ')}
   --size 64             bake font size in px
   --pxrange 8           distance-field range (use 12-16 for wide delta ranges)
   --padding 2           texture padding between glyphs
@@ -143,7 +145,7 @@ function parseArgs(argv: string[]): CliOptions {
       distanceRange: pxrange,
       texturePadding: padding,
       textureSize: [texture, texture],
-      charset: charsetPath ? readFileSync(resolve(charsetPath), 'utf8').replace(/[\n\r]/g, '') : undefined,
+      charset: charsetPath ? resolveCharset(charsetPath) : undefined,
     },
   }
 }
@@ -222,6 +224,22 @@ function printFamilyBlock(outDir: string, variants: BakedVariant[]): void {
   console.log(`const family = defineFamily({\n  src: [\n${src}\n  ],\n})\n`)
 }
 
+/** Drops characters the font cannot map; they would bake as .notdef tofu and
+ * silently ship as boxes. */
+function withCoverage(settings: BakeSettings, data: Buffer, tables: ReturnType<typeof readTables>, label: string) {
+  const charset = settings.charset ?? DEFAULT_CHARSET
+  const covered = readCmapCoverage(data, tables)
+  if (covered.size === 0) return settings
+  const { usable, missing } = partitionByCoverage(charset, covered)
+  if (missing.length > 0) {
+    console.warn(
+      `[lettra-bake] ${label}: dropped ${missing.length} character(s) the font has no glyph for: ${missing.join(' ')}`
+    )
+  }
+  if (!usable) fail(`${label}: none of the requested characters exist in this font`)
+  return { ...settings, charset: usable }
+}
+
 async function runStatic(options: CliOptions): Promise<void> {
   const tmp = mkdtempSync(join(tmpdir(), 'lettra-bake-'))
   try {
@@ -238,11 +256,12 @@ async function runStatic(options: CliOptions): Promise<void> {
       if (!variable && options.weights.length > 1) {
         fail(`${basename(face.path)} is a static font; it cannot be instanced at ${options.weights.join(', ')}`)
       }
+      const settings = withCoverage(options.settings, data, tables, basename(face.path))
       // a static face has one real weight: label it from OS/2, not the flag
       const weights =
         variable || !options.weightsExplicit ? options.weights : [readWeightClass(data, tables) ?? options.weights[0]]
       for (const weight of weights) {
-        const result = await bakeWeight(face.path, variable, kerns, weight, options.settings, tmp)
+        const result = await bakeWeight(face.path, variable, kerns, weight, settings, tmp)
         const label = `${basename(face.path)} @ ${weight}${face.style === 'italic' ? ' italic' : ''}`
         validateBake(label, result, kerns)
         const suffix = `-${weight}${face.style === 'italic' ? 'i' : ''}`
@@ -262,7 +281,12 @@ async function runDelta(options: CliOptions): Promise<void> {
   const tmp = mkdtempSync(join(tmpdir(), 'lettra-bake-'))
   try {
     // fixed grid, no smart-size: both bakes must share texture dimensions
-    const settings: BakeSettings = { ...options.settings, smartSize: false }
+    const settings = withCoverage(
+      { ...options.settings, smartSize: false },
+      readFileSync(options.fontPath),
+      tables,
+      basename(options.fontPath)
+    )
     console.log(`[lettra-bake] baking wght=${max} (canonical grid) and wght=${min}…`)
     const kerns = hasKerningTables(tables.tags)
     const maxBake = await bakeWeight(options.fontPath, true, kerns, max, settings, tmp)

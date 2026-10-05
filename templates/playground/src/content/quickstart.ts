@@ -24,7 +24,7 @@ text.setText('live string swap')  // relayout, per keystroke is fine
 text.uniforms.wipeIn.value = 0.5  // tween 0 -> 1 to reveal`
 
 export const BAKE_COMMAND =
-  'npx lettra bake font.ttf --weights 400,700 --italic italic.ttf --size 64 --pxrange 8 --out public/fonts/name'
+  'npx lettra bake font.ttf --weights 400,700 --italic italic.ttf --charset latin-es --size 64 --pxrange 8 --out public/fonts/name'
 
 export const INSTANCE_COMMAND = 'python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf'
 
