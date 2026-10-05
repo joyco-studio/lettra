@@ -45,19 +45,16 @@ uniform bool showGrid;
 float med(vec3 c){ return max(min(c.r,c.g), min(max(c.r,c.g), c.b)); }
 vec2 D(vec2 uv){ return (texture(disp, uv).rg * 2.0 - 1.0) * dispScale / cell; }
 
-// backward warp: find the source q with q + w*D(q) = p
-vec2 solve(vec2 p, float amt){
-  vec2 q = p;
-  for(int i=0;i<6;i++) q = p - amt * D(q);
-  return q;
-}
+// first-order backward warp. Iterating to convergence measurably hurts:
+// the nearest-point field is piecewise constant, so the fixed point amplifies
+// its discontinuities (2.05px converged vs 1.35px at one step).
+vec2 solve(vec2 p, float amt){ return p - amt * D(p); }
 float fieldAt(vec2 uv){
   if(method==0) return med(texture(truth, uv).rgb);
   if(method==1) return mix(med(texture(base,uv).rgb), med(texture(targ,uv).rgb), w);
   if(method==2){
     float f = med(texture(base, solve(uv, w)).rgb);
-    vec2 q = uv; for(int i=0;i<6;i++) q = uv + (1.0-w) * D(q);
-    float b = med(texture(targ, q).rgb);
+    float b = med(texture(targ, uv + (1.0-w) * D(uv)).rgb);
     return mix(f, b, w);
   }
   return med(texture(base, solve(uv, w)).rgb);  // 3,4 = warp (map differs)
@@ -78,20 +75,24 @@ void main(){
   float m = cov(fieldAt(uv));
   float t = cov(med(texture(truth, uv).rgb));
 
+  vec3 bg = vec3(0.871) - grid;
   vec3 col; float a;
+  if(view==1){
+    // the method is the subject; truth sits behind it as a pale reference, so
+    // any mismatch reads as grey spilling out from under the ink
+    vec3 c = mix(bg, vec3(0.66), t);
+    c = mix(c, vec3(0.10), m);
+    o = vec4(c, 1.0); return;
+  }
   if(view==0){ col = vec3(0.1); a = m; }
-  else if(view==1){ // truth in black, method in red over it
-    col = mix(vec3(0.83,0.28,0.16), vec3(0.1), t);
-    a = max(m, t);
-  } else if(view==2){ // signed difference: red = method too heavy, blue = too light
+  else if(view==2){ // signed: red = method too heavy, blue = too light
     float d = m - t;
     col = d > 0.0 ? vec3(0.83,0.28,0.16) : vec3(0.16,0.35,0.83);
     a = abs(d);
-  } else { // ink disagreement only
-    float d = abs(step(0.5, m) - step(0.5, t));
-    col = vec3(0.83,0.28,0.16); a = d;
+  } else { // only texels on the wrong side of the edge
+    col = vec3(0.83,0.28,0.16);
+    a = abs(step(0.5, m) - step(0.5, t));
   }
-  vec3 bg = vec3(0.871) - grid;
   o = vec4(mix(bg, col, a), 1.0);
 }`
 

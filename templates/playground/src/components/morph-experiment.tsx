@@ -81,47 +81,19 @@ export function MorphExperiment() {
     return () => ro.disconnect()
   }, [ready])
 
-  // drag to pan, wheel to zoom
+  // click to centre the zoom; dragging a GL canvas was unreliable and is gone
   useEffect(() => {
     const el = canvasRef.current
     if (!el) return
-    let drag = false,
-      lx = 0,
-      ly = 0
-    const down = (e: PointerEvent) => {
-      drag = true
-      lx = e.clientX
-      ly = e.clientY
-      el.setPointerCapture(e.pointerId)
+    const click = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect()
+      const side = Math.min(r.width, r.height)
+      const cx = (e.clientX - r.left - (r.width - side) / 2) / side
+      const cy = (e.clientY - r.top - (r.height - side) / 2) / side
+      setS((p) => ({ ...p, panX: p.panX + (cx - 0.5) / p.zoom, panY: p.panY + (cy - 0.5) / p.zoom }))
     }
-    const move = (e: PointerEvent) => {
-      if (!drag) return
-      const k = 1 / (el.clientWidth * 0.9)
-      setS((p) => ({
-        ...p,
-        panX: p.panX - ((e.clientX - lx) * k) / p.zoom,
-        panY: p.panY + ((e.clientY - ly) * k) / p.zoom,
-      }))
-      lx = e.clientX
-      ly = e.clientY
-    }
-    const up = () => {
-      drag = false
-    }
-    const wheel = (e: WheelEvent) => {
-      e.preventDefault()
-      setS((p) => ({ ...p, zoom: Math.min(24, Math.max(1, p.zoom * (e.deltaY < 0 ? 1.12 : 1 / 1.12))) }))
-    }
-    el.addEventListener('pointerdown', down)
-    el.addEventListener('pointermove', move)
-    el.addEventListener('pointerup', up)
-    el.addEventListener('wheel', wheel, { passive: false })
-    return () => {
-      el.removeEventListener('pointerdown', down)
-      el.removeEventListener('pointermove', move)
-      el.removeEventListener('pointerup', up)
-      el.removeEventListener('wheel', wheel)
-    }
+    el.addEventListener('click', click)
+    return () => el.removeEventListener('click', click)
   }, [])
 
   const nearest = [400, 450, 500, 550, 600, 650, 700].reduce((a, b) =>
@@ -202,10 +174,7 @@ export function MorphExperiment() {
       </ControlBar>
 
       <div className="relative min-h-0 flex-1 bg-[#dedede]">
-        <canvas
-          ref={canvasRef}
-          className="absolute inset-0 block h-full w-full cursor-grab touch-none active:cursor-grabbing"
-        />
+        <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full cursor-crosshair touch-none" />
       </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 bg-paper px-3 py-2.5 font-mono text-[11px] text-ink-faint">
@@ -224,7 +193,7 @@ export function MorphExperiment() {
             <span className="text-ink-faint">(measured, not estimated)</span>
           </>
         )}
-        <span className="ml-auto">drag to pan · wheel to zoom</span>
+        <span className="ml-auto">click to centre · zoom with the slider</span>
       </div>
     </div>
   )

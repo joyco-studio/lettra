@@ -3,17 +3,25 @@ import { MorphExperiment } from '@/components/morph-experiment'
 
 export const metadata: Metadata = { title: 'Weight morphing experiments', robots: { index: false } }
 
-const METHODS: [string, string][] = [
-  ['truth', 'The real bake at this weight. Not a method — the thing the others are trying to match.'],
-  ['two bakes', 'Ship 400 and 700, blend their distance fields. 0.67px worst edge, IoU 0.9916.'],
-  ['two + warp', 'Blend, but push each bake along the outline movement first. Best overlap, 0.9959.'],
-  ['one + warp', 'Ship only 400 plus a displacement map; each texel takes its nearest outline point. 2.05px.'],
-  ['one + smooth', 'Same, but displacement is distance-weighted so stem interiors average both edges. 1.48px.'],
+const METHODS: [string, string, string][] = [
+  ['truth', '—', 'The real bake at this weight. Not a method: the thing the others try to match.'],
+  ['two bakes', '0.67px · 0.9916', 'Ship 400 and 700, blend the two distance fields. No cleverness.'],
+  ['two + warp', '0.81px · 0.9959', 'Blend, but push each bake along the outline movement first.'],
+  [
+    'one + warp',
+    '1.35px · 0.9942',
+    'Ship only 400 plus a displacement map; each texel takes its nearest outline point.',
+  ],
+  [
+    'one + smooth',
+    '1.40px · 0.9819',
+    'Same, but the displacement is distance-weighted, so stem interiors average both edges.',
+  ],
 ]
 
 const VIEWS: [string, string][] = [
   ['render', 'The method alone, as it would ship.'],
-  ['over truth', 'Method in red on the real bake in black. Red showing means a mismatch.'],
+  ['over truth', 'The method in ink over the real bake in pale grey. Grey spilling out means a mismatch.'],
   ['difference', 'Signed: red where the method is too heavy, blue where too light.'],
   ['ink error', 'Only texels that land on the wrong side of the edge. The honest view.'],
 ]
@@ -40,11 +48,16 @@ export default function Page() {
         </div>
 
         <div>
-          <h2 className="font-mono text-[10px] tracking-[0.08em] text-ink-faint uppercase">Methods</h2>
+          <h2 className="font-mono text-[10px] tracking-[0.08em] text-ink-faint uppercase">
+            Methods <span className="normal-case">(worst edge · IoU)</span>
+          </h2>
           <dl className="mt-2.5 flex flex-col gap-2">
-            {METHODS.map(([name, text]) => (
+            {METHODS.map(([name, score, text]) => (
               <div key={name}>
-                <dt className="font-mono text-[11px] text-ink">{name}</dt>
+                <dt className="flex items-baseline justify-between gap-2 font-mono text-[11px] text-ink">
+                  <span>{name}</span>
+                  <span className="text-[10px] text-ink-faint">{score}</span>
+                </dt>
                 <dd className="font-serif text-[13px] leading-[1.3] text-[#6b6b6b]">{text}</dd>
               </div>
             ))}

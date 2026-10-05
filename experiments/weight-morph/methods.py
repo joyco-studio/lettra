@@ -45,8 +45,10 @@ def displacement(ch, mode):
             out[i:i+CHUNK, 1] = (wgt * dlt[None, :, 1]).sum(axis=1) / wsum[:, 0]
     return out.reshape(CELL, CELL, 2)
 
-def warp(base_img, D, w, iters=6):
-    """Backward warp: find source q with q + w*D(q) = p."""
+def warp(base_img, D, w, iters=1):
+    """Backward warp. One step beats converging the fixed point: the
+    nearest-point field is piecewise constant, so iterating amplifies its
+    discontinuities (measured 2.05px converged vs 1.35px at one step)."""
     qx, qy = XX.copy(), YY.copy()
     for _ in range(iters):
         dx = sample_rgb(D[..., 0:1], qx, qy)[..., 0]
