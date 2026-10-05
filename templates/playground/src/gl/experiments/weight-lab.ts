@@ -4,7 +4,12 @@ import type { TextHandle } from 'lettra/three'
 
 /* Side-by-side rig for the weight-interpolation experiment: every stop is
  * rendered twice, once from its own baked instance and once from the single
- * delta atlas at the matching t, so the two can be overlaid and compared. */
+ * delta atlas at the matching t, so the two can be overlaid and compared.
+ *
+ * Both are anchored baseline-left and laid out left-aligned on purpose: a
+ * delta bake carries the max-weight rects, so its ink box is wider than the
+ * true bake's and ink-centering would offset the pair by a few px of pure
+ * measurement artifact. Sharing a pen origin makes any visible gap real. */
 
 export const STOPS = [300, 425, 550, 675, 800] as const
 
@@ -66,13 +71,15 @@ export async function createWeightLab(canvas: HTMLCanvasElement, initialText: st
     const truth = createText({
       variant: await baked.load({ weight }),
       text: initialText,
-      layout: { align: 'center' },
+      layout: { align: 'left' },
+      geometry: { anchor: 'baseline-left' },
       material: { fill: TRUE_INK },
     })
     const delta = createText({
       variant: await variable.load({ weight }),
       text: initialText,
-      layout: { align: 'center' },
+      layout: { align: 'left' },
+      geometry: { anchor: 'baseline-left' },
       material: { fill: DELTA_INK, opacity: 0.65 },
     })
     truth.mesh.position.y = y
@@ -87,7 +94,8 @@ export async function createWeightLab(canvas: HTMLCanvasElement, initialText: st
   const sweep = createText({
     variant: await variable.load({ weight: 550 }),
     text: initialText,
-    layout: { align: 'center' },
+    layout: { align: 'left' },
+    geometry: { anchor: 'baseline-left' },
     material: { fill: TRUE_INK },
   })
   sweep.mesh.position.y = sweepY
@@ -98,10 +106,12 @@ export async function createWeightLab(canvas: HTMLCanvasElement, initialText: st
     const height = canvas.clientHeight || 1
     renderer.setSize(width, height, false)
 
-    const widest = Math.max(...rows.map((row) => row.truth.layout.width / row.truth.layout.metrics.fontSize))
-    const worldHeight = (STOPS.length - 1) * ROW_GAP + Math.abs(sweepY) + 2
-    const worldWidth = Math.max(widest * 1.15, (worldHeight * width) / height)
-    const halfW = Math.max(worldWidth, (worldHeight * width) / height) / 2
+    const em = (handle: TextHandle) => handle.layout.metrics.metricWidth / handle.layout.metrics.fontSize
+    const widest = Math.max(...rows.map((row) => Math.max(em(row.truth), em(row.delta))), em(sweep))
+    rig.position.x = -widest / 2
+
+    const worldHeight = (STOPS.length - 1) * ROW_GAP + Math.abs(sweepY) + 1.6
+    const halfW = Math.max(widest * 1.08, (worldHeight * width) / height) / 2
     const halfH = halfW / (width / height)
 
     camera.left = -halfW
