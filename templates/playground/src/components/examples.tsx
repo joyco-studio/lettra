@@ -14,10 +14,12 @@ import {
   SnippetPanel,
 } from '@/components/layout'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
-import { specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
+import { familySnippet, specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
 import type { Align, SpecimenState } from '@/gl/views/specimen'
+import { createFamilyView } from '@/gl/views/family'
+import type { FamilyInfo, FamilyState } from '@/gl/views/family'
 import { createWipeView } from '@/gl/views/wipe'
 import { createScrambleView } from '@/gl/views/scramble'
 import { createLiquidView } from '@/gl/views/liquid'
@@ -211,6 +213,111 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
   )
 }
 
+const FAMILY_INITIAL: FamilyState = { weight: 400, style: 'normal', vf: false }
+/** The weights actually baked; the slider magnetizes to these in baked mode. */
+const BAKED_STOPS = [200, 400, 700]
+
+export function FamilyExample({ stage }: { stage: Stage | null }) {
+  const elRef = useRef<HTMLDivElement>(null)
+  const [state, setState] = useState(FAMILY_INITIAL)
+  const [info, setInfo] = useState<FamilyInfo | null>(null)
+  const [open, setOpen] = useState(false)
+  const view = useGLView(stage, elRef, (s, el) => createFamilyView(s, el, FAMILY_INITIAL))
+
+  useEffect(() => {
+    view?.apply(state).then((resolved) => {
+      if (resolved) setInfo(resolved)
+    })
+  }, [state, view])
+
+  const patch = (partial: Partial<FamilyState>) => setState((previous) => ({ ...previous, ...partial }))
+
+  return (
+    <Row
+      id="family"
+      className="pt-20"
+      asideClassName="lg:pt-20"
+      aside={
+        <SnippetPanel
+          open={open}
+          title="family.ts"
+          code={familySnippet(state)}
+          onToggle={() => setOpen((value) => !value)}
+        />
+      }
+    >
+      <div className="flex items-start gap-1">
+        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
+          Families &amp; variable weight
+        </h2>
+        <Caption>[family]</Caption>
+      </div>
+      <Prose className="mt-5">
+        Declare the bakes you have, ask for any weight or style. Exact hits render their atlas; anything else falls back
+        to the closest bake, corrected when it helps. Flip to variable and a single atlas drives the whole weight range
+        live on the GPU. The small line below mixes three variants in one layout.
+      </Prose>
+      <figure className="mt-8">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+          <ControlBar>
+            <ControlCell label="source">
+              <Segment active={!state.vf} onClick={() => patch({ vf: false })}>
+                baked
+              </Segment>
+              <Segment active={state.vf} onClick={() => patch({ vf: true })}>
+                variable
+              </Segment>
+            </ControlCell>
+            {!state.vf && (
+              <ControlCell label="style">
+                <Segment active={state.style === 'normal'} onClick={() => patch({ style: 'normal' })}>
+                  roman
+                </Segment>
+                <Segment active={state.style === 'italic'} onClick={() => patch({ style: 'italic' })}>
+                  italic
+                </Segment>
+              </ControlCell>
+            )}
+            <ControlCell label="weight" grow>
+              <Slider
+                value={[state.weight]}
+                min={100}
+                max={900}
+                step={10}
+                className="min-w-16 flex-1"
+                onValueChange={([value]) => {
+                  // baked mode magnetizes to the baked stops so exact hits
+                  // are reachable; vf slides the GPU field live instead
+                  const weight = state.vf ? value : (BAKED_STOPS.find((stop) => Math.abs(value - stop) <= 25) ?? value)
+                  view?.setLiveWeight(weight)
+                  patch({ weight })
+                }}
+              />
+              <ControlValue>{state.weight}</ControlValue>
+            </ControlCell>
+          </ControlBar>
+          <div ref={elRef} className="aspect-[16/9] w-full" />
+          {/* fixed-width cells so the readout never reflows while dragging */}
+          <div className="flex items-center gap-3 bg-paper px-3 py-2.5 font-mono text-[11px] tracking-[0.02em]">
+            <span
+              className={`inline-block w-[96px] px-1.5 py-0.5 text-center ${
+                info?.mode === 'baked' ? 'bg-ink/10 text-ink' : 'bg-[#b4542a]/15 text-[#b4542a]'
+              }`}
+            >
+              {info?.mode ?? '…'}
+            </span>
+            <span className="inline-block min-w-[110px] text-ink">{info?.served}</span>
+            <span className="text-ink-faint">{info?.details}</span>
+          </div>
+        </div>
+        <figcaption className="mt-5">
+          <FigCaption>fig. 02 · one family, every weight · defineFamily + setVariant</FigCaption>
+        </figcaption>
+      </figure>
+    </Row>
+  )
+}
+
 export function WipeExample({ stage, html }: { stage: Stage | null; html: string }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -252,7 +359,7 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 02 · threshold erosion · plays as it enters</FigCaption>
+          <FigCaption>fig. 03 · threshold erosion · plays as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -315,7 +422,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 03 · atlas scramble · decodes as it enters</FigCaption>
+          <FigCaption>fig. 04 · atlas scramble · decodes as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -357,7 +464,7 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 04 · fluid-sim ink driving the scramble</FigCaption>
+          <FigCaption>fig. 05 · fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
       </figure>
     </Row>

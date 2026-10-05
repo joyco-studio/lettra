@@ -39,10 +39,27 @@ export const msdfThreshold = /* @__PURE__ */ defineNode(
   ({ erosion, aa }) => mix(float(0.5), aa.add(1.0), erosion)
 )
 
+/** Shifts the fill threshold down to dilate strokes (synthetic bold) or up to
+ * thin them. `boldness` is in threshold units — convert from em via
+ * `syntheticThresholdShift`. A no-op at 0. */
+export const msdfBolden = /* @__PURE__ */ defineNode(
+  { name: 'msdfBolden', inputs: { threshold: 'float', boldness: 'float' }, output: 'float' },
+  ({ threshold, boldness }) => threshold.sub(boldness)
+)
+
 /** Coverage in [0, 1]: smoothstep of the distance around the threshold. */
 export const msdfFill = /* @__PURE__ */ defineNode(
   { name: 'msdfFill', inputs: { distance: 'float', threshold: 'float', aa: 'float' }, output: 'float' },
   ({ distance, threshold, aa }) => smoothstep(threshold.sub(aa), threshold.add(aa), distance)
+)
+
+/** EXPERIMENTAL — distance reconstruction for delta-channel variable bakes:
+ * the RGB field is the wght-min instance and alpha stores the per-texel
+ * median delta toward wght-max (decode: (a × 2 − 1) × deltaScale), so the
+ * distance slides continuously with `weightT`. */
+export const experimental_msdfDeltaDistance = /* @__PURE__ */ defineNode(
+  { name: 'msdfDeltaDistance', inputs: { msdf: 'vec4', weightT: 'float', deltaScale: 'float' }, output: 'float' },
+  ({ msdf, weightT, deltaScale }) => msdfDistance({ msdf }).add(msdf.a.mul(2).sub(1).mul(deltaScale).mul(weightT))
 )
 
 /** Context for the `uv` hook — runs before the atlas sample. */
@@ -90,6 +107,9 @@ export function createTextUniforms({ fill = '#ffffff', opacity = 1 }: TextUnifor
   return {
     fill: uniform(new Color(fill)),
     opacity: uniform(opacity),
+    /** Synthetic-bold threshold shift (see `msdfBolden`). In threshold units,
+     * not em — `syntheticThresholdShift` converts. 0 = the baked weight. */
+    boldness: uniform(0),
   }
 }
 
@@ -106,12 +126,21 @@ export interface TextMaterialOptions<
   /** Opt-in pre-made effect (e.g. `wipe()` from `effects/wipe`); its
    * uniforms merge into the returned bag. */
   effect?: E
+  /** EXPERIMENTAL — delta-channel variable-weight atlas (font.deltaChannel):
+   * routes reconstruction through `experimental_msdfDeltaDistance` and adds a
+   * tweenable `weightT` uniform to the returned bag. */
+  experimental?: {
+    weightT?: number
+    /** The font JSON's deltaScale. Default 1. */
+    deltaScale?: number
+  }
 }
 
 export interface TextMaterialResult<E extends TextEffect | undefined = undefined> {
   material: MeshBasicNodeMaterial
-  /** Tween `.value` on these directly. */
-  uniforms: TextUniforms & EffectUniforms<E>
+  /** Tween `.value` on these directly. `weightT` is present only when the
+   * experimental delta-channel option is set. */
+  uniforms: TextUniforms & EffectUniforms<E> & { weightT?: TextUniforms['opacity'] }
   /** The atlas sampler node — reassign `.value` to swap atlases atomically. */
   textureNode: TextureNode
 }
@@ -129,10 +158,20 @@ export function createTextMaterial<E extends TextEffect | undefined = undefined>
 
   const sampleUv = effect?.uv ? effect.uv({ uv: uv() }) : uv()
   const textureNode = texture(options.map, sampleUv)
-  const distance = msdfDistance({ msdf: textureNode })
+  const weightT = options.experimental ? uniform(options.experimental.weightT ?? 0) : undefined
+  const distance = weightT
+    ? experimental_msdfDeltaDistance({
+        msdf: textureNode,
+        weightT,
+        deltaScale: float(options.experimental?.deltaScale ?? 1),
+      })
+    : msdfDistance({ msdf: textureNode })
   const aa = msdfAA({ distance })
   const erosion = effect?.erosion?.({ distance, aa })
-  const threshold = erosion ? msdfThreshold({ erosion, aa }) : float(0.5)
+  const threshold = msdfBolden({
+    threshold: erosion ? msdfThreshold({ erosion, aa }) : float(0.5),
+    boldness: base.boldness,
+  })
   const coverage = msdfFill({ distance, threshold, aa })
 
   const material = new MeshBasicNodeMaterial()
@@ -143,7 +182,7 @@ export function createTextMaterial<E extends TextEffect | undefined = undefined>
 
   return {
     material,
-    uniforms: { ...base, ...effect?.uniforms } as TextUniforms & EffectUniforms<E>,
+    uniforms: { ...base, ...effect?.uniforms, ...(weightT ? { weightT } : {}) } as TextMaterialResult<E>['uniforms'],
     textureNode,
   }
 }

@@ -17,7 +17,7 @@ import {
 import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
 import type { TocSection } from '@/components/toc'
-import { LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
+import { FamilyExample, LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
 import { bakeRecipe } from '@/lib/snippets'
 import type { HighlightedSnippets } from '@/lib/snippets'
 import { createStage } from '../gl/stage'
@@ -25,12 +25,13 @@ import type { Stage } from '../gl/stage'
 
 const SECTIONS: TocSection[] = [
   { id: 'specimen', index: '01', label: 'Specimen' },
-  { id: 'pipeline', index: '02', label: 'Pipeline' },
-  { id: 'wipe', index: '03', label: 'Wipe' },
-  { id: 'scramble', index: '04', label: 'Scramble' },
-  { id: 'liquid', index: '05', label: 'Water trail' },
-  { id: 'implementation', index: '06', label: 'Implementation' },
-  { id: 'colophon', index: '07', label: 'Colophon' },
+  { id: 'family', index: '02', label: 'Families' },
+  { id: 'pipeline', index: '03', label: 'Pipeline' },
+  { id: 'wipe', index: '04', label: 'Wipe' },
+  { id: 'scramble', index: '05', label: 'Scramble' },
+  { id: 'liquid', index: '06', label: 'Water trail' },
+  { id: 'implementation', index: '07', label: 'Implementation' },
+  { id: 'colophon', index: '08', label: 'Colophon' },
 ]
 
 const INSTALL_COMMAND = 'pnpm add lettra three'
@@ -47,10 +48,11 @@ scene.add(text.mesh)
 await text.warmup(renderer, camera, scene) // pipeline compile + atlas upload off the hot path
 text.uniforms.wipeIn.value = 1 // tween 0 -> 1 to reveal; wipeOut consumes
 
-Fonts are baked once at build time (manual):
-npx -y -p msdf-bmfont-xml msdf-bmfont -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
-- instance variable fonts to a static weight first (python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf) or GPOS kerning bakes to 0 pairs
-- keep distance range 8 (erosion wipes need the SDF headroom), single atlas page, no rotated packing
+Fonts are baked once at build time with the bundled CLI (handles variable-font instancing + GPOS kerning recovery):
+npx lettra bake font.ttf --weights 400,700 --italic italic.ttf --size 64 --pxrange 8 --out public/fonts/name
+Weight/style variants compose into a family:
+const fam = defineFamily({ src: [{ json, atlas, weight, style? }, ...] })
+const text2 = createText({ variant: await fam.load({ weight: 500, style: 'italic' }) }) // nearest bake + synthetic corrections
 
 Full API (layout engine, effects, composing TSL nodes, lifecycle contract): https://github.com/joyco-studio/lettra#readme`
 
@@ -189,7 +191,11 @@ export default function Playground({
             <SpecimenExample stage={stage} />
 
             <SectionBreak />
-            {/* 02 — pipeline */}
+            {/* fig. 02 — families & variable weight */}
+            <FamilyExample stage={stage} />
+
+            <SectionBreak />
+            {/* 03 — pipeline */}
             <Row
               id="pipeline"
               className="pt-20"
@@ -235,7 +241,7 @@ export default function Playground({
               </div>
             </Row>
 
-            {/* fig. 02 — wipe, fig. 03 — scramble, fig. 04 — water trail */}
+            {/* fig. 03 — wipe, fig. 04 — scramble, fig. 05 — water trail */}
             <SectionBreak />
             <WipeExample stage={stage} html={highlighted.wipe} />
             <SectionBreak />
@@ -244,7 +250,7 @@ export default function Playground({
             <LiquidExample stage={stage} html={highlighted.liquid} />
 
             <SectionBreak />
-            {/* 06 — implementation */}
+            {/* 07 — implementation */}
             <Row id="implementation" className="pt-20">
               <div className="flex items-start gap-1">
                 <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
@@ -280,7 +286,7 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 05 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
+                    fig. 06 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
                   </span>
                 </summary>
                 <div className="mt-4">
@@ -300,7 +306,7 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 06 · a view{' '}
+                    fig. 07 · a view{' '}
                     <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
                   </span>
                 </summary>
@@ -316,7 +322,7 @@ export default function Playground({
             </Row>
 
             <SectionBreak />
-            {/* 07 — colophon */}
+            {/* 08 — colophon */}
             <Row id="colophon" className="pt-20">
               <div className="pb-10">
                 <MetaTable />

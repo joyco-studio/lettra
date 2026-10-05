@@ -4,7 +4,16 @@ export { buildTextGeometry } from './geometry'
 export type { TextAnchor, TextGeometryOptions } from './geometry'
 export { defineNode } from './define-node'
 export type { DefinedNode, NodeDefinition, NodeInputs, NodeValueType } from './define-node'
-export { createTextMaterial, createTextUniforms, msdfDistance, msdfAA, msdfFill, msdfThreshold } from './material'
+export {
+  createTextMaterial,
+  createTextUniforms,
+  msdfDistance,
+  msdfAA,
+  msdfFill,
+  msdfThreshold,
+  msdfBolden,
+  experimental_msdfDeltaDistance,
+} from './material'
 export type {
   EffectUniforms,
   FloatNode,
@@ -27,4 +36,26 @@ export type { ComposedUniforms } from './effects/compose'
 export { disposeText, warmup } from './lifecycle'
 export type { TextResources, WarmupOptions } from './lifecycle'
 export { createText } from './text'
-export type { CreateTextOptions, SwapFontOptions, TextHandle } from './text'
+export type { CreateTextOptions, SwapFontOptions, TextHandle, TextSource } from './text'
+export { defineFamily } from './family'
+export type {
+  DefineFamilyOptions,
+  FamilyVariant,
+  FamilyVariantSource,
+  FontFamily,
+  LoadedVariant,
+  VariantState,
+} from './family'
+export { experimental_loadDeltaFontTexture } from './texture'
+export { resolveVariant, syntheticThresholdShift, DEFAULT_SYNTHESIS } from '../core/family'
+export type {
+  FontStyle,
+  VariantKey,
+  VariantDescriptor,
+  SynthesisOptions,
+  SyntheticCorrection,
+  ResolvedVariant,
+} from '../core/family'
+export { isVariableFont, weightToT, experimental_interpolateFont } from '../core/variable'
+export { experimental_createRichText } from './rich-text'
+export type { CreateRichTextOptions, RichSpan, RichTextHandle } from './rich-text'

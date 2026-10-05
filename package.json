@@ -32,6 +32,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "lettra": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

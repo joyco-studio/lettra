@@ -1,4 +1,5 @@
 import type { SpecimenState } from '../gl/views/specimen'
+import type { FamilyState } from '../gl/views/family'
 
 /** The code a consumer would write to reproduce the current specimen state. */
 export function specimenSnippet(state: SpecimenState): string {
@@ -89,15 +90,60 @@ const text = createText({
 // the sim is view code, not library code -- swap it for a wipe
 // front or an audio level and nothing else changes`
 
-export const bakeRecipe = `# instance variable fonts first: variable GPOS kerning
-# bakes to 0 pairs otherwise (static GPOS reads fine)
-python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf
+/** The code a consumer would write to reproduce the family figure. */
+export function familySnippet(state: FamilyState): string {
+  if (state.vf) {
+    return `import { createText, defineFamily } from 'lettra/three'
 
-# bake: MSDF atlas PNG + BMFont JSON metrics
-# -r 8 is the distance range, required for smooth erosion wipes
-npx -y -p msdf-bmfont-xml msdf-bmfont \\
-  -f json -i charset.txt -s 64 -r 8 -p 2 \\
-  -t msdf --smart-size static.ttf`
+// EXPERIMENTAL: one atlas covers wght 300-800. RGB is the
+// light field, alpha a per-texel delta toward the bold end.
+// Baked with: lettra bake delta Inter.ttf --range 300,800
+const inter = defineFamily({
+  src: [{ json: '/fonts/inter-vf.json', atlas: '/fonts/inter-vf.png', weightRange: [300, 800] }],
+})
+
+const text = createText({ variant: await inter.load({ weight: ${state.weight} }), text, layout })
+
+// re-layout at a resting weight…
+text.setVariant(await inter.load({ weight: ${state.weight} }))
+// …or slide the GPU field continuously (advances stay put)
+text.experimental_setWeightT(${Math.min(1, Math.max(0, (state.weight - 300) / 500)).toFixed(2)})`
+  }
+
+  const key = state.style === 'italic' ? `{ weight: ${state.weight}, style: 'italic' }` : `{ weight: ${state.weight} }`
+  return `import { createText, defineFamily } from 'lettra/three'
+
+// next/font-style declaration; bakes come from \`npx lettra bake\`
+const inter = defineFamily({
+  src: [
+    { json: '/fonts/inter-200.json', atlas: '/fonts/inter-200.png', weight: 200 },
+    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
+    { json: '/fonts/inter-700i.json', atlas: '/fonts/inter-700i.png', weight: 700, style: 'italic' },
+  ],
+})
+
+// CSS-like resolution: nearest bake + synthetic corrections
+// (threshold-shift bold, sheared oblique) cover the misses
+const variant = await inter.load(${key})
+const text = createText({ variant, text, layout })
+
+// weight changes ride the atomic swapFont path
+text.setVariant(await inter.load({ weight: 700 }))`
+}
+
+export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
+# (variable GPOS kerning survives), pinned MSDF settings,
+# lettra-native JSON, a ready defineFamily src block
+npx lettra bake Inter.ttf --weights 400,700 \\
+  --italic Inter-Italic.ttf --size 64 --pxrange 8 \\
+  --out public/fonts/inter
+
+# experimental: one atlas, continuous weight 300-800
+# (alpha channel carries the per-texel weight delta)
+npx lettra bake delta Inter.ttf --range 300,800 \\
+  --pxrange 12 --texture 1024 --out public/fonts/inter`
 
 /** Static code blocks highlighted server-side at build. */
 export interface HighlightedSnippets {

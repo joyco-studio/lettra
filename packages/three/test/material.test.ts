@@ -3,7 +3,9 @@ import { float, vec4 } from 'three/tsl'
 import {
   createTextUniforms,
   defineNode,
+  experimental_msdfDeltaDistance,
   msdfAA,
+  msdfBolden,
   msdfDistance,
   msdfFill,
   msdfThreshold,
@@ -22,7 +24,21 @@ describe('node contracts', () => {
     expect(Object.isFrozen(wipeErosion.definition)).toBe(true)
     expect(Object.isFrozen(wipeErosion.definition.inputs)).toBe(true)
     expect(msdfDistance.definition.inputs).toEqual({ msdf: 'vec4' })
-    for (const node of [msdfDistance, msdfAA, msdfFill, msdfThreshold, wipeErosion]) {
+    expect(msdfBolden.definition.inputs).toEqual({ threshold: 'float', boldness: 'float' })
+    expect(experimental_msdfDeltaDistance.definition.inputs).toEqual({
+      msdf: 'vec4',
+      weightT: 'float',
+      deltaScale: 'float',
+    })
+    for (const node of [
+      msdfDistance,
+      msdfAA,
+      msdfFill,
+      msdfThreshold,
+      msdfBolden,
+      experimental_msdfDeltaDistance,
+      wipeErosion,
+    ]) {
       expect(node.definition.output).toBe('float')
       expect(typeof node.definition.name).toBe('string')
     }
@@ -38,15 +54,22 @@ describe('node contracts', () => {
       band: float(0.25),
     } satisfies NodeInputs<typeof wipeErosion>
     const erosion = wipeErosion(erosionInputs)
-    const coverage = msdfFill({ distance, threshold: msdfThreshold({ erosion, aa }), aa })
-    for (const node of [distance, aa, erosion, coverage]) {
+    const bolded = msdfBolden({ threshold: msdfThreshold({ erosion, aa }), boldness: float(0.1) })
+    const coverage = msdfFill({ distance, threshold: bolded, aa })
+    const deltaDistance = experimental_msdfDeltaDistance({
+      msdf: vec4(0.2, 0.5, 0.8, 0.5),
+      weightT: float(0.5),
+      deltaScale: float(2),
+    })
+    for (const node of [distance, aa, erosion, bolded, coverage, deltaDistance]) {
       expect(node).toBeDefined()
       expect((node as { isNode?: boolean }).isNode).toBe(true)
     }
   })
 
   it('keeps the base uniform bag lean; wipe lands as an opt-in effect', () => {
-    expect(Object.keys(createTextUniforms())).toEqual(['fill', 'opacity'])
+    expect(Object.keys(createTextUniforms())).toEqual(['fill', 'opacity', 'boldness'])
+    expect(createTextUniforms().boldness.value).toBe(0)
 
     const effect = wipe()
     expect(Object.keys(effect.uniforms)).toEqual(['wipeIn', 'wipeOut'])

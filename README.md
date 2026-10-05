@@ -256,18 +256,70 @@ Two interactions worth knowing:
 - **`onChange` still fires on warmup completion**, whichever path warmed the
   text. Demand-driven loops invalidate one frame from it either way.
 
-## Baking fonts
+## Families and variants
 
-Dev-time and currently manual: the library starts at the bake's output
-(atlas PNG + JSON). Two routes:
+A family declares its bakes next/font style and resolves CSS-like: exact
+hits serve the atlas, misses serve the nearest bake plus synthetic
+corrections (a threshold-shift bold, a sheared oblique).
 
-```bash
-# CLI (msdf-bmfont-xml)
-npx -y -p msdf-bmfont-xml msdf-bmfont \
-  -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
+```ts
+import { createText, defineFamily } from 'lettra/three'
+
+const inter = defineFamily({
+  src: [
+    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
+  ],
+})
+
+// load is the only async point; weight 500 serves the 400 bake + boldness
+const text = createText({ variant: await inter.load({ weight: 500 }), text: 'Hello' })
+text.setVariant(await inter.load({ weight: 700, style: 'italic' })) // atomic swap
+
+await inter.loadAll()            // or eager: everything sync via get() after
+inter.get({ weight: 700 })       // sync, null until loaded
+inter.has({ weight: 700 })       // true only for exact bakes
+inter.warmup(renderer)           // uploads every loaded atlas
+inter.dispose()                  // the family owns its atlases, texts never do
 ```
 
-or the browser tool [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).
+`synthesis: false` makes misses throw instead. Bake every variant of a
+family at one size and distance range; `defineFamily` warns when loaded
+bakes disagree.
+
+Experimental, shipped behind `experimental_` prefixes:
+
+- **Continuous weight from one atlas.** `lettra bake delta` encodes the
+  light-to-black stroke delta in the atlas alpha channel; a variant declares
+  `weightRange: [300, 800]` instead of `weight`, resolution returns the
+  interpolation `t`, and `text.experimental_setWeightT(t)` slides the GPU
+  field continuously (advances re-layout on `setVariant`, not per frame).
+- **Style runs.** `experimental_createRichText({ family, text, spans })`
+  lays out one paragraph across variants (italic or weight spans), wrapping
+  paragraph-wide, one draw call per distinct variant. Kerning drops at span
+  boundaries; font-bound effects follow the base variant.
+
+## Baking fonts
+
+Dev-time, one command. `npx lettra bake` (the `lettra-bake` package under the hood) preflights the font, instances
+variable fonts to static weights with fontTools (Python; the step that
+keeps GPOS kerning alive), bakes with pinned MSDF settings, recovers
+class-based GPOS pairs that the generator's parser misses, and emits the
+minified lettra JSON plus a ready `defineFamily` block:
+
+```bash
+pip install fonttools   # one-time prerequisite for variable fonts
+npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
+  --charset charset.txt --size 64 --pxrange 8 --out public/fonts/inter
+
+# experimental: one atlas, continuous weight
+npx lettra bake delta Inter.ttf --range 300,800 --pxrange 12 --texture 1024 \
+  --out public/fonts/inter
+```
+
+Manual routes still work: raw msdf-bmfont-xml, or the browser tool
+[msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).
 
 `createText` (and `loadFont` / `parseFont`) accepts the raw BMFont JSON
 directly, or run it through `fromBMFont` once and ship the minified schema
