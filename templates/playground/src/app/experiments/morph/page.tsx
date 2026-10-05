@@ -23,6 +23,12 @@ export default function Page() {
     <div className="flex h-dvh flex-col overflow-hidden lg:flex-row">
       <aside className="flex shrink-0 flex-col gap-5 overflow-y-auto border-ink-faint/20 px-6 py-7 lg:w-[330px] lg:border-r">
         <div>
+          <a
+            href="/"
+            className="mb-3 inline-block font-mono text-[11px] tracking-[0.02em] text-ink-faint transition-colors hover:text-ink"
+          >
+            &larr; lettra
+          </a>
           <h1 className="font-serif text-[21px] leading-[1.1] font-bold tracking-[-0.02em] text-ink">
             Weight morphing, measured
           </h1>

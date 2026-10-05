@@ -66,7 +66,20 @@ export function MorphExperiment() {
     if (ready) labRef.current?.render(s)
   }, [s, ready])
 
+  const stateRef = useRef(s)
+  stateRef.current = s
+
   const patch = useCallback((p: Partial<LabState>) => setS((prev) => ({ ...prev, ...p })), [])
+
+  // the canvas is flex-sized, so it has no usable height until layout settles;
+  // without this it stays 0px and swallows pointer events
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el || !ready) return
+    const ro = new ResizeObserver(() => labRef.current?.render(stateRef.current))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ready])
 
   // drag to pan, wheel to zoom
   useEffect(() => {
@@ -188,10 +201,12 @@ export function MorphExperiment() {
         </ControlCell>
       </ControlBar>
 
-      <canvas
-        ref={canvasRef}
-        className="block aspect-square w-full cursor-grab touch-none bg-[#dedede] active:cursor-grabbing"
-      />
+      <div className="relative min-h-0 flex-1 bg-[#dedede]">
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 block h-full w-full cursor-grab touch-none active:cursor-grabbing"
+        />
+      </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-1 bg-paper px-3 py-2.5 font-mono text-[11px] text-ink-faint">
         <span className="text-ink">
