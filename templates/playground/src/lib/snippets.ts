@@ -66,7 +66,8 @@ const text = createText({
 text.uniforms.scramble.value = 1`
 
 export const liquidSnippet = `import { composeEffects, createText, scramble } from 'lettra/three'
-import { mix, saturate, smoothstep, texture, float } from 'three/tsl'
+import type { TextEffect } from 'lettra/three'
+import { color, max, mix, saturate, smoothstep, texture, float } from 'three/tsl'
 
 // a tiny GPU fluid sim: one half-float ping-pong texture,
 // rg = velocity, b = ink. Each frame: backtrace by velocity,
@@ -79,7 +80,10 @@ const rim = saturate(float(1).sub(field.sub(0.4).abs().div(0.25)))
 const wet = smoothstep(0.4, 0.8, field)
 
 // interior wetness tints the ink through the color wire
-const wetInk = { uniforms: {}, stages: { color: (prev) => mix(prev, color('#1d3557'), wet) } }
+const wetInk: TextEffect = {
+  uniforms: {},
+  stages: { color: (prev) => mix(prev, color('#1d3557'), wet) },
+}
 
 const text = createText({
   font,
