@@ -120,6 +120,43 @@ describe('createRichText', () => {
     ).toThrow(/overlap/)
   })
 
+  it('keeps a synthetic italic span out of the upright bucket', async () => {
+    // upright-only family: the italic span resolves to the same font and atlas,
+    // so only the slant separates the two buckets
+    const uprightOnly = defineFamily({
+      src: [{ json: '/f-400.json', atlas: '/f-400.png', weight: 400 }],
+      loaders: { font: (url) => Promise.resolve(fonts[url]), texture: () => Promise.resolve(new Texture()) },
+    })
+    await uprightOnly.loadAll()
+    const handle = createRichText({
+      family: uprightOnly,
+      text: 'HaHa',
+      spans: [{ start: 2, end: 4, style: 'italic' }],
+      geometry: { anchor: 'baseline-left' },
+    })
+    expect(handle.group.children).toHaveLength(2)
+    const leanOf = (mesh: Mesh) => {
+      const position = mesh.geometry.getAttribute('position')
+      // top-left x minus bottom-left x: zero upright, positive when sheared
+      return position.getX(0) - position.getX(3)
+    }
+    const leans = handle.group.children.map((child) => leanOf(child as Mesh)).sort((a, b) => a - b)
+    expect(leans[0]).toBeCloseTo(0)
+    expect(leans[1]).toBeGreaterThan(0)
+    handle.dispose()
+  })
+
+  it('builds an empty paragraph and clears via setText', async () => {
+    const family = await loadedFamily()
+    const handle = createRichText({ family, text: '' })
+    expect(handle.group.children).toHaveLength(0)
+    handle.setText('Ha')
+    expect(handle.group.children).toHaveLength(1)
+    handle.setText('')
+    expect(handle.group.children).toHaveLength(0)
+    handle.dispose()
+  })
+
   it('rebuilds on setText and notifies listeners', async () => {
     const family = await loadedFamily()
     const handle = createRichText({ family, text: 'Ha' })

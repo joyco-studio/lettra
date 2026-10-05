@@ -45,12 +45,15 @@ export function hasKerningTables(tags: string[]): boolean {
   return tags.includes('GPOS') || tags.includes('kern')
 }
 
-/** Code points the font actually maps to a glyph. Anything outside this set
- * bakes as .notdef tofu, so the CLI drops it and says so. */
-export function readCmapCoverage(data: Uint8Array, tables: SfntTables): Set<number> {
+/** Which of `wanted` the font maps to a glyph; anything outside the result
+ * bakes as .notdef tofu, so the CLI drops it and says so. Null means the cmap
+ * is unreadable, i.e. coverage unknown rather than empty. Scoped to `wanted`
+ * because format 12 endpoints are unbounded 32-bit values. */
+export function readCmapCoverage(data: Uint8Array, tables: SfntTables, wanted: Iterable<number>): Set<number> | null {
+  const want = wanted instanceof Set ? wanted : new Set(wanted)
   const covered = new Set<number>()
   const cmap = tables.offsets.get('cmap')
-  if (cmap === undefined || cmap + 4 > data.byteLength) return covered
+  if (cmap === undefined || cmap + 4 > data.byteLength) return null
   const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
 
   // prefer full-repertoire (3,10) over BMP (3,1), then any Unicode subtable
@@ -68,7 +71,7 @@ export function readCmapCoverage(data: Uint8Array, tables: SfntTables): Set<numb
       best = cmap + view.getUint32(record + 4)
     }
   }
-  if (best < 0 || best + 4 > data.byteLength) return covered
+  if (best < 0 || best + 4 > data.byteLength) return null
 
   const format = view.getUint16(best)
   if (format === 4) {
@@ -78,12 +81,14 @@ export function readCmapCoverage(data: Uint8Array, tables: SfntTables): Set<numb
     const deltas = starts + segCount * 2
     const rangeOffsets = deltas + segCount * 2
     for (let s = 0; s < segCount; s++) {
+      if (rangeOffsets + s * 2 + 2 > data.byteLength) break
       const end = view.getUint16(ends + s * 2)
       const start = view.getUint16(starts + s * 2)
       if (start > end || start === 0xffff) continue
       const delta = view.getUint16(deltas + s * 2)
       const rangeOffset = view.getUint16(rangeOffsets + s * 2)
-      for (let code = start; code <= end; code++) {
+      for (const code of want) {
+        if (code < start || code > end) continue
         let glyph: number
         if (rangeOffset === 0) {
           glyph = (code + delta) & 0xffff
@@ -104,9 +109,16 @@ export function readCmapCoverage(data: Uint8Array, tables: SfntTables): Set<numb
       const start = view.getUint32(at)
       const end = view.getUint32(at + 4)
       const startGlyph = view.getUint32(at + 8)
-      if (startGlyph === 0 || end < start) continue
-      for (let code = start; code <= end; code++) covered.add(code)
+      if (end < start) continue
+      // glyph ids climb with the code, so a group based at glyph 0 only leaves
+      // its own first code point unmapped — the rest are real glyphs
+      const from = startGlyph === 0 ? start + 1 : start
+      for (const code of want) {
+        if (code >= from && code <= end) covered.add(code)
+      }
     }
+  } else {
+    return null
   }
   return covered
 }

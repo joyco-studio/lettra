@@ -84,6 +84,8 @@ export function createText<E extends TextEffect | undefined = undefined>(options
   let ownsMap = !initialVariant
   let text = options.text ?? ''
   let layoutOptions = options.layout
+  // the slant explicitly asked for, restored whenever a raw font swaps in
+  const requestedSlant = options.geometry?.slant
   let geometryOptions: TextGeometryOptions | undefined = initialVariant
     ? { ...options.geometry, slant: initialVariant.synthetic.slant }
     : options.geometry
@@ -117,7 +119,11 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     notify()
   }
 
-  const swapFont = (next: SwapFontOptions) => applyFont(next, true)
+  const swapFont = (next: SwapFontOptions) => {
+    // a raw pair carries no synthetic correction: drop a slant setVariant left
+    geometryOptions = { ...geometryOptions, slant: requestedSlant }
+    applyFont(next, true)
+  }
 
   return {
     mesh,

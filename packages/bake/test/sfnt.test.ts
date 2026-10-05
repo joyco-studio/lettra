@@ -58,8 +58,60 @@ describe('sfnt preflight', () => {
     view.setUint16(sub + 22, 0xffff) // start[1]
     view.setUint16(sub + 24, 1) // idDelta[0]
 
-    const covered = readCmapCoverage(data, readTables(data))
-    expect([...covered].sort()).toEqual([0x41, 0x42, 0x43])
+    const covered = readCmapCoverage(data, readTables(data), [0x40, 0x41, 0x42, 0x43, 0x44])
+    expect([...covered!].sort()).toEqual([0x41, 0x42, 0x43])
+  })
+
+  it('reads cmap coverage from a format 12 group based at glyph 0', () => {
+    // sfnt header + one table entry + cmap header + record + format 12 body
+    const data = new Uint8Array(12 + 16 + 12 + 16 + 12)
+    const view = new DataView(data.buffer)
+    view.setUint32(0, 0x00010000)
+    view.setUint16(4, 1)
+    for (let c = 0; c < 4; c++) data[12 + c] = 'cmap'.charCodeAt(c)
+    const cmap = 28
+    view.setUint32(12 + 8, cmap)
+    view.setUint16(cmap + 2, 1)
+    view.setUint16(cmap + 4, 3)
+    view.setUint16(cmap + 6, 10)
+    view.setUint32(cmap + 8, 12)
+    const sub = cmap + 12
+    view.setUint16(sub, 12)
+    view.setUint32(sub + 12, 1) // one group
+    view.setUint32(sub + 16, 0x41) // start = A
+    view.setUint32(sub + 20, 0x43) // end = C
+    view.setUint32(sub + 24, 0) // startGlyphID = 0 → only A is unmapped
+
+    const covered = readCmapCoverage(data, readTables(data), [0x41, 0x42, 0x43, 0x44])
+    expect([...covered!].sort()).toEqual([0x42, 0x43])
+  })
+
+  it('ignores a declared range far wider than the charset', () => {
+    const data = new Uint8Array(12 + 16 + 12 + 16 + 12)
+    const view = new DataView(data.buffer)
+    view.setUint32(0, 0x00010000)
+    view.setUint16(4, 1)
+    for (let c = 0; c < 4; c++) data[12 + c] = 'cmap'.charCodeAt(c)
+    const cmap = 28
+    view.setUint32(12 + 8, cmap)
+    view.setUint16(cmap + 2, 1)
+    view.setUint16(cmap + 4, 3)
+    view.setUint16(cmap + 6, 10)
+    view.setUint32(cmap + 8, 12)
+    const sub = cmap + 12
+    view.setUint16(sub, 12)
+    view.setUint32(sub + 12, 1)
+    view.setUint32(sub + 16, 0)
+    view.setUint32(sub + 20, 0xffffffff) // malformed: the whole 32-bit space
+    view.setUint32(sub + 24, 1)
+
+    const started = Date.now()
+    expect([...readCmapCoverage(data, readTables(data), [0x41])!]).toEqual([0x41])
+    expect(Date.now() - started).toBeLessThan(1000)
+  })
+
+  it('reports unknown coverage as null, not as an empty set', () => {
+    expect(readCmapCoverage(sfnt(['glyf']), readTables(sfnt(['glyf'])), [0x41])).toBeNull()
   })
 
   it('rejects collections and non-fonts', () => {

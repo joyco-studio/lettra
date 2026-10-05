@@ -144,7 +144,10 @@ interface BakedVariant {
 }
 
 /** Instances (when variable) and bakes one weight, recovering the class-based
- * GPOS pairs the baker's opentype.js reader misses. */
+ * GPOS pairs the baker's opentype.js reader misses. Recovery runs whenever the
+ * source kerns, not only on an empty table: the reader resolves format-1
+ * PairPos and can return a partial set that hides the missing classes. It is
+ * best-effort, so a static bake still completes without fontTools. */
 async function bakeWeight(
   fontPath: string,
   variable: boolean,
@@ -159,15 +162,27 @@ async function bakeWeight(
     await instanceFont(fontPath, [`wght=${weight}`], bakePath)
   }
   const result = await bakeFont(bakePath, settings)
-  if (sourceKerns && Object.keys(result.font.kerning).length === 0) {
-    const pairs = await extractKerning(bakePath, settings.size, settings.charset ?? DEFAULT_CHARSET)
-    for (const [pair, value] of Object.entries(pairs)) {
-      result.font.kerning[pair] = Math.round(value * 100) / 100
-    }
-    if (Object.keys(pairs).length > 0) {
-      console.log(`[lettra] recovered ${Object.keys(pairs).length} GPOS kerning pairs via fontTools`)
-    }
+  if (!sourceKerns) return result
+
+  let pairs: Record<string, number>
+  try {
+    pairs = await extractKerning(bakePath, settings.size, settings.charset ?? DEFAULT_CHARSET)
+  } catch (error) {
+    // instancing already needed fontTools, so a variable font cannot get here
+    const reason = (error instanceof Error ? error.message : String(error)).replace(/^\[lettra\] /, '')
+    console.warn(
+      `[lettra] ${reason}; keeping the ${Object.keys(result.font.kerning).length} pair(s) the baker found. Install fontTools for full class-based kerning: pip3 install fonttools`
+    )
+    return result
   }
+
+  // fontTools reads GPOS directly, so its values win over the baker's
+  let added = 0
+  for (const [pair, value] of Object.entries(pairs)) {
+    if (!(pair in result.font.kerning)) added++
+    result.font.kerning[pair] = Math.round(value * 100) / 100
+  }
+  if (added > 0) console.log(`[lettra] recovered ${added} GPOS kerning pair(s) via fontTools`)
   return result
 }
 
@@ -214,8 +229,13 @@ function printFamilyBlock(outDir: string, variants: BakedVariant[]): void {
  * silently ship as boxes. */
 function withCoverage(settings: BakeSettings, data: Buffer, tables: ReturnType<typeof readTables>, label: string) {
   const charset = settings.charset ?? DEFAULT_CHARSET
-  const covered = readCmapCoverage(data, tables)
-  if (covered.size === 0) return settings
+  const covered = readCmapCoverage(
+    data,
+    tables,
+    Array.from(charset, (char) => char.codePointAt(0)!)
+  )
+  // null = unreadable cmap, so coverage is unknown: bake the charset as asked
+  if (!covered) return settings
   const { usable, missing } = partitionByCoverage(charset, covered)
   if (missing.length > 0) {
     console.warn(
@@ -236,26 +256,29 @@ async function runStatic(options: CliOptions): Promise<void> {
       { path: options.fontPath, style: 'normal' },
       ...(options.italicPath ? [{ path: options.italicPath, style: 'italic' as const }] : []),
     ]
-    for (const face of faces) {
+    // preflight every face up front: a mixed variable/static pair must not get
+    // half its atlases written before the second face turns out to be unusable
+    const plan = faces.map((face) => {
       const data = readFileSync(face.path)
       const tables = readTables(data)
       const variable = isVariableFont(tables.tags)
       const kerns = hasKerningTables(tables.tags)
-      if (!variable && options.weights.length > 1) {
-        fail(`${basename(face.path)} is a static font; it cannot be instanced at ${options.weights.join(', ')}`)
-      }
       const settings = withCoverage(options.settings, data, tables, basename(face.path))
       // a static face has one real weight: label it from OS/2, never from the flag
       const weights = variable ? options.weights : [readWeightClass(data, tables) ?? options.weights[0]]
-      if (!variable && options.weightsExplicit && weights[0] !== options.weights[0]) {
+      if (!variable && options.weightsExplicit && (options.weights.length > 1 || weights[0] !== options.weights[0])) {
         console.warn(
-          `[lettra] ${basename(face.path)} is static at weight ${weights[0]}; ignoring --weights ${options.weights.join(',')}`
+          `[lettra] ${basename(face.path)} is a static font at weight ${weights[0]}; baking it once and ignoring --weights ${options.weights.join(',')}`
         )
       }
-      for (const weight of weights) {
-        const result = await bakeWeight(face.path, variable, kerns, weight, settings, tmp)
+      return { ...face, variable, kerns, settings, weights }
+    })
+
+    for (const face of plan) {
+      for (const weight of face.weights) {
+        const result = await bakeWeight(face.path, face.variable, face.kerns, weight, face.settings, tmp)
         const label = `${basename(face.path)} @ ${weight}${face.style === 'italic' ? ' italic' : ''}`
-        validateBake(label, result, kerns)
+        validateBake(label, result, face.kerns)
         const suffix = `-${weight}${face.style === 'italic' ? 'i' : ''}`
         variants.push({ weight, style: face.style, ...writeVariant(options.out, suffix, result.font, result.png) })
       }

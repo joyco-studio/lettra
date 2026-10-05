@@ -120,17 +120,23 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
     const startedAt = generation
     slot.state = 'loading'
     slot.error = undefined
-    const pending = Promise.all([loadFontJson(slot.source.json), loadAtlas(slot.source.atlas)]).then(([font, map]) => {
-      if (startedAt !== generation) {
-        // never hand back a texture dispose() already killed
-        map.dispose()
-        fail(`family was disposed while variant ${slot.source.weight} ${slot.style} was loading`)
+    const pending = Promise.allSettled([loadFontJson(slot.source.json), loadAtlas(slot.source.atlas)]).then(
+      ([fontResult, mapResult]) => {
+        const stale = startedAt !== generation
+        // an atlas whose partner failed, or one dispose() already killed, is
+        // ours to free: nothing else will ever see it
+        if (mapResult.status === 'fulfilled' && (stale || fontResult.status === 'rejected')) {
+          mapResult.value.dispose()
+        }
+        if (fontResult.status === 'rejected') throw fontResult.reason
+        if (mapResult.status === 'rejected') throw mapResult.reason
+        if (stale) fail(`family was disposed while variant ${slot.source.weight} ${slot.style} was loading`)
+        slot.result = { font: fontResult.value, map: mapResult.value }
+        slot.state = 'loaded'
+        checkBakeConsistency()
+        return slot.result
       }
-      slot.result = { font, map }
-      slot.state = 'loaded'
-      checkBakeConsistency()
-      return slot.result
-    })
+    )
     pending.catch((error) => {
       if (startedAt !== generation) return
       // evict so a retry reloads; keep the error for introspection

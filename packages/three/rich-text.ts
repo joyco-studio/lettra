@@ -6,7 +6,7 @@ import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
 import { layoutRuns } from '../core/runs'
 import type { RunsLayoutResult } from '../core/runs'
 import type { VariantKey } from '../core/family'
-import type { LayoutGlyph, LayoutOptions, LayoutResult, MSDFFont } from '../core/types'
+import type { LayoutGlyph, LayoutOptions, LayoutResult } from '../core/types'
 import type { FontFamily, LoadedVariant } from './family'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
@@ -102,6 +102,8 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
 
   const build = () => {
     const runKeys = normalizeRuns(text.length, spans, baseKey)
+    // empty text tiles into nothing; keep one empty run so '' still builds
+    if (runKeys.length === 0) runKeys.push({ ...baseKey, start: 0, end: 0 })
     const variants = runKeys.map((key) => {
       const variant = family.get(key)
       if (!variant) {
@@ -118,20 +120,25 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
       layoutOptions
     )
 
-    // bucket runs by (font, map) identity so repeated spans share one draw
-    const buckets = new Map<MSDFFont, Map<Texture, { variant: LoadedVariant; glyphs: LayoutGlyph[] }>>()
+    // bucket runs by (font, map, slant) identity so repeated spans share one
+    // draw — slant included, since a synthetic oblique rides the upright bake
+    // and would otherwise be merged into its upright run
+    const buckets: Array<{ variant: LoadedVariant; glyphs: LayoutGlyph[] }> = []
     currentLayout.runs.forEach(({ run, glyphs }) => {
       // a run of pure whitespace places no quads; it gets no mesh
       if (glyphs.length === 0) return
       const variant = variants[run]
-      let byMap = buckets.get(variant.font)
-      if (!byMap) {
-        byMap = new Map()
-        buckets.set(variant.font, byMap)
+      let bucket = buckets.find(
+        (candidate) =>
+          candidate.variant.font === variant.font &&
+          candidate.variant.map === variant.map &&
+          candidate.variant.synthetic.slant === variant.synthetic.slant
+      )
+      if (!bucket) {
+        bucket = { variant, glyphs: [] }
+        buckets.push(bucket)
       }
-      const bucket = byMap.get(variant.map) ?? { variant, glyphs: [] }
       bucket.glyphs.push(...glyphs)
-      byMap.set(variant.map, bucket)
     })
 
     const bounds = {
@@ -147,28 +154,26 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
     const rank = new Map<number, number>()
     currentLayout.glyphs.forEach((glyph, ordinal) => rank.set(glyph.index, ordinal))
     const glyphIndexOf = (glyph: LayoutGlyph) => rank.get(glyph.index) ?? 0
-    for (const byMap of buckets.values()) {
-      for (const bucket of byMap.values()) {
-        const { variant } = bucket
-        bucket.glyphs.sort((a, b) => a.index - b.index)
-        const bucketLayout: LayoutResult = {
-          glyphs: bucket.glyphs,
-          width: currentLayout.width,
-          height: currentLayout.height,
-          inkOrigin: currentLayout.inkOrigin,
-          metrics: currentLayout.metrics,
-        }
-        const geometry = buildTextGeometry(bucketLayout, {
-          ...geometryOptions,
-          bounds,
-          slant: variant.synthetic.slant,
-          glyphIndexOf,
-        })
-        // one shared bag, so a tween moves every bucket at once
-        const { material } = createTextMaterial({ map: variant.map, effect, uniforms: sharedUniforms })
-        group.add(new Mesh(geometry, material))
-        maps.push(variant.map)
+    for (const bucket of buckets) {
+      const { variant } = bucket
+      bucket.glyphs.sort((a, b) => a.index - b.index)
+      const bucketLayout: LayoutResult = {
+        glyphs: bucket.glyphs,
+        width: currentLayout.width,
+        height: currentLayout.height,
+        inkOrigin: currentLayout.inkOrigin,
+        metrics: currentLayout.metrics,
       }
+      const geometry = buildTextGeometry(bucketLayout, {
+        ...geometryOptions,
+        bounds,
+        slant: variant.synthetic.slant,
+        glyphIndexOf,
+      })
+      // one shared bag, so a tween moves every bucket at once
+      const { material } = createTextMaterial({ map: variant.map, effect, uniforms: sharedUniforms })
+      group.add(new Mesh(geometry, material))
+      maps.push(variant.map)
     }
   }
 

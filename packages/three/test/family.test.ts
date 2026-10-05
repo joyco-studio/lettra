@@ -121,6 +121,19 @@ describe('defineFamily', () => {
     expect(family.variants[0].state).toBe('loaded')
   })
 
+  it('disposes the atlas when its font fails to load', async () => {
+    const map = new Texture()
+    const disposed = vi.spyOn(map, 'dispose')
+    const family = defineFamily({
+      src: [SRC[0]],
+      loaders: { font: () => Promise.reject(new Error('boom')), texture: () => Promise.resolve(map) },
+    })
+    await expect(family.load({ weight: 400 })).rejects.toThrow('boom')
+    // the atlas landed with no font to pair it: free it rather than leak it
+    expect(disposed).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(family.variants[0].state).toBe('error'))
+  })
+
   it('loadAll honors the filter predicate', async () => {
     const { family, fontLoads } = testFamily()
     const loaded = await family.loadAll((variant) => variant.style === 'normal')

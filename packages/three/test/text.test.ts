@@ -44,6 +44,29 @@ describe('createText variants', () => {
     text.dispose()
   })
 
+  it('drops a synthetic slant when a raw font swaps in', () => {
+    const text = createText({ variant: variant('regular'), text: 'H', geometry: { anchor: 'baseline-left' } })
+    const upright = Array.from(text.mesh.geometry.getAttribute('position').array as Float32Array)
+    text.setVariant(variant('oblique', { slant: 0.25 }))
+    text.swapFont({ font: font('raw'), map: new Texture() })
+    const swapped = Array.from(text.mesh.geometry.getAttribute('position').array as Float32Array)
+    expect(swapped[0]).toBeCloseTo(upright[0])
+    text.dispose()
+  })
+
+  it('keeps an explicitly requested slant across a raw swap', () => {
+    const text = createText({
+      variant: variant('regular'),
+      text: 'H',
+      geometry: { anchor: 'baseline-left', slant: 0.25 },
+    })
+    text.setVariant(variant('upright'))
+    const flat = text.mesh.geometry.getAttribute('position').getX(0)
+    text.swapFont({ font: font('raw'), map: new Texture() })
+    expect(text.mesh.geometry.getAttribute('position').getX(0)).toBeGreaterThan(flat)
+    text.dispose()
+  })
+
   it('leaves a family-owned atlas alone on dispose', () => {
     const v = variant('regular')
     const text = createText({ variant: v, text: 'H' })

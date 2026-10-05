@@ -366,7 +366,7 @@ class-based GPOS pairs that the generator's parser misses, and emits the
 minified lettra JSON plus a ready `defineFamily` block:
 
 ```bash
-pip3 install fonttools  # one-time prerequisite for variable fonts
+pip3 install fonttools  # required for variable fonts, recommended for any kerned face
 npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
   --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
 ```
