@@ -30,7 +30,7 @@ export interface BakeResult {
 }
 
 function fail(message: string): never {
-  throw new Error(`[lettra-bake] ${message}`)
+  throw new Error(`[lettra] ${message}`)
 }
 
 /** Bakes one static font file into a single-page MSDF atlas + lettra JSON. */
@@ -61,7 +61,7 @@ export function bakeFont(fontPath: string, settings: BakeSettings): Promise<Bake
         }
       },
       // silence the per-glyph progress logging; errors still reject
-      { log: () => {}, warn: (msg: string) => console.warn(`[lettra-bake] ${msg}`), error: () => {} }
+      { log: () => {}, warn: (msg: string) => console.warn(`[lettra] ${msg}`), error: () => {} }
     )
   })
 }

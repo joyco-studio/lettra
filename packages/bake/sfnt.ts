@@ -2,7 +2,7 @@
  * shaping dependency. */
 
 function fail(message: string): never {
-  throw new Error(`[lettra-bake] ${message}`)
+  throw new Error(`[lettra] ${message}`)
 }
 
 export interface SfntTables {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* lettra-bake — bakes MSDF atlases the way lettra expects them, automating
+/* The `lettra bake` command: bakes MSDF atlases the way lettra expects them, automating
  * the pipeline that used to be a manual recipe: sfnt preflight, fontTools
  * instancing for variable fonts (which keeps GPOS kerning alive), pinned
  * msdf-bmfont-xml settings, lettra-native JSON output, and the experimental
@@ -30,13 +30,13 @@ interface CliOptions {
   settings: BakeSettings
 }
 
-const HELP = `lettra-bake — MSDF font atlases for lettra
+const HELP = `lettra — MSDF text for Three.js
 
 Usage:
-  lettra-bake <font.ttf> [options]           bake static variants
-  lettra-bake delta <font.ttf> --range 300,800 [options]
-                                             bake an experimental delta-channel
-                                             variable-weight atlas
+  lettra bake <font.ttf> [options]            bake static variants
+  lettra bake delta <font.ttf> --range 300,800 [options]
+                                              bake an experimental delta-channel
+                                              variable-weight atlas
 
 Options:
   --weights 400,700     weights to instance + bake (default 400; variable fonts only)
@@ -53,7 +53,7 @@ Options:
 `
 
 function fail(message: string): never {
-  console.error(`[lettra-bake] ${message}`)
+  console.error(`[lettra] ${message}`)
   process.exit(1)
 }
 
@@ -63,6 +63,9 @@ function parseArgs(argv: string[]): CliOptions {
     console.log(HELP)
     process.exit(0)
   }
+  const command = args.shift()
+  if (command !== 'bake') fail(`unknown command ${JSON.stringify(command)} (see --help)`)
+  if (args.length === 0) fail('bake needs a font file (see --help)')
   const delta = args[0] === 'delta'
   if (delta) args.shift()
 
@@ -179,7 +182,7 @@ async function bakeWeight(
       result.font.kerning[pair] = Math.round(value * 100) / 100
     }
     if (Object.keys(pairs).length > 0) {
-      console.log(`[lettra-bake] recovered ${Object.keys(pairs).length} GPOS kerning pairs via fontTools`)
+      console.log(`[lettra] recovered ${Object.keys(pairs).length} GPOS kerning pairs via fontTools`)
     }
   }
   return result
@@ -189,12 +192,12 @@ function validateBake(label: string, result: BakeResult, sourceHasKerning: boole
   const pairs = Object.keys(result.font.kerning).length
   if (sourceHasKerning && pairs === 0) {
     console.warn(
-      `[lettra-bake] ${label}: source font has kerning tables but 0 pairs were recovered; kerning may be contextual-only`
+      `[lettra] ${label}: source font has kerning tables but 0 pairs were recovered; kerning may be contextual-only`
     )
   }
-  if (!(' ' in result.font.glyphs)) console.warn(`[lettra-bake] ${label}: charset has no space glyph`)
-  if (!('?' in result.font.glyphs)) console.warn(`[lettra-bake] ${label}: charset has no "?" fallback glyph`)
-  console.log(`[lettra-bake] ${label}: ${Object.keys(result.font.glyphs).length} glyphs, ${pairs} kerning pairs`)
+  if (!(' ' in result.font.glyphs)) console.warn(`[lettra] ${label}: charset has no space glyph`)
+  if (!('?' in result.font.glyphs)) console.warn(`[lettra] ${label}: charset has no "?" fallback glyph`)
+  console.log(`[lettra] ${label}: ${Object.keys(result.font.glyphs).length} glyphs, ${pairs} kerning pairs`)
 }
 
 function writeVariant(
@@ -207,7 +210,7 @@ function writeVariant(
   const atlasFile = `${out}${suffix}.png`
   writeFileSync(jsonFile, JSON.stringify(font))
   writeFileSync(atlasFile, png)
-  console.log(`[lettra-bake] wrote ${jsonFile} + ${atlasFile}`)
+  console.log(`[lettra] wrote ${jsonFile} + ${atlasFile}`)
   return { jsonFile, atlasFile }
 }
 
@@ -220,7 +223,7 @@ function printFamilyBlock(outDir: string, variants: BakedVariant[]): void {
       return `    { json: '${json}', atlas: '${atlas}', weight: ${v.weight}${style} },`
     })
     .join('\n')
-  console.log(`\n[lettra-bake] defineFamily src (files in ${outDir}):\n`)
+  console.log(`\n[lettra] defineFamily src (files in ${outDir}):\n`)
   console.log(`const family = defineFamily({\n  src: [\n${src}\n  ],\n})\n`)
 }
 
@@ -233,7 +236,7 @@ function withCoverage(settings: BakeSettings, data: Buffer, tables: ReturnType<t
   const { usable, missing } = partitionByCoverage(charset, covered)
   if (missing.length > 0) {
     console.warn(
-      `[lettra-bake] ${label}: dropped ${missing.length} character(s) the font has no glyph for: ${missing.join(' ')}`
+      `[lettra] ${label}: dropped ${missing.length} character(s) the font has no glyph for: ${missing.join(' ')}`
     )
   }
   if (!usable) fail(`${label}: none of the requested characters exist in this font`)
@@ -287,7 +290,7 @@ async function runDelta(options: CliOptions): Promise<void> {
       tables,
       basename(options.fontPath)
     )
-    console.log(`[lettra-bake] baking wght=${max} (canonical grid) and wght=${min}…`)
+    console.log(`[lettra] baking wght=${max} (canonical grid) and wght=${min}…`)
     const kerns = hasKerningTables(tables.tags)
     const maxBake = await bakeWeight(options.fontPath, true, kerns, max, settings, tmp)
     const minBake = await bakeWeight(options.fontPath, true, kerns, min, settings, tmp)
@@ -299,15 +302,13 @@ async function runDelta(options: CliOptions): Promise<void> {
       max: { font: maxBake.font, png: PNG.sync.read(maxBake.png) },
       weightRange: [min, max],
     })
-    console.log(`[lettra-bake] deltaScale ${composite.deltaScale.toFixed(4)}`)
+    console.log(`[lettra] deltaScale ${composite.deltaScale.toFixed(4)}`)
 
     const { jsonFile, atlasFile } = writeVariant(options.out, '-vf', composite.font, PNG.sync.write(composite.png))
     console.log(
-      `\n[lettra-bake] defineFamily src entry:\n\n  { json: '/${basename(jsonFile)}', atlas: '/${basename(atlasFile)}', weightRange: [${min}, ${max}] },\n`
+      `\n[lettra] defineFamily src entry:\n\n  { json: '/${basename(jsonFile)}', atlas: '/${basename(atlasFile)}', weightRange: [${min}, ${max}] },\n`
     )
-    console.log(
-      '[lettra-bake] load the atlas with experimental_loadDeltaFontTexture (the family does this automatically)'
-    )
+    console.log('[lettra] load the atlas with experimental_loadDeltaFontTexture (the family does this automatically)')
   } finally {
     rmSync(tmp, { recursive: true, force: true })
   }

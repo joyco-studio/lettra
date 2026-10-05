@@ -13,12 +13,12 @@ export function instanceFont(fontPath: string, axes: string[], outPath: string):
       (error, _stdout, stderr) => {
         if (!error) return resolve()
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          return reject(new Error(`[lettra-bake] python3 not found; ${INSTALL_HINT}`))
+          return reject(new Error(`[lettra] python3 not found; ${INSTALL_HINT}`))
         }
         if (/No module named/i.test(stderr)) {
-          return reject(new Error(`[lettra-bake] fontTools not installed; ${INSTALL_HINT}`))
+          return reject(new Error(`[lettra] fontTools not installed; ${INSTALL_HINT}`))
         }
-        reject(new Error(`[lettra-bake] fontTools instancer failed: ${stderr.trim() || error.message}`))
+        reject(new Error(`[lettra] fontTools instancer failed: ${stderr.trim() || error.message}`))
       }
     )
   })

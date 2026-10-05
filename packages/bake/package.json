@@ -1,24 +1,7 @@
 {
-  "name": "lettra-bake",
-  "version": "0.0.0",
-  "description": "Bake MSDF font atlases for lettra: GPOS validation, variable-font instancing, pinned settings, delta-channel variable-weight atlases.",
+  "name": "@packages/bake",
   "type": "module",
-  "license": "MIT",
-  "bin": {
-    "lettra-bake": "./dist/cli.js"
-  },
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "tsup cli.ts --format esm --out-dir dist --clean",
-    "prepublishOnly": "pnpm build"
-  },
-  "dependencies": {
-    "msdf-bmfont-xml": "^2.7.0",
-    "pngjs": "^7.0.0"
-  },
-  "devDependencies": {
-    "@types/pngjs": "^6.0.5"
-  }
+  "main": "./cli.ts",
+  "private": true,
+  "changeset": { "ignore": true }
 }

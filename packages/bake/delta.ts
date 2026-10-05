@@ -6,7 +6,7 @@ import { PNG } from 'pngjs'
 import type { GlyphDeltaTuple, GlyphTuple, MSDFFont } from '../core/types'
 
 function fail(message: string): never {
-  throw new Error(`[lettra-bake] ${message}`)
+  throw new Error(`[lettra] ${message}`)
 }
 
 export function median(r: number, g: number, b: number): number {
@@ -126,7 +126,7 @@ export function compositeDelta({ min, max, weightRange }: CompositeInput): Compo
 
   if (deltaScale > SATURATION_WARN) {
     console.warn(
-      `[lettra-bake] weight delta reaches ${deltaScale.toFixed(2)} of the field range; the bake's pxrange is clipping; re-bake with a higher --pxrange (12–16) for a wide weight range`
+      `[lettra] weight delta reaches ${deltaScale.toFixed(2)} of the field range; the bake's pxrange is clipping; re-bake with a higher --pxrange (12–16) for a wide weight range`
     )
   }
 

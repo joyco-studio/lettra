@@ -87,7 +87,7 @@ export function extractKerning(fontPath: string, size: number, charset: string):
       { maxBuffer: 64 * 1024 * 1024 },
       (error, stdout, stderr) => {
         if (error) {
-          reject(new Error(`[lettra-bake] kerning extraction failed: ${stderr.trim() || error.message}`))
+          reject(new Error(`[lettra] kerning extraction failed: ${stderr.trim() || error.message}`))
           return
         }
         resolve(JSON.parse(stdout) as Record<string, number>)
