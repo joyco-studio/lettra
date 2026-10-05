@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { float, vec4 } from 'three/tsl'
+import { color, float, mix, vec4 } from 'three/tsl'
+import { Texture } from 'three/webgpu'
 import {
+  buildTextGraph,
   createTextUniforms,
   defineNode,
   experimental_msdfDeltaDistance,
@@ -12,7 +14,7 @@ import {
   wipe,
   wipeErosion,
 } from '../index'
-import type { NodeInputs } from '../index'
+import type { NodeInputs, TextEffect } from '../index'
 
 describe('node contracts', () => {
   it('exposes frozen runtime definitions matching the declared contract', () => {
@@ -76,8 +78,51 @@ describe('node contracts', () => {
     expect(effect.uniforms.wipeIn.value).toBe(1)
     expect(effect.uniforms.wipeOut.value).toBe(0)
 
-    const erosion = effect.erosion()
+    const erosion = effect.stages.erosion(float(0))
     expect((erosion as { isNode?: boolean }).isNode).toBe(true)
+  })
+
+  it('exposes every graph stage as plain TSL nodes', () => {
+    const plain = buildTextGraph({ map: new Texture() })
+    for (const stage of [
+      plain.uv,
+      plain.textureNode,
+      plain.distance,
+      plain.aa,
+      plain.threshold,
+      plain.coverage,
+      plain.color,
+      plain.opacity,
+    ]) {
+      expect((stage as { isNode?: boolean }).isNode).toBe(true)
+    }
+    expect(plain.erosion).toBeUndefined()
+
+    const eroded = buildTextGraph({ map: new Texture(), effect: wipe() })
+    expect((eroded.erosion as { isNode?: boolean }).isNode).toBe(true)
+  })
+
+  it('resolves color and opacity wires through effect transforms', () => {
+    const seen: string[] = []
+    const effect: TextEffect = {
+      uniforms: {},
+      stages: {
+        color: (prev, ctx) => {
+          seen.push('color')
+          expect((ctx.erosion as { isNode?: boolean }).isNode).toBe(true)
+          expect((ctx.coverage as { isNode?: boolean }).isNode).toBe(true)
+          return mix(prev, color('#1d3557'), ctx.coverage)
+        },
+        opacity: (prev) => {
+          seen.push('opacity')
+          return prev.mul(0.5)
+        },
+      },
+    }
+    const graph = buildTextGraph({ map: new Texture(), effect })
+    expect(seen).toEqual(['color', 'opacity'])
+    expect((graph.color as { isNode?: boolean }).isNode).toBe(true)
+    expect((graph.opacity as { isNode?: boolean }).isNode).toBe(true)
   })
 
   it('rejects incomplete or mistyped input bags at compile time', () => {

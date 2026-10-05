@@ -8,7 +8,7 @@ import type { LoadedVariant } from './family'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
 import { createTextMaterial } from './material'
-import type { EffectUniforms, TextEffect, TextMaterialOptions, TextUniforms } from './material'
+import type { EffectUniforms, TextEffect, TextGraph, TextMaterialOptions, TextUniforms } from './material'
 import { warmup } from './lifecycle'
 
 /** Where the text's font and atlas come from: a raw pair (you own the map),
@@ -51,6 +51,9 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
   /** Tween `.value` on these: fill, opacity, boldness, plus whatever the
    * material's effect contributes (e.g. wipeIn/wipeOut from `wipe()`). */
   uniforms: TextUniforms & EffectUniforms<E> & { weightT?: TextUniforms['opacity'] }
+  /** The material's graph stages as plain TSL nodes (see `TextGraph`) —
+   * reuse them in other slots and materials. */
+  nodes: TextGraph
   readonly layout: LayoutResult
   /** Re-lays out and rebuilds geometry in place. Safe per keystroke. */
   setText(text: string, layoutOptions?: LayoutOptions): void
@@ -106,7 +109,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
       deltaScale: font.deltaScale ?? 1,
     }
   }
-  const { material, uniforms, textureNode } = createTextMaterial(materialOptions)
+  const { material, uniforms, textureNode, nodes } = createTextMaterial(materialOptions)
   if (initialVariant) uniforms.boldness.value = syntheticThresholdShift(initialVariant.synthetic.boldness, font)
   const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), material)
 
@@ -134,6 +137,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
   return {
     mesh,
     uniforms: uniforms as TextHandle<E>['uniforms'],
+    nodes,
     get layout() {
       return currentLayout
     },

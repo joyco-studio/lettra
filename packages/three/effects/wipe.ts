@@ -43,13 +43,17 @@ export function wipe({ band = 0.25, coord }: WipeOptions = {}) {
   }
   return {
     uniforms,
-    erosion: () =>
-      wipeErosion({
-        wipeIn: uniforms.wipeIn,
-        wipeOut: uniforms.wipeOut,
-        coord: coord ?? attribute('layoutX', 'float'),
-        band: float(band),
-      }),
+    stages: {
+      erosion: (prev) =>
+        prev.add(
+          wipeErosion({
+            wipeIn: uniforms.wipeIn,
+            wipeOut: uniforms.wipeOut,
+            coord: coord ?? attribute('layoutX', 'float'),
+            band: float(band),
+          })
+        ),
+    },
   } satisfies TextEffect<typeof uniforms>
 }
 

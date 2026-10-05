@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Roboto_Mono } from 'next/font/google'
 import localFont from 'next/font/local'
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from '@/lib/site'
 import './globals.css'
 
 const sectra = localFont({
@@ -19,19 +20,11 @@ const robotoMono = Roboto_Mono({
   display: 'swap',
 })
 
-/** Public origin for absolute metadata URLs: explicit env first, then the
- * Vercel production domain, localhost only for local dev. */
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : 'http://localhost:3000')
-
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: 'Lettra · sharp MSDF text for Three.js WebGPU',
-  description:
-    'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out. No wasm, no shaper, sharp at any scale.',
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -41,17 +34,14 @@ export const metadata: Metadata = {
   },
   // og:image / twitter:image come from the app/opengraph-image.png and
   // app/twitter-image.png file conventions (plus their .alt.txt files)
+  // title and description fall through from the fields above
   openGraph: {
     type: 'website',
-    siteName: 'Lettra',
-    title: 'Lettra · sharp MSDF text for Three.js WebGPU',
-    description:
-      'Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.',
+    siteName: SITE_NAME,
+    url: siteUrl,
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Lettra · sharp MSDF text for Three.js WebGPU',
-    description: 'Runtime MSDF text for Three.js WebGPURenderer + TSL. No wasm, no shaper, sharp at any scale.',
   },
 }
 
