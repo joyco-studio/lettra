@@ -3,13 +3,14 @@ import { useObserve } from '@joycostudio/metri/react'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Caption,
   ControlBar,
   ControlCell,
   ControlValue,
+  DemoTitle,
   FigCaption,
   Prose,
   Row,
+  SectionTitle,
   Segment,
   SnippetPanel,
 } from '@/components/layout'
@@ -247,12 +248,7 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
         />
       }
     >
-      <div className="flex items-start gap-1">
-        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
-          Families &amp; italics
-        </h2>
-        <Caption>[family]</Caption>
-      </div>
+      <SectionTitle caption="family">Families &amp; italics</SectionTitle>
       <Prose className="mt-5">
         Three weights and two italics are baked here. Ask for any weight or style and the readout below says which atlas
         answered: a weight in between serves the closest bake, and an italic request with no italic bake gets a sheared
@@ -307,7 +303,15 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
   )
 }
 
-export function WipeExample({ stage, html }: { stage: Stage | null; html: string }) {
+export function WipeExample({
+  stage,
+  html,
+  className = 'pt-20',
+}: {
+  stage: Stage | null
+  html: string
+  className?: string
+}) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const view = useGLView(stage, elRef, createWipeView)
@@ -317,7 +321,7 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
   return (
     <Row
       id="wipe"
-      className="pt-20"
+      className={className}
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -329,10 +333,7 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
         />
       }
     >
-      <div className="flex items-start gap-1">
-        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Erosion wipes</h2>
-        <Caption>[effect]</Caption>
-      </div>
+      <DemoTitle>Erosion wipes</DemoTitle>
       <Prose className="mt-5">
         The wipe never masks; it erodes. A front sweeps the ink and raises the distance threshold as it passes. Thin
         edges give way first, stroke skeletons hold out last, every glyph dissolving through its own field.
@@ -355,7 +356,15 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
   )
 }
 
-export function ScrambleExample({ stage, html }: { stage: Stage | null; html: string }) {
+export function ScrambleExample({
+  stage,
+  html,
+  className = 'pt-20',
+}: {
+  stage: Stage | null
+  html: string
+  className?: string
+}) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(0)
@@ -366,7 +375,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
   return (
     <Row
       id="scramble"
-      className="pt-20"
+      className={className}
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -378,10 +387,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
         />
       }
     >
-      <div className="flex items-start gap-1">
-        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Glyph scramble</h2>
-        <Caption>[effect]</Caption>
-      </div>
+      <DemoTitle>Glyph scramble</DemoTitle>
       <Prose className="mt-5">
         While driven, a glyph renders a random same-font glyph instead, re-rolled a few times a second: the decoder
         effect, straight from the atlas. Glyphs engage in stable random order, so sweeping the drive down decodes the
@@ -418,7 +424,15 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
   )
 }
 
-export function LiquidExample({ stage, html }: { stage: Stage | null; html: string }) {
+export function LiquidExample({
+  stage,
+  html,
+  className = 'pt-20',
+}: {
+  stage: Stage | null
+  html: string
+  className?: string
+}) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   useGLView(stage, elRef, createLiquidView)
@@ -426,7 +440,7 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
   return (
     <Row
       id="liquid"
-      className="pt-20"
+      className={className}
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -438,10 +452,7 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
         />
       }
     >
-      <div className="flex items-start gap-1">
-        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Water writes</h2>
-        <Caption>[composition]</Caption>
-      </div>
+      <DemoTitle>Water writes</DemoTitle>
       <Prose className="mt-5">
         The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU fluid
         sim: ink splatted along the cursor stroke, advected by its own velocity, swirling while you move and soaking

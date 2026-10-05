@@ -104,6 +104,35 @@ export function Caption({ className, children }: { className?: string; children:
   )
 }
 
+/** Section head: the tier right under the masthead. It carries the mono slug
+ * that matches its rail entry, so the demos nested below it never repeat one. */
+export function SectionTitle({
+  caption,
+  className,
+  children,
+}: {
+  caption?: string
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className={cn('flex items-start gap-1.5', className)}>
+      <h2 className="font-serif text-[26px] leading-[1.1] font-bold tracking-[-0.02em] text-ink">{children}</h2>
+      {caption ? <Caption className="pt-[6px] text-ink">[{caption}]</Caption> : null}
+    </div>
+  )
+}
+
+/** Demo head: one figure inside a section. Deliberately unbadged — the slug
+ * belongs to the section above it. */
+export function DemoTitle({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <h3 className={cn('font-serif text-[19px] leading-[1.15] font-bold tracking-[-0.015em] text-ink', className)}>
+      {children}
+    </h3>
+  )
+}
+
 export function MonoButton({
   active,
   onClick,

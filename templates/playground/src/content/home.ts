@@ -100,10 +100,10 @@ and bucket by resolved variant, so repeated spans share a draw call.
 
 ## Effects
 
-The base material is plain MSDF fill + opacity. Effects are opt-in and
-tree-shakeable: pass one as \`material.effect\` and its uniforms merge into
-\`text.uniforms\`, typed. Skip the import and its shader code never reaches
-your bundle.
+The base material is plain MSDF fill + opacity. An effect is a uniform bag plus
+a set of per-wire transforms: pass one as \`material.effect\` and its uniforms
+merge into \`text.uniforms\`, typed. Each ships from its own module, so an
+effect you never import never reaches your bundle.
 
 - \`wipe({ band?, coord? })\` is a threshold-erosion dissolve, not a clip. Glyph
   edges dissolve first and stroke skeletons last while the front sweeps across
@@ -111,13 +111,17 @@ your bundle.
 - \`scramble({ font, chars?, rate?, drive?, capacity? })\` is the decoder effect.
   A glyph renders a random glyph from the same atlas, re-rolled \`rate\` times a
   second. Reads best when the pool shares an ink box, like monospace faces.
-- \`composeEffects(...effects)\` stacks effects into one: uniforms merge, \`uv\`
-  remaps chain, erosions add, typing carries through.
 
-\`drive\` is the composition seam. Anything expressible as a TSL node drives an
-effect: a liquid surface's edge SDF, cursor proximity, an audio level. The
-homepage ships this end to end as a cursor-following water trail whose rim
-scrambles a paragraph and whose interior tints the ink wet.
+## Composition
+
+Two effects on one text is \`composeEffects(a, b)\`: uniforms merge, \`uv\`
+remaps chain, erosions add, and the typing carries through.
+
+The deeper seam is \`drive\`, which takes any TSL node at all. That is where the
+library stops and your scene starts, so an audio level, a cursor distance or a
+whole fluid sim all plug in the same way. The homepage ships that last one end
+to end: a cursor-following water trail whose rim scrambles a paragraph and whose
+interior tints the ink wet.
 
 ## Layout
 
@@ -157,6 +161,21 @@ Latin-script UI and display text that wants to be tiny and fast.
 
 Known limit: \`lettra/three\` imports \`three/webgpu\`, which ships ESM-only. The
 CJS build of that subpath exists but is only usable through bundlers.
+
+## What pairs with it
+
+Lettra draws text. It does not own your canvas, your scroll, or your render
+loop, and it never will. What we reach for alongside it:
+
+- [@joycostudio/metri](https://hub.joyco.studio/toolbox/metri) measures DOM
+  elements into cached document-space rects behind one shared ResizeObserver,
+  which is how each figure here finds its viewport.
+- [@joycostudio/susano](https://www.npmjs.com/package/@joycostudio/susano) for
+  asset loading and preload dedupe, including the atlas PNG and metrics JSON.
+- [@joycostudio/xyz](https://www.npmjs.com/package/@joycostudio/xyz) for
+  scene-wide warmup that covers text meshes along with everything else.
+- The [WebGL scroll sync](https://hub.joyco.studio/logs/08-webgl-scroll-sync)
+  log for pinning one canvas to the document without drift.
 
 ## This site
 

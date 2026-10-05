@@ -11,6 +11,13 @@ export interface TocSection {
   label: string
 }
 
+export interface TocGroup {
+  /** Rail heading. Links to `id` when the group opens with a real section. */
+  label: string
+  id?: string
+  sections: TocSection[]
+}
+
 /** Reading-line spy; the 28%/36% hysteresis band stops boundary flapping. */
 function useReadingLineActive(ids: string[]) {
   const [active, setActive] = useState(ids[0])
@@ -63,44 +70,75 @@ function useReadingLineActive(ids: string[]) {
   return active
 }
 
-/** Hub-style contents rail on fumadocs' TOC primitives. */
-export function Toc({ sections }: { sections: TocSection[] }) {
+/** Hub-style contents rail on fumadocs' TOC primitives, grouped: the core
+ * sections, the effects, then everything after. */
+export function Toc({ groups }: { groups: TocGroup[] }) {
   const toc = useMemo(
-    () => sections.map((section) => ({ title: section.label, url: `#${section.id}`, depth: 2 })),
-    [sections]
+    () =>
+      groups.flatMap((group) => [
+        ...(group.id ? [{ title: group.label, url: `#${group.id}`, depth: 2 }] : []),
+        ...group.sections.map((section) => ({ title: section.label, url: `#${section.id}`, depth: 3 })),
+      ]),
+    [groups]
   )
-  const ids = useMemo(() => sections.map((section) => section.id), [sections])
+  // document order, group anchors included, so the spy highlights the lead-in
+  const ids = useMemo(
+    () => groups.flatMap((group) => [...(group.id ? [group.id] : []), ...group.sections.map((s) => s.id)]),
+    [groups]
+  )
   const active = useReadingLineActive(ids)
 
   return (
     <AnchorProvider toc={toc}>
-      <nav aria-label="Contents" className="flex flex-col gap-5">
-        <span className="font-serif text-[15px] font-medium tracking-[0.01em] text-ink-faint">Contents</span>
-        <ol className="flex flex-col gap-[8px]">
-          {sections.map((section) => (
-            <li key={section.id}>
-              <TOCItem href={`#${section.id}`} className="group flex items-center gap-3">
-                <Badge
-                  size="sm"
-                  className={cn(
-                    'w-7 justify-center border-transparent px-1.5 py-[2px] font-mono text-[10px] font-semibold tracking-[0.06em] tabular-nums transition-colors',
-                    active === section.id ? 'bg-night text-paper' : 'bg-transparent text-ink-faint'
-                  )}
-                >
-                  {section.index}
-                </Badge>
-                <span
-                  className={cn(
-                    'font-serif text-[16px] leading-none tracking-[0.01em] transition-colors',
-                    active === section.id ? 'font-medium text-ink' : 'text-ink-faint group-hover:text-ink'
-                  )}
-                >
-                  {section.label}
-                </span>
-              </TOCItem>
-            </li>
-          ))}
-        </ol>
+      <nav aria-label="Contents" className="flex flex-col gap-7">
+        {groups.map((group) => {
+          const heading = (
+            <span
+              className={cn(
+                'font-serif text-[15px] font-medium tracking-[0.01em] transition-colors',
+                active === group.id ? 'text-ink' : 'text-ink-faint'
+              )}
+            >
+              {group.label}
+            </span>
+          )
+          return (
+            <div key={group.label} className="flex flex-col gap-5">
+              {group.id ? (
+                <TOCItem href={`#${group.id}`} className="w-fit">
+                  {heading}
+                </TOCItem>
+              ) : (
+                heading
+              )}
+              <ol className="flex flex-col gap-[8px]">
+                {group.sections.map((section) => (
+                  <li key={section.id}>
+                    <TOCItem href={`#${section.id}`} className="group flex items-center gap-3">
+                      <Badge
+                        size="sm"
+                        className={cn(
+                          'w-7 justify-center border-transparent px-1.5 py-[2px] font-mono text-[10px] font-semibold tracking-[0.06em] tabular-nums transition-colors',
+                          active === section.id ? 'bg-night text-paper' : 'bg-transparent text-ink-faint'
+                        )}
+                      >
+                        {section.index}
+                      </Badge>
+                      <span
+                        className={cn(
+                          'font-serif text-[16px] leading-none tracking-[0.01em] transition-colors',
+                          active === section.id ? 'font-medium text-ink' : 'text-ink-faint group-hover:text-ink'
+                        )}
+                      >
+                        {section.label}
+                      </span>
+                    </TOCItem>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )
+        })}
       </nav>
     </AnchorProvider>
   )
