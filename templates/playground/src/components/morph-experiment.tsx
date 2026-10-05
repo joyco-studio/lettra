@@ -26,13 +26,13 @@ export function MorphExperiment() {
   const [ready, setReady] = useState(false)
   const [glyphs, setGlyphs] = useState<string[]>([])
   const [scores, setScores] = useState<
-    Record<string, Record<string, Record<string, { worstEdgePx: number; iou: number }>>>
+    Record<string, Record<string, Record<string, { worstEdgePx: number; iou: number; defects: number }>>>
   >({})
   const [free, setFree] = useState(false)
   const [s, setS] = useState<LabState>({
     glyph: 'n',
     weight: 550,
-    method: 'mix2',
+    method: 'morph2',
     view: 'sideBySide',
     zoom: 1,
     panX: 0,

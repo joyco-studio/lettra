@@ -49,7 +49,7 @@ export default function Page() {
 
         <div>
           <h2 className="font-mono text-[10px] tracking-[0.08em] text-ink-faint uppercase">
-            Methods <span className="normal-case">(worst edge · IoU)</span>
+            Methods <span className="normal-case">(worst edge · visual defects)</span>
           </h2>
           <dl className="mt-2.5 flex flex-col gap-2">
             {METHODS.map(([name, score, text]) => (
@@ -77,9 +77,10 @@ export default function Page() {
         </div>
 
         <p className="mt-auto font-serif text-[13px] leading-[1.3] text-[#6b6b6b]">
-          Ground truth is Inter instanced with fontTools at 400&ndash;700. Weight snaps to those stops; off them there
-          is nothing to compare against. Try <span className="font-mono text-[12px] text-ink">M</span> and{' '}
-          <span className="font-mono text-[12px] text-ink">W</span> — they fail worst.
+          Defects count holes punched in solid ink and specks left in the background. IoU averages those away, which is
+          why it scored a torn stem at 0.994. Both single-bake warps tear; both two-bake methods are clean. Try{' '}
+          <span className="font-mono text-[12px] text-ink">W</span> and{' '}
+          <span className="font-mono text-[12px] text-ink">M</span> on <em>one + warp</em> to see it.
         </p>
       </aside>
 
