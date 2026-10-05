@@ -65,8 +65,9 @@ const text = createText({
 // in stable random order in between; tween it down to decode
 text.uniforms.scramble.value = 1`
 
-export const liquidSnippet = `import { createText, scramble } from 'lettra/three'
-import { positionWorld, saturate, texture, float } from 'three/tsl'
+export const liquidSnippet = `import { composeEffects, createText, scramble } from 'lettra/three'
+import type { TextEffect } from 'lettra/three'
+import { color, max, mix, saturate, smoothstep, texture, float } from 'three/tsl'
 
 // a tiny GPU fluid sim: one half-float ping-pong texture,
 // rg = velocity, b = ink. Each frame: backtrace by velocity,
@@ -76,6 +77,13 @@ import { positionWorld, saturate, texture, float } from 'three/tsl'
 // the dye texture read back out as a scalar field
 const field = texture(sim.texture, simUv).b
 const rim = saturate(float(1).sub(field.sub(0.4).abs().div(0.25)))
+const wet = smoothstep(0.4, 0.8, field)
+
+// interior wetness tints the ink through the color wire
+const wetInk: TextEffect = {
+  uniforms: {},
+  stages: { color: (prev) => mix(prev, color('#1d3557'), wet) },
+}
 
 const text = createText({
   font,
@@ -83,7 +91,9 @@ const text = createText({
   text: paragraph,
   layout: { align: 'left', maxWidth: 2400 },
   // glyphs touched by the ink's rim re-roll; the knob still works
-  material: { effect: scramble({ font, drive: (knob) => max(knob, rim) }) },
+  material: {
+    effect: composeEffects(scramble({ font, drive: (knob) => max(knob, rim) }), wetInk),
+  },
 })
 
 // the sim is view code, not library code -- swap it for a wipe

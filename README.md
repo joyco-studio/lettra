@@ -117,13 +117,26 @@ end to end: a cursor-following water trail whose rim scrambles a paragraph
 and whose interior tints the ink wet
 ([templates/playground/src/gl/views/liquid.ts](./templates/playground/src/gl/views/liquid.ts)).
 
-Effects are plain objects satisfying the `TextEffect` contract: uniforms
-plus staged graph hooks (`uv` remaps the sample coordinate, `erosion` reads
-the sampled field; the contract grows as effects land). Write your own the
-same way `wipe` and `scramble` are written. The scramble itself is three
-reusable contract nodes: `staggerGate` (per-element random on/off under a
-sweeping drive), `cycleIndex` (time-stepped random index), and `rectUv`
-(atlas sub-rect remap).
+Effects are plain objects satisfying the `TextEffect` contract: a uniform
+bag plus per-wire transforms. The graph has named wires resolved in a fixed
+order (`uv`, `erosion`, `color`, `opacity`); an effect transforms the wires
+it cares about, receiving the value so far and returning the new one, so
+add vs replace is the effect's own node math. Composition chains transforms
+left to right, and new wires land without breaking existing effects. Write
+your own the same way `wipe` and `scramble` are written:
+
+```ts
+// recolor by any field — a first-class effect, composable with wipe()
+const heat: TextEffect = {
+  uniforms: {},
+  stages: { color: (prev, { erosion }) => mix(prev, color('#e63946'), erosion) },
+}
+createTextMaterial({ map, effect: composeEffects(wipe(), heat) })
+```
+
+The scramble itself is three reusable contract nodes: `staggerGate`
+(per-element random on/off under a sweeping drive), `cycleIndex`
+(time-stepped random index), and `rectUv` (atlas sub-rect remap).
 
 ### Composing your own material
 
@@ -134,8 +147,8 @@ tooling like debug panels and node galleries can introspect without
 importing material code. Extend instead of forking:
 
 ```ts
-import { attribute, texture } from 'three/tsl'
-import { createTextMaterial, createTextUniforms, msdfDistance, msdfAA, msdfFill, msdfThreshold, wipe } from 'lettra/three'
+import { attribute, mix } from 'three/tsl'
+import { buildTextGraph, createTextMaterial, createTextUniforms, wipe, wipeErosion } from 'lettra/three'
 
 // per-line wipe instead of per-ink-width
 createTextMaterial({ map, effect: wipe({ coord: attribute('lineIndex', 'float').div(lineCount) }) })
@@ -144,10 +157,17 @@ createTextMaterial({ map, effect: wipe({ coord: attribute('lineIndex', 'float').
 const uniforms = createTextUniforms({ fill: '#e8e4da' })
 createTextMaterial({ map, uniforms })
 
-// or build from scratch: outline, gradient fills, custom erosion coords…
-const distance = msdfDistance({ msdf: texture(map) })
-const aa = msdfAA({ distance })
-const coverage = msdfFill({ distance, threshold: msdfThreshold({ erosion: myErosion, aa }), aa })
+// every stage of the default material's graph is on `nodes` — feed any of
+// them onward (bloom masks, particles, whatever takes a node)
+const fx = wipe()
+const { material, nodes } = createTextMaterial({ map, effect: fx })
+sparks.opacityNode = nodes.erosion
+
+// or skip the material: buildTextGraph returns the plain TSL stages
+// (uv, textureNode, distance, aa, erosion?, threshold, coverage, color,
+// opacity) and owns nothing — assign them to any NodeMaterial slot
+const graph = buildTextGraph({ map, effect: fx })
+myMaterial.opacityNode = graph.coverage
 
 wipeErosion.definition
 // → { name: 'wipeErosion', inputs: { wipeIn: 'float', wipeOut: 'float', coord: 'float', band: 'float' }, output: 'float' }

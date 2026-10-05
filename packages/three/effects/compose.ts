@@ -1,30 +1,40 @@
-import { saturate } from 'three/tsl'
-import type { FloatNode, TextEffect, TextEffectContext, TextEffectUvContext, Vec2Node } from '../material'
+import { textStageOrder } from '../material'
+import type { TextEffect, TextStageTransforms } from '../material'
 
 type UnionToIntersection<U> = (U extends unknown ? (u: U) => void : never) extends (i: infer I) => void ? I : never
 
 /** The merged uniform bag of a composed effect tuple. */
 export type ComposedUniforms<E extends readonly TextEffect[]> = UnionToIntersection<E[number]['uniforms']> & object
 
-/** Stacks effects into one: uniforms merge (later keys win), `uv` remaps
- * chain left → right, and erosions add (clamped to 1). Each effect keeps
- * owning its uniforms, so instances stay shareable across materials. */
-export function composeEffects<const E extends readonly TextEffect[]>(...effects: E): TextEffect<ComposedUniforms<E>> {
-  const uvHooks = effects.filter((effect) => effect.uv)
-  const erosionHooks = effects.filter((effect) => effect.erosion)
+/** The effect type `composeEffects` returns — name composed handles with it:
+ * `TextHandle<ComposedEffect<[WipeEffect, ScrambleEffect]>>`. */
+export type ComposedEffect<E extends readonly TextEffect[]> = TextEffect<ComposedUniforms<E>>
 
+/** Folds every effect's transform for one wire into a single transform,
+ * left → right, each seeing the previous value. */
+function chainStage<K extends keyof TextStageTransforms>(
+  effects: readonly TextEffect[],
+  key: K
+): TextStageTransforms[K] | undefined {
+  const hooks = effects.flatMap((effect) => effect.stages?.[key] ?? [])
+  if (hooks.length === 0) return undefined
+  const chained = (prev: unknown, ctx: unknown) =>
+    hooks.reduce((value, hook) => (hook as (p: unknown, c: unknown) => unknown)(value, ctx), prev)
+  return chained as TextStageTransforms[K]
+}
+
+/** Stacks effects into one: uniforms merge (later keys win) and each wire's
+ * transforms chain left → right — add vs replace is each effect's own node
+ * math, so no per-wire merge rules live here. Each effect keeps owning its
+ * uniforms, so instances stay shareable across materials. */
+export function composeEffects<const E extends readonly TextEffect[]>(...effects: E): ComposedEffect<E> {
+  const stages: TextStageTransforms = {}
+  for (const key of textStageOrder) {
+    const chained = chainStage(effects, key)
+    if (chained) (stages as Record<string, unknown>)[key] = chained
+  }
   return {
     uniforms: Object.assign({}, ...effects.map((effect) => effect.uniforms)) as ComposedUniforms<E>,
-    ...(uvHooks.length > 0 && {
-      uv: (context: TextEffectUvContext): Vec2Node => uvHooks.reduce((uv, effect) => effect.uv!({ uv }), context.uv),
-    }),
-    ...(erosionHooks.length > 0 && {
-      erosion: (context: TextEffectContext): FloatNode =>
-        saturate(
-          erosionHooks
-            .map((effect) => effect.erosion!(context))
-            .reduce((total, erosion) => total.add(erosion) as FloatNode)
-        ),
-    }),
+    ...(Object.keys(stages).length > 0 && { stages }),
   }
 }

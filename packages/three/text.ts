@@ -6,7 +6,7 @@ import type { FontInput, LayoutOptions, LayoutResult } from '../core/types'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
 import { createTextMaterial } from './material'
-import type { EffectUniforms, TextEffect, TextMaterialOptions, TextUniforms } from './material'
+import type { EffectUniforms, TextEffect, TextGraph, TextMaterialOptions, TextUniforms } from './material'
 import { warmup } from './lifecycle'
 
 export interface CreateTextOptions<E extends TextEffect | undefined = undefined> {
@@ -35,6 +35,9 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
   /** Tween `.value` on these: fill, opacity, plus whatever the material's
    * effect contributes (e.g. wipeIn/wipeOut from `wipe()`). */
   uniforms: TextUniforms & EffectUniforms<E>
+  /** The material's graph stages as plain TSL nodes (see `TextGraph`) —
+   * reuse them in other slots and materials. */
+  nodes: TextGraph
   readonly layout: LayoutResult
   /** Re-lays out and rebuilds geometry in place. Safe per keystroke. */
   setText(text: string, layoutOptions?: LayoutOptions): void
@@ -62,7 +65,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
   const geometryOptions = options.geometry
 
   let currentLayout = layout(font, text, layoutOptions)
-  const { material, uniforms, textureNode } = createTextMaterial({ map, ...options.material })
+  const { material, uniforms, textureNode, nodes } = createTextMaterial({ map, ...options.material })
   const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), material)
 
   const listeners = new Set<() => void>()
@@ -77,6 +80,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
   return {
     mesh,
     uniforms,
+    nodes,
     get layout() {
       return currentLayout
     },

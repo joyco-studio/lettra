@@ -4,7 +4,7 @@ import { attribute, floor, hash, int, mix, step, time, uniform, uniformArray } f
 import { parseFont } from '../../core/parse'
 import type { FontInput, MSDFFont } from '../../core/types'
 import { defineNode } from '../define-node'
-import type { FloatNode, TextEffect, TextEffectUvContext } from '../material'
+import type { FloatNode, TextEffect, Vec2Node } from '../material'
 
 /* The scramble decomposes into three contract nodes, each reusable on its
  * own: a per-element random gate (stagger anything), a time-stepped random
@@ -95,13 +95,15 @@ export function scramble({ font, chars, rate = 15, drive, capacity }: ScrambleOp
 
   return {
     uniforms,
-    uv: ({ uv }: TextEffectUvContext) => {
-      const seed = attribute('glyphIndex', 'float')
-      const gate = staggerGate({ seed, drive: driveNode })
-      const index = cycleIndex({ seed, time, rate: uniform(rate), count: poolSize })
-      const rect = rects.element(int(index)) as unknown as Node<'vec4'>
-      const swapped = rectUv({ rect, cellUv: attribute('cellUv', 'vec2') })
-      return mix(uv, swapped, gate)
+    stages: {
+      uv: (prev: Vec2Node) => {
+        const seed = attribute('glyphIndex', 'float')
+        const gate = staggerGate({ seed, drive: driveNode })
+        const index = cycleIndex({ seed, time, rate: uniform(rate), count: poolSize })
+        const rect = rects.element(int(index)) as unknown as Node<'vec4'>
+        const swapped = rectUv({ rect, cellUv: attribute('cellUv', 'vec2') })
+        return mix(prev, swapped, gate)
+      },
     },
     /** Rebuilds the pool from another font (same `chars` rules), truncating
      * to the allocated capacity. Pair with `TextHandle.swapFont`. */
