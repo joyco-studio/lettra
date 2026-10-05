@@ -118,7 +118,7 @@ export function MorphExperiment() {
   const sc = scores[s.glyph]?.[String(nearest)]?.[s.method === 'truth' ? 'mix2' : s.method]
 
   return (
-    <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+    <div className="flex h-full min-h-0 flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
       <ControlBar>
         <ControlCell label="glyph">
           {glyphs.map((g) => (
