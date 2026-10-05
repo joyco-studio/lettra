@@ -3,11 +3,11 @@ import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
 import { layout } from '../core/layout'
 import { parseFont } from '../core/parse'
 import { syntheticThresholdShift } from '../core/family'
-import type { FontInput, LayoutOptions, LayoutResult } from '../core/types'
+import type { FontInput, LayoutOptions, LayoutResult, MSDFFont } from '../core/types'
 import type { LoadedVariant } from './family'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
-import { createTextMaterial } from './material'
+import { createTextMaterial, createTextUniforms } from './material'
 import type { EffectUniforms, TextEffect, TextGraph, TextMaterialOptions, TextUniforms } from './material'
 import { warmup } from './lifecycle'
 
@@ -102,16 +102,31 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     : options.geometry
 
   let currentLayout = layout(font, text, layoutOptions)
-  const materialOptions = { map, ...options.material } as TextMaterialOptions<E>
-  if (initialVariant?.font.deltaChannel && !materialOptions.experimental) {
-    materialOptions.experimental = {
-      weightT: initialVariant.weightT ?? 0,
-      deltaScale: font.deltaScale ?? 1,
+
+  // one bag across material rebuilds, so callers keep their uniform references
+  const uniformBag = options.material?.uniforms ?? createTextUniforms(options.material)
+  const uniforms = {} as TextHandle<E>['uniforms']
+
+  const deltaOptions = (source: { font: MSDFFont; weightT?: number } | undefined) =>
+    source?.font.deltaChannel ? { weightT: source.weightT ?? 0, deltaScale: source.font.deltaScale ?? 1 } : undefined
+
+  const buildMaterial = (experimental: TextMaterialOptions<E>['experimental']) => {
+    const built = createTextMaterial({
+      ...options.material,
+      map,
+      uniforms: uniformBag,
+      experimental: options.material?.experimental ?? experimental,
+    } as TextMaterialOptions<E>)
+    for (const key of Object.keys(uniforms)) {
+      if (!(key in built.uniforms)) delete (uniforms as Record<string, unknown>)[key]
     }
+    Object.assign(uniforms, built.uniforms)
+    return built
   }
-  const { material, uniforms, textureNode, nodes } = createTextMaterial(materialOptions)
-  if (initialVariant) uniforms.boldness.value = syntheticThresholdShift(initialVariant.synthetic.boldness, font)
-  const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), material)
+
+  let active = buildMaterial(deltaOptions(initialVariant))
+  if (initialVariant) uniformBag.boldness.value = syntheticThresholdShift(initialVariant.synthetic.boldness, font)
+  const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), active.material)
 
   const listeners = new Set<() => void>()
   const notify = () => listeners.forEach((listener) => listener())
@@ -129,15 +144,17 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     if (next.layout) layoutOptions = next.layout
     currentLayout = layout(font, text, layoutOptions)
     // geometry and atlas rebind in the same tick — atomic for the renderer
-    textureNode.value = map
+    active.textureNode.value = map
     rebuildGeometry()
     notify()
   }
 
   return {
     mesh,
-    uniforms: uniforms as TextHandle<E>['uniforms'],
-    nodes,
+    uniforms,
+    get nodes() {
+      return active.nodes
+    },
     get layout() {
       return currentLayout
     },
@@ -150,11 +167,20 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     },
     swapFont,
     setVariant(variant, next = {}) {
-      uniforms.boldness.value = syntheticThresholdShift(variant.synthetic.boldness, variant.font)
+      uniformBag.boldness.value = syntheticThresholdShift(variant.synthetic.boldness, variant.font)
       geometryOptions = { ...geometryOptions, slant: variant.synthetic.slant }
-      if (uniforms.weightT) uniforms.weightT.value = variant.weightT ?? 0
-      else if (variant.font.deltaChannel) warnStaticWeightT()
       ownsMap = false
+      const delta = deltaOptions(variant)
+      if (!!delta !== !!uniforms.weightT) {
+        // the delta term is compiled in, so crossing that line needs a rebuild
+        const previous = active.material
+        map = variant.map
+        active = buildMaterial(delta)
+        mesh.material = active.material
+        previous.dispose()
+      } else if (uniforms.weightT) {
+        uniforms.weightT.value = variant.weightT ?? 0
+      }
       swapFont({ font: variant.font, map: variant.map, ...next })
     },
     experimental_setWeightT(t) {
@@ -173,7 +199,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     dispose({ map: disposeMap = ownsMap } = {}) {
       listeners.clear()
       mesh.geometry.dispose()
-      material.dispose()
+      active.material.dispose()
       if (disposeMap) map.dispose()
     },
   }
