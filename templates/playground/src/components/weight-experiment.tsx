@@ -45,7 +45,7 @@ export function WeightExperiment() {
             split
           </Segment>
         </ControlCell>
-        <ControlCell label="sweep" grow>
+        <ControlCell label="free row" grow>
           <Slider
             value={[weight]}
             min={300}
@@ -81,8 +81,8 @@ export function WeightExperiment() {
           <span className="mr-1.5 inline-block size-2 translate-y-[1px] bg-[#d4482a]" />
           one delta atlas at the same weight
         </span>
-        <span>rows: {STOPS.join(' · ')}</span>
-        <span>bottom row sweeps the slider off the delta atlas alone</span>
+        <span>rows, top to bottom: {STOPS.join(' · ')}</span>
+        <span>the detached bottom row is the slider only: delta atlas, no baked counterpart</span>
       </div>
     </div>
   )
