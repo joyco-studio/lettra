@@ -275,10 +275,9 @@ export function Row({
   return (
     <>
       <section className={cn('min-w-0 lg:col-start-1', className)}>
-        {/* short anchor target at the section top: fumadocs' observer
-            (threshold 0.9) is built for heading-sized elements, exactly how
-            hub.joyco.studio feeds it */}
-        {id ? <span id={id} aria-hidden className="block h-px scroll-mt-24" /> : null}
+        {/* scroll-mt matches READING_LINE in toc.tsx: a click lands the anchor
+            exactly on the line the rail uses to pick the active section */}
+        {id ? <span id={id} aria-hidden className="block h-px scroll-mt-[28vh]" /> : null}
         {children}
       </section>
       <div className={cn('relative min-w-0 lg:col-start-2', asideClassName)}>{aside}</div>
