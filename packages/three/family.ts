@@ -124,10 +124,17 @@ export function defineFamily(options: DefineFamilyOptions): FontFamily {
     slot.error = undefined
     const fontRequest = loadFontJson(slot.source.json)
     const atlasRequest = loadAtlas(slot.source.atlas)
+    // the font is awaited first, so claim the atlas's rejection now: a fast
+    // atlas failure would otherwise sit unhandled until the await reaches it.
+    // Attaching this doesn't consume it — the await below still rejects.
+    atlasRequest.catch(() => {})
     // an atlas whose font failed is ours to free: nothing else will ever see
-    // it. Fire-and-forget, so a slow atlas can't hold back the font's failure,
-    // and the handler keeps a lone atlas rejection from surfacing as unhandled.
-    const freeOrphan = () => void atlasRequest.then((map) => map.dispose()).catch(() => {})
+    // it. Fire-and-forget, so a slow atlas can't hold back the font's failure.
+    const freeOrphan = () =>
+      void atlasRequest.then(
+        (map) => map.dispose(),
+        () => {}
+      )
 
     const pending = (async () => {
       let font: MSDFFont

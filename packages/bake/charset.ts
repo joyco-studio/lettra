@@ -30,8 +30,11 @@ export const CHARSET_PRESETS: Record<string, string> = {
  * word is left alone — `xyz` is a perfectly good three-glyph literal — but a
  * dashed one is the shape every preset name has and no literal plausibly does. */
 const PRESET_SHAPED = /^[a-z0-9]+(-[a-z0-9]+)+$/
-/** Looks like someone meant a file: a separator, or a text-file extension. */
-const PATH_SHAPED = /[/\\]|\.(txt|json|charset)$/i
+/** Unambiguously meant as a file: a text-file extension, or an explicit
+ * relative/absolute/home prefix. A bare separator is not enough — `AC/DC` is a
+ * legitimate five-glyph literal for a logotype. */
+const PATH_SHAPED = /\.(txt|json|charset)$/i
+const PATH_PREFIXED = /^(\.\.?[/\\]|[/\\]|~[/\\])/
 
 /** Resolves `--charset`: a preset name, a file path, or a literal string.
  * Duplicates and newlines are stripped either way. A typo'd preset or a wrong
@@ -39,23 +42,26 @@ const PATH_SHAPED = /[/\\]|\.(txt|json|charset)$/i
  * otherwise bake an 8-glyph atlas of `latinex2` and report it as a success. */
 export function resolveCharset(input: string): string {
   const preset = CHARSET_PRESETS[input]
-  let raw: string
-  if (preset !== undefined) {
-    raw = preset
-  } else if (PATH_SHAPED.test(input)) {
-    const path = resolve(input)
-    if (!existsSync(path)) fail(`charset file not found: ${path}`)
+  const read = (path: string) => {
     try {
-      raw = readFileSync(path, 'utf8')
+      return readFileSync(path, 'utf8')
     } catch (error) {
       fail(`cannot read charset file ${path}: ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+  let raw: string
+  if (preset !== undefined) {
+    raw = preset
+  } else if (existsSync(resolve(input))) {
+    // a real file wins outright, whatever its name looks like
+    raw = read(resolve(input))
+  } else if (PATH_SHAPED.test(input) || PATH_PREFIXED.test(input)) {
+    // only a name that can't be anything else gets reported as a missing file
+    fail(`charset file not found: ${resolve(input)}`)
   } else if (PRESET_SHAPED.test(input)) {
     fail(
       `unknown charset preset ${JSON.stringify(input)} — presets are: ${Object.keys(CHARSET_PRESETS).join(', ')}. Ranges are not expanded; pass a file path or the literal characters instead.`
     )
-  } else if (existsSync(resolve(input))) {
-    raw = readFileSync(resolve(input), 'utf8')
   } else {
     raw = input
   }

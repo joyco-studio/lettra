@@ -97,6 +97,11 @@ export interface TextEffect<U extends object = object> {
   uniforms: U
   /** Transforms per wire (see `TextStageTransforms`). */
   stages?: TextStageTransforms
+  /** True when the effect reads one font's atlas layout (scramble samples
+   * glyph rects), so it is only valid on a mesh drawing that font.
+   * `createRichText` uses this to decide which buckets may carry it;
+   * paragraph-wide effects like `wipe` leave it unset and ride them all. */
+  fontBound?: boolean
 }
 
 /** The uniforms an effect contributes to the material's bag. */

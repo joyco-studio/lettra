@@ -122,10 +122,13 @@ function useSeek() {
       if (SCROLL_KEYS.has(event.key)) release()
     }
     // wheel, touch and keys are the fast paths, but a scrollbar drag,
-    // middle-click autoscroll, find-in-page or Back/Forward fires none of them
-    // and would leave the pin stuck for good. So also let go once scrolling
-    // goes quiet — the grace period is what separates this from bare
-    // scrollend, since a late layout shift still fires scroll and defers it.
+    // middle-click autoscroll or find-in-page fires none of them and would
+    // leave the pin stuck for good. So also let go once scrolling goes quiet —
+    // the grace period is what separates this from bare scrollend, since a
+    // late layout shift still fires scroll and defers it.
+    // Not hashchange: the click's own jump to #id fires it, which would
+    // release the pin the click just set. popstate covers Back/Forward, and
+    // only fires on history traversal, never on our own navigation.
     const onScroll = () => {
       window.clearTimeout(idle)
       idle = window.setTimeout(release, SETTLE_MS)
@@ -138,7 +141,6 @@ function useSeek() {
     window.addEventListener('keydown', onKey)
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('popstate', release)
-    window.addEventListener('hashchange', release)
     return () => {
       window.clearTimeout(idle)
       window.removeEventListener('wheel', release)
@@ -146,7 +148,6 @@ function useSeek() {
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('popstate', release)
-      window.removeEventListener('hashchange', release)
     }
     // keyed on the whole state, so clicking a second link restarts the clock
   }, [spy, seeking])

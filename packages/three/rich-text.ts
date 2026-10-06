@@ -6,7 +6,7 @@ import type { Camera, Material, Scene, Texture, WebGPURenderer } from 'three/web
 import { layoutRuns } from '../core/runs'
 import type { RunsLayoutResult } from '../core/runs'
 import type { VariantKey } from '../core/family'
-import type { LayoutGlyph, LayoutOptions, LayoutResult } from '../core/types'
+import type { LayoutGlyph, LayoutOptions, LayoutResult, MSDFFont } from '../core/types'
 import type { FontFamily, LoadedVariant } from './family'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
@@ -29,10 +29,11 @@ export interface CreateRichTextOptions<E extends TextEffect | undefined = undefi
   variant?: VariantKey
   layout?: LayoutOptions
   geometry?: Omit<TextGeometryOptions, 'bounds' | 'glyphIndexOf' | 'slant'>
-  /** Shared across bucket materials. A font-bound effect rides only the buckets
-   * drawing the base variant's font — `scramble` builds its rects from one
-   * font's atlas, so on any other bucket it would sample that bucket's texture
-   * with the base atlas's rects. Those buckets render the text without it. */
+  /** Shared across bucket materials. A paragraph-wide effect (`wipe`) rides
+   * every bucket. One that declares `fontBound` (`scramble`, whose rects come
+   * from a single atlas) rides only the buckets drawing the base variant's
+   * font, since elsewhere it would sample the wrong texture with those rects;
+   * the rest render the text without it. */
   material?: Omit<TextMaterialOptions<E>, 'map' | 'uniforms'>
 }
 
@@ -96,6 +97,8 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
 
   const sharedUniforms = createTextUniforms(options.material)
   const effect = options.material?.effect
+  // scramble reads one atlas's glyph rects; wipe only reads layoutX
+  const fontBound = effect?.fontBound === true
 
   const group = new Group()
   const listeners = new Set<() => void>()
@@ -170,7 +173,18 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
       nextLayoutOptions
     )
 
-    const baseFont = (resolved.find((_variant, i) => keys[i].base) ?? resolved[0]).font
+    // a font-bound effect was built from the base variant's font, so resolve
+    // that key rather than inferring it from the runs — spans tiling the whole
+    // text leave no base run to find. Undefined means every bucket carries it.
+    let effectFont: MSDFFont | undefined
+    if (fontBound) {
+      try {
+        effectFont = family.get(baseKey)?.font ?? resolved[0].font
+      } catch {
+        // `synthesis: false` and a base key with no bake: fall back to run 0
+        effectFont = resolved[0].font
+      }
+    }
 
     // bucket runs by bake identity so repeated spans share one draw — slant
     // included, since a synthetic oblique rides the upright bake and would
@@ -220,7 +234,9 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
           slant: variant.synthetic.slant,
           glyphIndexOf,
         })
-        built.push(new Mesh(geometry, materialFor(variant.map, variant.font === baseFont)))
+        built.push(
+          new Mesh(geometry, materialFor(variant.map, effectFont === undefined || variant.font === effectFont))
+        )
       }
     } catch (error) {
       for (const mesh of built) mesh.geometry.dispose()

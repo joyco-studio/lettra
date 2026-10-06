@@ -35,6 +35,9 @@ export function composeEffects<const E extends readonly TextEffect[]>(...effects
   }
   return {
     uniforms: Object.assign({}, ...effects.map((effect) => effect.uniforms)) as ComposedUniforms<E>,
+    // one font-bound member binds the whole stack: its stage runs on every
+    // mesh the composition is attached to
+    ...(effects.some((effect) => effect.fontBound) && { fontBound: true }),
     ...(Object.keys(stages).length > 0 && { stages }),
   }
 }

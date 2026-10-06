@@ -357,9 +357,10 @@ Worth knowing:
 - Spans must cover at least one character, and must not overlap.
 - Mixed bake sizes normalise to the first run's font, and baselines align to
   the deepest one.
-- Font-bound effects (`scramble`) build their pool from one font's atlas, so
-  they ride only the buckets drawing the base variant's font. The rest render
-  the same text without the effect, rather than sampling the wrong rects.
+- Paragraph-wide effects (`wipe`) ride every bucket. An effect that declares
+  `fontBound` (`scramble`, whose pool is rects of one font's atlas) rides only
+  the buckets drawing the base variant's font, since elsewhere it would sample
+  the wrong texture with those rects; the rest render without it.
 
 ## Baking fonts
 
