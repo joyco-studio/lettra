@@ -157,6 +157,22 @@ describe('createRichText', () => {
     handle.dispose()
   })
 
+  it('clips carried-over spans to a shorter text, and keeps explicit ones strict', async () => {
+    const family = await loadedFamily()
+    const handle = createRichText({ family, text: 'Ha Ha', spans: [{ start: 3, end: 5, style: 'italic' }] })
+    // the caller changed the string, not the styling: the span rides along, cut
+    handle.setText('Ha H')
+    expect(handle.layout.runs.map((run) => run.glyphs.length)).toEqual([2, 1])
+    handle.setText('')
+    expect(handle.group.children).toHaveLength(0)
+    // spans dropped entirely once the text no longer reaches them
+    handle.setText('Ha')
+    expect(handle.group.children).toHaveLength(1)
+    // but a span passed by hand must fit
+    expect(() => handle.setText('Ha', [{ start: 0, end: 9, style: 'italic' }])).toThrow(/exceeds the text length/)
+    handle.dispose()
+  })
+
   it('rebuilds on setText and notifies listeners', async () => {
     const family = await loadedFamily()
     const handle = createRichText({ family, text: 'Ha' })

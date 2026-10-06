@@ -43,6 +43,9 @@ export interface RichTextHandle<E extends TextEffect | undefined = undefined> {
   /** Shared across every bucket. */
   uniforms: TextUniforms & EffectUniforms<E>
   readonly layout: RunsLayoutResult
+  /** Omitting `spans` keeps the current ones, clipped to the new text, so
+   * shortening it (or clearing it with `''`) is safe per keystroke. Spans you
+   * pass explicitly are taken as written and must fit. */
   setText(text: string, spans?: RichSpan[], layoutOptions?: LayoutOptions): void
   warmup(renderer: WebGPURenderer, camera: Camera, scene?: Scene): Promise<void>
   onChange(listener: () => void): () => void
@@ -78,6 +81,17 @@ function normalizeRuns(length: number, spans: RichSpan[], base: VariantKey): Run
   }
   if (cursor < length) runs.push({ ...base, start: cursor, end: length, base: true })
   return runs
+}
+
+/** Trims carried-over spans to a shorter text instead of failing on them: the
+ * caller changed the string, not the styling. */
+function clipSpans(spans: RichSpan[], length: number): RichSpan[] {
+  const clipped: RichSpan[] = []
+  for (const span of spans) {
+    if (span.start >= length) continue
+    clipped.push(span.end > length ? { ...span, end: length } : span)
+  }
+  return clipped
 }
 
 /** One bake serving both: same font, atlas and slant, so the two would have
@@ -274,7 +288,7 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
     setText(nextText, nextSpans, nextLayoutOptions) {
       // build commits text/spans only once it succeeds, so a throw can't leave
       // the handle holding spans that no longer match its text
-      build(nextText, nextSpans ?? spans, nextLayoutOptions ?? layoutOptions)
+      build(nextText, nextSpans ?? clipSpans(spans, nextText.length), nextLayoutOptions ?? layoutOptions)
       notify()
     },
     async warmup(renderer, camera, scene) {
