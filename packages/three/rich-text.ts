@@ -99,6 +99,7 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
   const effect = options.material?.effect
   // scramble reads one atlas's glyph rects; wipe only reads layoutX
   const fontBound = effect?.fontBound === true
+  let warnedUnanchoredEffect = false
 
   const group = new Group()
   const listeners = new Set<() => void>()
@@ -173,16 +174,25 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
       nextLayoutOptions
     )
 
-    // a font-bound effect was built from the base variant's font, so resolve
-    // that key rather than inferring it from the runs — spans tiling the whole
-    // text leave no base run to find. Undefined means every bucket carries it.
-    let effectFont: MSDFFont | undefined
+    // A font-bound effect was built from the base variant's font, so resolve
+    // that key — never infer it from the runs, which may not include the base
+    // variant at all when spans tile the whole text.
+    // undefined = every bucket carries the effect; null = none does. Null is
+    // the only safe answer when the base bake is unresolvable: guessing a font
+    // would point the effect's atlas rects at the wrong texture.
+    let effectFont: MSDFFont | null | undefined
     if (fontBound) {
       try {
-        effectFont = family.get(baseKey)?.font ?? resolved[0].font
+        effectFont = family.get(baseKey)?.font ?? null
       } catch {
-        // `synthesis: false` and a base key with no bake: fall back to run 0
-        effectFont = resolved[0].font
+        // `synthesis: false` with a base key that has no bake
+        effectFont = null
+      }
+      if (effectFont === null && !warnedUnanchoredEffect) {
+        warnedUnanchoredEffect = true
+        console.warn(
+          `[lettra] rich-text was given a font-bound effect, but the base variant (weight ${baseKey.weight ?? 400} style ${baseKey.style ?? 'normal'}) is not loaded, so no bucket carries it. Await family.load for that variant, or pass the effect's font as the base \`variant\`.`
+        )
       }
     }
 

@@ -37,9 +37,16 @@ const PATH_SHAPED = /\.(txt|json|charset)$/i
 const PATH_PREFIXED = /^(\.\.?[/\\]|[/\\]|~[/\\])/
 
 /** Resolves `--charset`: a preset name, a file path, or a literal string.
- * Duplicates and newlines are stripped either way. A typo'd preset or a wrong
- * path is rejected rather than quietly baked as a literal — `latin-ext2` would
- * otherwise bake an 8-glyph atlas of `latinex2` and report it as a success. */
+ * Duplicates and newlines are stripped either way.
+ *
+ * Precedence, so the ambiguous cases are a choice and not an accident:
+ * preset name, then an existing file, then a name that can only be a path
+ * (rejected as missing), then a name that can only be a preset (rejected as
+ * unknown), then the literal characters. A typo'd preset or a wrong path is
+ * rejected rather than quietly baked — `latin-ext2` would otherwise bake an
+ * 8-glyph atlas of `latinex2` and report it as a success — while a literal
+ * holding a separator (`AC/DC`, for a logotype) still bakes as itself unless
+ * a file of that exact name happens to exist. */
 export function resolveCharset(input: string): string {
   const preset = CHARSET_PRESETS[input]
   const read = (path: string) => {
