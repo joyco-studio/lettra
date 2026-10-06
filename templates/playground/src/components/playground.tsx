@@ -181,14 +181,19 @@ export default function Playground({
   useEffect(() => {
     let disposed = false
     let created: Stage | null = null
-    createStage(canvasRef.current!, metri).then((result) => {
-      if (disposed) {
-        result.dispose()
-        return
-      }
-      created = result
-      setStage(result)
-    })
+    createStage(canvasRef.current!, metri)
+      .then((result) => {
+        if (disposed) {
+          result.dispose()
+          return
+        }
+        created = result
+        setStage(result)
+      })
+      // no WebGPU and no WebGL fallback blanks every figure on the page: say so
+      .catch((error) => {
+        if (!disposed) console.error('[playground] stage failed to start', error)
+      })
     return () => {
       disposed = true
       created?.dispose()

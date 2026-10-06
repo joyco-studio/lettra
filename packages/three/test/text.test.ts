@@ -54,16 +54,37 @@ describe('createText variants', () => {
     text.dispose()
   })
 
-  it('keeps an explicitly requested slant across a raw swap', () => {
+  it('honors an explicitly requested slant throughout, variant source or not', () => {
+    const plain = createText({ variant: variant('regular'), text: 'H', geometry: { anchor: 'baseline-left' } })
+    const noSlant = plain.mesh.geometry.getAttribute('position').getX(0)
+    plain.dispose()
+
     const text = createText({
       variant: variant('regular'),
       text: 'H',
       geometry: { anchor: 'baseline-left', slant: 0.25 },
     })
+    // an exact variant hit contributes no synthetic slant, so the explicit one
+    // is all there is — and it must apply from the first build, not just after
+    // a raw swap restores it
+    const asked = text.mesh.geometry.getAttribute('position').getX(0)
+    expect(asked).toBeGreaterThan(noSlant)
     text.setVariant(variant('upright'))
-    const flat = text.mesh.geometry.getAttribute('position').getX(0)
+    expect(text.mesh.geometry.getAttribute('position').getX(0)).toBeCloseTo(asked)
     text.swapFont({ font: font('raw'), map: new Texture() })
-    expect(text.mesh.geometry.getAttribute('position').getX(0)).toBeGreaterThan(flat)
+    expect(text.mesh.geometry.getAttribute('position').getX(0)).toBeCloseTo(asked)
+    text.dispose()
+  })
+
+  it('adds a synthetic oblique on top of an explicitly requested slant', () => {
+    const text = createText({
+      variant: variant('regular'),
+      text: 'H',
+      geometry: { anchor: 'baseline-left', slant: 0.25 },
+    })
+    const asked = text.mesh.geometry.getAttribute('position').getX(0)
+    text.setVariant(variant('oblique', { slant: 0.25 }))
+    expect(text.mesh.geometry.getAttribute('position').getX(0)).toBeGreaterThan(asked)
     text.dispose()
   })
 

@@ -90,7 +90,19 @@ export function extractKerning(fontPath: string, size: number, charset: string):
           reject(new Error(`[lettra] kerning extraction failed: ${stderr.trim() || error.message}`))
           return
         }
-        resolve(JSON.parse(stdout) as Record<string, number>)
+        // this callback runs long after the executor returned, so a throw here
+        // would be an uncaught exception rather than a rejection — and any
+        // stdout noise from the user's python3 (a pyenv shim notice, a conda
+        // banner) is enough to cause one
+        try {
+          resolve(JSON.parse(stdout) as Record<string, number>)
+        } catch {
+          reject(
+            new Error(
+              `[lettra] kerning extraction returned unparseable output; something on your python3 stdout is not JSON: ${stdout.trim().slice(0, 200)}`
+            )
+          )
+        }
       }
     )
   })

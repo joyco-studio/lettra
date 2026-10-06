@@ -10,6 +10,9 @@ export function instanceFont(fontPath: string, axes: string[], outPath: string):
     execFile(
       'python3',
       ['-m', 'fontTools.varLib.instancer', fontPath, ...axes, '-o', outPath],
+      // a chatty instancer blows the 1 MB default and gets SIGTERM'd, which
+      // reads as a font problem; match what extractKerning allows
+      { maxBuffer: 64 * 1024 * 1024 },
       (error, _stdout, stderr) => {
         if (!error) return resolve()
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -18,7 +21,8 @@ export function instanceFont(fontPath: string, axes: string[], outPath: string):
         if (/No module named/i.test(stderr)) {
           return reject(new Error(`[lettra] fontTools not installed; ${INSTALL_HINT}`))
         }
-        reject(new Error(`[lettra] fontTools instancer failed: ${stderr.trim() || error.message}`))
+        const detail = stderr.trim()
+        reject(new Error(`[lettra] fontTools instancer failed: ${detail ? detail.slice(-2000) : error.message}`))
       }
     )
   })

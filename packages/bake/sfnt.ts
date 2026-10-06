@@ -132,3 +132,42 @@ export function readWeightClass(data: Uint8Array, tables: SfntTables): number | 
   const weight = view.getUint16(offset + 4)
   return weight >= 1 && weight <= 1000 ? weight : null
 }
+
+/** Whether the face reports itself italic: OS/2 fsSelection bit 0, or a
+ * non-zero post italicAngle. Null when neither table is readable, so callers
+ * can tell "upright" from "unknown". */
+export function isItalicFont(data: Uint8Array, tables: SfntTables): boolean | null {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
+  const os2 = tables.offsets.get('OS/2')
+  // fsSelection sits at offset 62 in every OS/2 version
+  if (os2 !== undefined && os2 + 64 <= data.byteLength) {
+    if ((view.getUint16(os2 + 62) & 0x01) !== 0) return true
+  }
+  const post = tables.offsets.get('post')
+  // italicAngle is a 16.16 fixed at offset 4
+  if (post !== undefined && post + 8 <= data.byteLength) {
+    if (view.getInt32(post + 4) !== 0) return true
+  }
+  if (os2 === undefined && post === undefined) return null
+  return false
+}
+
+/** fvar axis tags, so a variable face can be checked for `wght` before any
+ * atlas is written. Empty for a static font; null when fvar is unreadable. */
+export function readVariationAxes(data: Uint8Array, tables: SfntTables): string[] | null {
+  const offset = tables.offsets.get('fvar')
+  if (offset === undefined) return []
+  if (offset + 16 > data.byteLength) return null
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
+  const axesOffset = offset + view.getUint16(offset + 4)
+  const axisCount = view.getUint16(offset + 8)
+  const axisSize = view.getUint16(offset + 10)
+  // an axis record is 20 bytes; a smaller stride means a malformed table
+  if (axisSize < 20 || axesOffset + axisCount * axisSize > data.byteLength) return null
+  const tags: string[] = []
+  for (let i = 0; i < axisCount; i++) {
+    const at = axesOffset + i * axisSize
+    tags.push(String.fromCharCode(data[at], data[at + 1], data[at + 2], data[at + 3]))
+  }
+  return tags
+}

@@ -41,14 +41,21 @@ function useGLView<V extends { dispose(): void }>(
     if (!stage || !el) return
     let disposed = false
     let current: V | null = null
-    createRef.current(stage, el).then((created) => {
-      if (disposed) {
-        created.dispose()
-        return
-      }
-      current = created
-      setView(created)
-    })
+    createRef
+      .current(stage, el)
+      .then((created) => {
+        if (disposed) {
+          created.dispose()
+          return
+        }
+        current = created
+        setView(created)
+      })
+      // an atlas that 404s or a warmup that rejects leaves the plate blank;
+      // without this it is also an unhandled rejection with no clue attached
+      .catch((error) => {
+        if (!disposed) console.error('[playground] figure failed to start', error)
+      })
     return () => {
       disposed = true
       current?.dispose()
@@ -227,9 +234,22 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
   const view = useGLView(stage, elRef, (s, el) => createFamilyView(s, el, FAMILY_INITIAL))
 
   useEffect(() => {
-    view?.apply(state).then((resolved) => {
-      if (resolved) setInfo(resolved)
-    })
+    if (!view) return
+    let live = true
+    view
+      .apply(state)
+      .then((resolved) => {
+        if (live && resolved) setInfo(resolved)
+      })
+      .catch((error) => {
+        // clear the readout: leaving the last result up would have the figure
+        // claim an exact hit while the mesh still shows the previous variant
+        console.error('[playground] family variant failed to load', error)
+        if (live) setInfo(null)
+      })
+    return () => {
+      live = false
+    }
   }, [state, view])
 
   const patch = (partial: Partial<FamilyState>) => setState((previous) => ({ ...previous, ...partial }))
@@ -251,8 +271,9 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
       <SectionTitle caption="family">Families &amp; italics</SectionTitle>
       <Prose className="mt-5">
         Three weights and two italics are baked here. Ask for any weight or style and the readout below says which atlas
-        answered: a weight in between serves the closest bake, and an italic request with no italic bake gets a sheared
-        one. The small line underneath puts regular, bold and italic in a single layout.
+        answered: a weight in between serves the closest bake unmodified, since weight is never synthesized. Only the
+        oblique is, and this family bakes both italics, so it never needs one. The small line underneath puts regular,
+        bold and italic in a single layout.
       </Prose>
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">

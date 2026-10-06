@@ -129,8 +129,9 @@ describe('defineFamily', () => {
       loaders: { font: () => Promise.reject(new Error('boom')), texture: () => Promise.resolve(map) },
     })
     await expect(family.load({ weight: 400 })).rejects.toThrow('boom')
-    // the atlas landed with no font to pair it: free it rather than leak it
-    expect(disposed).toHaveBeenCalledTimes(1)
+    // the atlas landed with no font to pair it: free it rather than leak it.
+    // load() rejects as soon as the font does, so the dispose trails it.
+    await vi.waitFor(() => expect(disposed).toHaveBeenCalledTimes(1))
     await vi.waitFor(() => expect(family.variants[0].state).toBe('error'))
   })
 

@@ -9,4 +9,4 @@ Font families, italics, italic spans, and the bake CLI.
 - `createRichText({ family, text, spans })`: italic or weight spans inside one paragraph. Wrapping, alignment and the baseline stay paragraph-wide, and runs bucket by resolved variant so repeated spans share a draw call.
 - `npx lettra bake`: sfnt preflight, fontTools instancing, GPOS kerning recovery (class-based PairPos that opentype.js misses), charset presets, and cmap coverage checking so unmappable characters are dropped instead of baked as tofu.
 
-The bake tooling ships inside `lettra` as a bin entry. Its dependencies are Node-only and unreachable from the `.` and `./three` entries, so they cost nothing in a client bundle.
+The bake tooling ships inside `lettra` as a bin entry. Its baker, `msdf-bmfont-xml`, is an optional peer loaded on demand: unreachable from the `.` and `./three` entries, so it costs nothing in a client bundle, and not installed at all unless you bake. `npx lettra bake` prompts for it if it is missing.

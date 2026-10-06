@@ -1,6 +1,6 @@
 import { PerspectiveCamera, Scene } from 'three/webgpu'
 import { createRichText, createText, defineFamily } from 'lettra/three'
-import type { FontFamily, TextHandle } from 'lettra/three'
+import type { FontFamily, LoadedVariant, TextHandle } from 'lettra/three'
 import type { Stage } from '../stage'
 import { frameText } from '../stage'
 
@@ -40,96 +40,126 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
     ],
   })
 
-  // the demo exercises every variant; a page would family.load() what it uses
-  await inter.loadAll()
-  inter.warmup(stage.renderer)
-
-  let current = initial
-  const initialVariant = await inter.load({ weight: current.weight, style: current.style })
-
-  const text: TextHandle = createText({
-    variant: initialVariant,
-    text: TEXT,
-    layout: { align: 'center' },
-    material: { fill: '#414141' },
-  })
-  scene.add(text.mesh)
-
-  // one paragraph, three variants; spans resolve through the same family
-  const rich = createRichText({
-    family: inter,
-    text: 'one layout, regular to bold to italic',
-    spans: [
-      { start: 23, end: 27, weight: 700 },
-      { start: 31, end: 37, style: 'italic' },
-    ],
-    layout: { align: 'center' },
-    material: { fill: '#8a8a86' },
-  })
-  scene.add(rich.group)
-
-  const frame = () => {
-    frameText(camera, {
-      width: text.layout.width,
-      height: text.layout.height,
-      fontSize: text.layout.metrics.fontSize,
-    })
-    // park the rich line under the main block, in em units
-    const mainHalf = text.layout.height / text.layout.metrics.fontSize / 2
-    rich.group.position.y = -(mainHalf + 1.1)
-    rich.group.scale.setScalar(0.42)
-    handle.invalidate()
+  // unwound in reverse on a failed build: the stage view is registered before
+  // the last awaits, so a rejected load or warmup would otherwise leave it
+  // rendering, unreachable and undisposable
+  const created: Array<() => void> = [() => inter.dispose()]
+  const teardown = () => {
+    for (const dispose of [...created].reverse()) dispose()
   }
-
-  const handle = stage.addView(el, {
-    scene,
-    camera,
-    resize(width, height) {
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      frame()
-    },
-  })
-  text.onChange(() => handle.invalidate())
-  rich.onChange(() => handle.invalidate())
-
-  await text.warmup(stage.renderer, camera, scene)
-  await rich.warmup(stage.renderer, camera, scene)
-  frame()
 
   let token = 0
+  let disposed = false
+  let current = initial
 
-  const describe = (state: FamilyState, variant: Awaited<ReturnType<FontFamily['load']>>): FamilyInfo => {
-    const servedStyle = variant.style === 'italic' ? ' italic' : ''
-    const exact = variant.weight === state.weight && variant.style === state.style
-    const details =
-      variant.synthetic.slant !== 0
-        ? 'synthetic oblique 14°'
-        : exact
-          ? 'exact variant hit'
-          : 'closest bake, served as-is'
-    return {
-      served: `bake ${variant.weight}${servedStyle}`,
-      mode: exact ? 'exact' : 'fallback',
-      details,
+  try {
+    // the demo exercises every variant; a page would family.load() what it uses.
+    // Promise.all short-circuits, so one 404 leaves the atlases that did land
+    // for inter.dispose() to free
+    await inter.loadAll()
+    inter.warmup(stage.renderer)
+
+    const initialVariant = await inter.load({ weight: current.weight, style: current.style })
+
+    const text: TextHandle = createText({
+      variant: initialVariant,
+      text: TEXT,
+      layout: { align: 'center' },
+      material: { fill: '#414141' },
+    })
+    created.push(() => text.dispose()) // family-owned atlas: skipped automatically
+    scene.add(text.mesh)
+
+    // one paragraph, three variants; spans resolve through the same family
+    const rich = createRichText({
+      family: inter,
+      text: 'one layout, regular to bold to italic',
+      spans: [
+        { start: 23, end: 27, weight: 700 },
+        { start: 31, end: 37, style: 'italic' },
+      ],
+      layout: { align: 'center' },
+      material: { fill: '#8a8a86' },
+    })
+    created.push(() => rich.dispose())
+    scene.add(rich.group)
+
+    const frame = () => {
+      frameText(camera, {
+        width: text.layout.width,
+        height: text.layout.height,
+        fontSize: text.layout.metrics.fontSize,
+      })
+      // park the rich line under the main block, in em units
+      const mainHalf = text.layout.height / text.layout.metrics.fontSize / 2
+      rich.group.position.y = -(mainHalf + 1.1)
+      rich.group.scale.setScalar(0.42)
+      handle.invalidate()
     }
-  }
 
-  return {
-    async apply(next) {
-      const mine = ++token
-      current = next
-      const variant = await inter.load({ weight: next.weight, style: next.style })
-      if (mine !== token) return null // a newer apply superseded this one
-      text.setVariant(variant)
-      frame()
-      return describe(next, variant)
-    },
-    dispose() {
-      handle.dispose()
-      text.dispose() // family-owned atlas: skipped automatically
-      rich.dispose()
-      inter.dispose()
-    },
+    const handle = stage.addView(el, {
+      scene,
+      camera,
+      resize(width, height) {
+        camera.aspect = width / height
+        camera.updateProjectionMatrix()
+        frame()
+      },
+    })
+    created.push(() => handle.dispose())
+    text.onChange(() => handle.invalidate())
+    rich.onChange(() => handle.invalidate())
+
+    await text.warmup(stage.renderer, camera, scene)
+    await rich.warmup(stage.renderer, camera, scene)
+    frame()
+
+    const describe = (state: FamilyState, variant: LoadedVariant): FamilyInfo => {
+      const servedStyle = variant.style === 'italic' ? ' italic' : ''
+      const exact = variant.weight === state.weight && variant.style === state.style
+      const details =
+        variant.synthetic.slant !== 0
+          ? 'synthetic oblique 14°'
+          : exact
+            ? 'exact variant hit'
+            : 'closest bake, served as-is'
+      return {
+        served: `bake ${variant.weight}${servedStyle}`,
+        mode: exact ? 'exact' : 'fallback',
+        details,
+      }
+    }
+
+    return {
+      async apply(next) {
+        const mine = ++token
+        current = next
+        let variant: LoadedVariant
+        try {
+          variant = await inter.load({ weight: next.weight, style: next.style })
+        } catch (error) {
+          // dispose() mid-load rejects it by design; anything else is real
+          if (mine !== token || disposed) return null
+          throw error
+        }
+        // a newer apply, or dispose(), superseded this one
+        if (mine !== token || disposed) return null
+        text.setVariant(variant)
+        frame()
+        return describe(next, variant)
+      },
+      dispose() {
+        if (disposed) return
+        disposed = true
+        // bump the token too, so an apply already past its await bails instead
+        // of rebuilding geometry on a disposed text — or, because a family is
+        // reusable after dispose, restarting its loads and leaking fresh atlases
+        token++
+        teardown()
+      },
+    }
+  } catch (error) {
+    teardown()
+    throw error
   }
 }

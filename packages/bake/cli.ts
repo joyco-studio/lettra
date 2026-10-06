@@ -4,14 +4,22 @@
  * instancing for variable fonts (which keeps GPOS kerning alive), pinned
  * msdf-bmfont-xml settings, lettra-native JSON output. */
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { DEFAULT_CHARSET, bakeFont } from './bake'
 import type { BakeResult, BakeSettings } from './bake'
 import { instanceFont } from './instance'
 import { extractKerning } from './kerning'
-import { hasKerningTables, isVariableFont, readCmapCoverage, readTables, readWeightClass } from './sfnt'
+import {
+  hasKerningTables,
+  isItalicFont,
+  isVariableFont,
+  readCmapCoverage,
+  readTables,
+  readVariationAxes,
+  readWeightClass,
+} from './sfnt'
 import { CHARSET_PRESETS, partitionByCoverage, resolveCharset } from './charset'
 import type { MSDFFont } from '../core/types'
 
@@ -84,10 +92,19 @@ function parseArgs(argv: string[]): CliOptions {
   while (args.length > 0) {
     const arg = args.shift()!
     switch (arg) {
-      case '--weights':
-        weights = next(arg).split(',').map(Number)
-        if (weights.some((w) => !Number.isFinite(w))) fail('--weights expects numbers, e.g. 400,700')
+      case '--weights': {
+        const raw = next(arg)
+        const parts = raw.split(',').map((part) => part.trim())
+        // Number('') is 0, which would bake at the axis minimum and label it 0
+        if (parts.some((part) => part === '')) fail(`--weights has an empty entry: ${JSON.stringify(raw)}`)
+        const parsed = parts.map(Number)
+        if (parsed.some((w) => !Number.isFinite(w) || w < 1 || w > 1000)) {
+          fail('--weights expects numbers between 1 and 1000, e.g. 400,700')
+        }
+        // a duplicate bakes twice and prints a src array defineFamily rejects
+        weights = [...new Set(parsed)].sort((a, b) => a - b)
         break
+      }
       case '--italic':
         italicPath = next(arg)
         break
@@ -119,13 +136,31 @@ function parseArgs(argv: string[]): CliOptions {
   if (!fontPath) fail('missing font file (see --help)')
   const weightsExplicit = weights.length > 0
   if (!weightsExplicit) weights = [400]
+  if (italicPath && resolve(italicPath) === resolve(fontPath)) {
+    fail('--italic points at the same file as the roman face; pass the italic font, or drop the flag')
+  }
+
+  // `out` is a path prefix, not a directory. Resolve it so the served-URL guess
+  // below can't depend on cwd, and reject the two readings that silently write
+  // beside the intended directory instead of into it
+  const outRaw = out ?? join(process.cwd(), basename(fontPath).replace(/\.[^.]+$/, ''))
+  const outTrimmed = outRaw.replace(/[/\\]+$/, '')
+  if (outTrimmed === '') fail('--out needs a path prefix, not just a separator')
+  const outResolved = resolve(outTrimmed)
+  const namesDirectory = /[/\\]+$/.test(outRaw) || (existsSync(outResolved) && statSync(outResolved).isDirectory())
+  if (namesDirectory) {
+    const stem = basename(fontPath).replace(/\.[^.]+$/, '')
+    fail(
+      `--out ${outRaw} names a directory, but it is a path prefix: pass --out ${outTrimmed}${sep}${stem} to write ${stem}-400.json inside it`
+    )
+  }
 
   return {
     fontPath: resolve(fontPath),
     weights,
     weightsExplicit,
     italicPath: italicPath ? resolve(italicPath) : undefined,
-    out: out ?? join(process.cwd(), basename(fontPath).replace(/\.[^.]+$/, '')),
+    out: outResolved,
     settings: {
       size,
       distanceRange: pxrange,
@@ -212,17 +247,38 @@ function writeVariant(
   return { jsonFile, atlasFile }
 }
 
+/** Guesses the URL a written file is served at: everything after the last
+ * `public` segment, which is how Next, Vite and CRA map that directory onto
+ * the site root. Null when there is no such segment, so the caller can say the
+ * path is a guess instead of printing one that 404s. */
+function servedPath(file: string): string | null {
+  const parts = resolve(file).split(sep)
+  const index = parts.lastIndexOf('public')
+  if (index === -1 || index === parts.length - 1) return null
+  return `/${parts.slice(index + 1).join('/')}`
+}
+
 function printFamilyBlock(outDir: string, variants: BakedVariant[]): void {
+  let guessed = false
+  const url = (file: string) => {
+    const served = servedPath(file)
+    if (served) return served
+    guessed = true
+    return `/${basename(file)}`
+  }
   const src = variants
     .map((v) => {
-      const json = `/${basename(v.jsonFile)}`
-      const atlas = `/${basename(v.atlasFile)}`
       const style = v.style === 'italic' ? `, style: 'italic'` : ''
-      return `    { json: '${json}', atlas: '${atlas}', weight: ${v.weight}${style} },`
+      // JSON.stringify, so an apostrophe or a backslash in a name can't turn
+      // the block into a syntax error when it is pasted into a project
+      return `    { json: ${JSON.stringify(url(v.jsonFile))}, atlas: ${JSON.stringify(url(v.atlasFile))}, weight: ${v.weight}${style} },`
     })
     .join('\n')
   console.log(`\n[lettra] defineFamily src (files in ${outDir}):\n`)
   console.log(`const family = defineFamily({\n  src: [\n${src}\n  ],\n})\n`)
+  if (guessed) {
+    console.log(`[lettra] those URLs assume ${outDir} is served at the site root — adjust them if it is not.\n`)
+  }
 }
 
 /** Drops characters the font cannot map; they would bake as .notdef tofu and
@@ -264,6 +320,24 @@ async function runStatic(options: CliOptions): Promise<void> {
       const variable = isVariableFont(tables.tags)
       const kerns = hasKerningTables(tables.tags)
       const settings = withCoverage(options.settings, data, tables, basename(face.path))
+      // instancing happens per weight, deep inside the bake loop: check the axis
+      // here so a face without wght can't abort after the other face's atlases
+      // are already on disk
+      if (variable) {
+        const axes = readVariationAxes(data, tables)
+        if (axes && !axes.includes('wght')) {
+          fail(
+            `${basename(face.path)} is variable but has no wght axis (found ${axes.join(', ') || 'none'}); instance it yourself and bake the static file`
+          )
+        }
+      }
+      // the flag claims italic; the font should agree, or every italic request
+      // at runtime resolves to this bake and renders upright with no slant
+      if (face.style === 'italic' && isItalicFont(data, tables) === false) {
+        console.warn(
+          `[lettra] ${basename(face.path)}: --italic labels this face italic but it does not report itself italic (OS/2 fsSelection and post italicAngle are both clear); italic requests would resolve to it and render upright`
+        )
+      }
       // a static face has one real weight: label it from OS/2, never from the flag
       const weights = variable ? options.weights : [readWeightClass(data, tables) ?? options.weights[0]]
       if (!variable && options.weightsExplicit && (options.weights.length > 1 || weights[0] !== options.weights[0])) {
@@ -289,8 +363,19 @@ async function runStatic(options: CliOptions): Promise<void> {
   }
 }
 
-const options = parseArgs(process.argv.slice(2))
-runStatic(options).catch((error) => {
+const die = (error: unknown): never => {
   console.error(error instanceof Error ? error.message : error)
   process.exit(1)
-})
+}
+
+// parseArgs mostly calls fail(), but resolveCharset throws: print either the
+// same way rather than letting a stack escape
+const parse = (argv: string[]): CliOptions => {
+  try {
+    return parseArgs(argv)
+  } catch (error) {
+    return die(error)
+  }
+}
+
+runStatic(parse(process.argv.slice(2))).catch(die)

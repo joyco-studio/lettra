@@ -89,6 +89,8 @@ export function resolveVariant<T extends VariantDescriptor>(
   if (sources.length === 0) fail('resolveVariant requires at least one source variant')
   const weight = request.weight ?? 400
   const style = request.style ?? 'normal'
+  // every comparison against NaN is false, so the search would come back empty
+  if (!Number.isFinite(weight)) fail(`weight must be a finite number, got ${weight}`)
 
   let pool = sources.filter((source) => (source.style ?? 'normal') === style)
   const styleSynthetic = pool.length === 0

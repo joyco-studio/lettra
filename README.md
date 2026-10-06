@@ -351,11 +351,15 @@ Worth knowing:
 
 - Variants must be loaded first — `createRichText` resolves through the
   synchronous `family.get` and throws naming the missing weight and style.
-- Kerning drops at span boundaries; the pair tables are per font.
+- Kerning drops at span boundaries; the pair tables are per font. Adjacent
+  runs resolving to the same bake are merged first, so a span that changes
+  nothing does not cost you a pair.
+- Spans must cover at least one character, and must not overlap.
 - Mixed bake sizes normalise to the first run's font, and baselines align to
   the deepest one.
-- Font-bound effects (`scramble`) build their pool from one font, so they
-  only match the base variant.
+- Font-bound effects (`scramble`) build their pool from one font's atlas, so
+  they ride only the buckets drawing the base variant's font. The rest render
+  the same text without the effect, rather than sampling the wrong rects.
 
 ## Baking fonts
 
@@ -366,10 +370,15 @@ class-based GPOS pairs that the generator's parser misses, and emits the
 minified lettra JSON plus a ready `defineFamily` block:
 
 ```bash
-pip3 install fonttools  # required for variable fonts, recommended for any kerned face
+npm i -D msdf-bmfont-xml  # the baker: an optional peer, so a browser-only install skips it
+pip3 install fonttools    # required for variable fonts, recommended for any kerned face
 npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
   --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
 ```
+
+`--out` is a path prefix, not a directory: `--out public/fonts/inter` writes
+`public/fonts/inter-400.json` and prints it as `/fonts/inter-400.json`, the
+URL it is actually served at under a standard public directory.
 
 Manual routes still work: raw msdf-bmfont-xml, or the browser tool
 [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).

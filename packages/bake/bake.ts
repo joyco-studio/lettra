@@ -1,4 +1,3 @@
-import generateBMFont from 'msdf-bmfont-xml'
 import { fromBMFont } from '../core/parse'
 import type { BMFontJson, MSDFFont } from '../core/types'
 
@@ -29,8 +28,25 @@ function fail(message: string): never {
   throw new Error(`[lettra] ${message}`)
 }
 
+const BAKER_HINT =
+  'the MSDF baker is an optional peer, so a browser-only install of lettra skips it — install it with `npm i -D msdf-bmfont-xml`'
+
+/** Resolved on demand rather than imported at module scope: `lettra` is a
+ * browser library, and nothing but `lettra bake` should make its consumers
+ * install the baker's Node-only dependency tree. */
+async function loadBaker() {
+  try {
+    return (await import('msdf-bmfont-xml')).default
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException | undefined)?.code
+    if (code === 'ERR_MODULE_NOT_FOUND' || code === 'MODULE_NOT_FOUND') fail(BAKER_HINT)
+    throw error
+  }
+}
+
 /** Bakes one static font file into a single-page MSDF atlas + lettra JSON. */
-export function bakeFont(fontPath: string, settings: BakeSettings): Promise<BakeResult> {
+export async function bakeFont(fontPath: string, settings: BakeSettings): Promise<BakeResult> {
+  const generateBMFont = await loadBaker()
   return new Promise((resolve, reject) => {
     generateBMFont(
       fontPath,
@@ -56,8 +72,14 @@ export function bakeFont(fontPath: string, settings: BakeSettings): Promise<Bake
           reject(parseError)
         }
       },
-      // silence the per-glyph progress logging; errors still reject
-      { log: () => {}, warn: (msg: string) => console.warn(`[lettra] ${msg}`), error: () => {} }
+      // silence only the per-glyph progress logging. The baker's error channel
+      // carries the msdfgen command and its output, which is the only clue on
+      // its hard failure path — dropping it leaves a bare RangeError
+      {
+        log: () => {},
+        warn: (msg: string) => console.warn(`[lettra] ${msg}`),
+        error: (msg: string) => console.error(`[lettra] baker: ${msg}`),
+      }
     )
   })
 }

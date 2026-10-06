@@ -120,7 +120,12 @@ const inter = defineFamily({
 // CSS-like resolution: the closest bake serves, and an italic
 // request with no italic bake gets a sheared oblique
 const variant = await inter.load(${key})
-const text = createText({ variant, text, layout })
+const text = createText({
+  variant,
+  text: 'Sphinx of black quartz,\\njudge my vow',
+  layout: { align: 'center' },
+})
+scene.add(text.mesh)
 
 // weight changes ride the atomic swapFont path
 text.setVariant(await inter.load({ weight: 700 }))
@@ -144,7 +149,7 @@ scene.add(rich.group)`
 export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
 # (variable GPOS kerning survives), pinned MSDF settings,
 # lettra-native JSON, a ready defineFamily src block
-npx lettra bake Inter.ttf --weights 400,700 \\
+npx lettra bake Inter.ttf --weights 200,400,700 \\
   --italic Inter-Italic.ttf --charset latin-es \\
   --size 64 --pxrange 8 --out public/fonts/inter
 `

@@ -6,7 +6,11 @@ import { Badge } from '@/components/ui/badge'
 
 /** Fraction of the viewport where a section becomes "the one you're reading".
  * Anchors carry the matching scroll-margin (see `Row` in layout.tsx), so a
- * click lands exactly on this line and the spy agrees with it by construction. */
+ * click lands exactly on this line and the spy agrees with it by construction.
+ * That coupling is hand-held: Tailwind can't read this constant, so `Row`
+ * repeats it as `scroll-mt-[28vh]` — and in `vh`, the large viewport, while
+ * this measures `window.innerHeight`, the current one. They agree on desktop;
+ * give the rail a mobile drawer and a visible toolbar will split them. */
 export const READING_LINE = 0.28
 /** Backward hysteresis band; wider than READING_LINE so boundaries don't flap. */
 const RETREAT_LINE = 0.36
@@ -96,6 +100,9 @@ function useReadingLineActive(ids: string[], spy: Spy) {
 }
 
 const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '])
+/** How long scrolling must stay quiet before the pin lets go. Long enough to
+ * outlast a font swap or a figure settling, short enough to feel immediate. */
+const SETTLE_MS = 700
 
 /** Pins the highlight to a clicked target and releases it on real user scroll
  * intent — not on scrollend, which would hand control back while late layout
@@ -106,19 +113,43 @@ function useSeek() {
 
   useEffect(() => {
     if (!seeking) return
-    const release = () => setSpy({ phase: 'spying' })
+    let idle = 0
+    const release = () => {
+      window.clearTimeout(idle)
+      setSpy({ phase: 'spying' })
+    }
     const onKey = (event: KeyboardEvent) => {
       if (SCROLL_KEYS.has(event.key)) release()
     }
+    // wheel, touch and keys are the fast paths, but a scrollbar drag,
+    // middle-click autoscroll, find-in-page or Back/Forward fires none of them
+    // and would leave the pin stuck for good. So also let go once scrolling
+    // goes quiet — the grace period is what separates this from bare
+    // scrollend, since a late layout shift still fires scroll and defers it.
+    const onScroll = () => {
+      window.clearTimeout(idle)
+      idle = window.setTimeout(release, SETTLE_MS)
+    }
+    // arm it now: clicking a link to a section already on screen scrolls
+    // nowhere, so there may never be a scroll event to start the clock
+    onScroll()
     window.addEventListener('wheel', release, { passive: true })
     window.addEventListener('touchstart', release, { passive: true })
     window.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('popstate', release)
+    window.addEventListener('hashchange', release)
     return () => {
+      window.clearTimeout(idle)
       window.removeEventListener('wheel', release)
       window.removeEventListener('touchstart', release)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('popstate', release)
+      window.removeEventListener('hashchange', release)
     }
-  }, [seeking])
+    // keyed on the whole state, so clicking a second link restarts the clock
+  }, [spy, seeking])
 
   const seek = useCallback((target: string) => setSpy({ phase: 'seeking', target }), [])
   return { spy, seek }
@@ -127,17 +158,23 @@ function useSeek() {
 /** Hub-style contents rail, grouped: the core sections, the effects, the
  * composition seam, then everything after. */
 export function Toc({ groups }: { groups: TocGroup[] }) {
-  // sections only: a group's lead-in is the top of that group, not a place of
-  // its own, so the spy never parks on a 200px sliver between two sections
-  const ids = useMemo(() => groups.flatMap((group) => group.sections.map((s) => s.id)), [groups])
+  // group lead-ins are measured alongside sections, in document order, but
+  // `place` maps them onto the group rather than a row of their own — so
+  // reading the Effects intro lights "Effects", instead of leaving the
+  // highlight on the last section of the group above it
+  const ids = useMemo(
+    () => groups.flatMap((group) => [...(group.id ? [group.id] : []), ...group.sections.map((s) => s.id)]),
+    [groups]
+  )
   // id -> where it sits in the rail, so one measured position lights both the
-  // section and the group containing it instead of them fighting over one slot
+  // section and the group containing it instead of them fighting over one slot.
+  // Keyed by group index: labels are display text, not identity.
   const place = useMemo(() => {
-    const map = new Map<string, { group: string; section?: string }>()
-    for (const group of groups) {
-      if (group.id) map.set(group.id, { group: group.label })
-      for (const section of group.sections) map.set(section.id, { group: group.label, section: section.id })
-    }
+    const map = new Map<string, { group: number; section?: string }>()
+    groups.forEach((group, index) => {
+      if (group.id) map.set(group.id, { group: index })
+      for (const section of group.sections) map.set(section.id, { group: index, section: section.id })
+    })
     return map
   }, [groups])
 
@@ -148,55 +185,67 @@ export function Toc({ groups }: { groups: TocGroup[] }) {
 
   return (
     <nav aria-label="Contents" className="flex flex-col gap-7">
-      {groups.map((group) => {
+      {groups.map((group, groupIndex) => {
+        // one rule for the whole rail: a navigable item shows whether it is
+        // current; a plain label never does
+        const groupCurrent = group.id !== undefined && at?.group === groupIndex
         const heading = (
           <span
             className={cn(
               'font-serif text-[15px] font-medium tracking-[0.01em]',
-              group.id && at?.group === group.label ? 'text-ink' : 'text-ink-faint'
+              groupCurrent ? 'text-ink' : 'text-ink-faint',
+              group.id ? 'group-hover/head:text-ink' : ''
             )}
           >
             {group.label}
           </span>
         )
         return (
-          <div key={group.label} className="flex flex-col gap-5">
+          <div key={group.id ?? group.label} className="flex flex-col gap-5">
             {group.id ? (
-              <a href={`#${group.id}`} className="w-fit" onClick={() => seek(group.id!)}>
+              <a
+                href={`#${group.id}`}
+                className="group/head w-fit"
+                aria-current={groupCurrent ? 'location' : undefined}
+                onClick={() => seek(group.id!)}
+              >
                 {heading}
               </a>
             ) : (
               heading
             )}
             <ol className="flex flex-col gap-[8px]">
-              {group.sections.map((section) => (
-                <li key={section.id}>
-                  <a
-                    href={`#${section.id}`}
-                    className="group flex items-center gap-3"
-                    aria-current={at?.section === section.id ? 'location' : undefined}
-                    onClick={() => seek(section.id)}
-                  >
-                    <Badge
-                      size="sm"
-                      className={cn(
-                        'w-7 justify-center border-transparent px-1.5 py-[2px] font-mono text-[10px] font-semibold tracking-[0.06em] tabular-nums',
-                        at?.section === section.id ? 'bg-night text-paper' : 'bg-transparent text-ink-faint'
-                      )}
+              {group.sections.map((section) => {
+                const current = at?.section === section.id
+                return (
+                  <li key={section.id}>
+                    <a
+                      href={`#${section.id}`}
+                      className="group flex items-center gap-3"
+                      aria-current={current ? 'location' : undefined}
+                      onClick={() => seek(section.id)}
                     >
-                      {section.index}
-                    </Badge>
-                    <span
-                      className={cn(
-                        'font-serif text-[16px] leading-none tracking-[0.01em]',
-                        at?.section === section.id ? 'text-ink' : 'text-ink-faint group-hover:text-ink'
-                      )}
-                    >
-                      {section.label}
-                    </span>
-                  </a>
-                </li>
-              ))}
+                      <Badge
+                        size="sm"
+                        className={cn(
+                          'w-7 justify-center border-transparent px-1.5 py-[2px] font-mono text-[10px] font-semibold tracking-[0.06em] tabular-nums',
+                          current ? 'bg-night text-paper' : 'bg-transparent text-ink-faint group-hover:text-ink'
+                        )}
+                      >
+                        {section.index}
+                      </Badge>
+                      <span
+                        className={cn(
+                          'font-serif text-[16px] leading-none tracking-[0.01em]',
+                          current ? 'text-ink' : 'text-ink-faint group-hover:text-ink'
+                        )}
+                      >
+                        {section.label}
+                      </span>
+                    </a>
+                  </li>
+                )
+              })}
             </ol>
           </div>
         )

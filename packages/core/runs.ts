@@ -42,7 +42,9 @@ export function layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions 
   const tabSize = opts.tabSize ?? 4
   const mode = opts.mode ?? (opts.maxWidth !== undefined ? 'greedy' : 'nowrap')
 
-  const refSize = runs[0].font.size
+  // a zero-length run draws nothing, so it must not decide the paragraph's
+  // reference units — letterSpacing, maxWidth and lineHeight are all in them
+  const refSize = (runs.find((run) => run.end > run.start) ?? runs[0]).font.size
   const scales = runs.map((run) => refSize / run.font.size)
   const resolvers = runs.map((run) => createGlyphResolver(run.font, tabSize))
   const kernings = runs.map((run) => getFontLookup(run.font).kerning)

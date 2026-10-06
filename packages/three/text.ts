@@ -23,7 +23,8 @@ export type TextSource =
     }
   | {
       /** A family-resolved variant (see `defineFamily().load`). A synthetic
-       * oblique applies automatically when the family had no italic bake. */
+       * oblique applies automatically when the family had no italic bake, on
+       * top of any `geometry.slant` of your own. */
       variant: LoadedVariant
       font?: never
       map?: never
@@ -61,7 +62,9 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
    * atlas is left to you: dispose it yourself if nothing else holds it. */
   swapFont(next: SwapFontOptions): void
   /** Swaps to a family-resolved variant: font, atlas and synthetic slant, all
-   * in the same synchronous block (`swapFont` underneath). */
+   * in the same synchronous block (`swapFont` underneath). The outgoing atlas
+   * is left to you here too — dispose it yourself if nothing else holds it,
+   * since the text stops tracking it and the family owns the incoming one. */
   setVariant(variant: LoadedVariant, next?: { text?: string; layout?: LayoutOptions }): void
   /** Uploads the atlas and compiles the pipeline off the hot path. */
   warmup(renderer: WebGPURenderer, camera: Camera, scene?: Scene): Promise<void>
@@ -84,10 +87,11 @@ export function createText<E extends TextEffect | undefined = undefined>(options
   let ownsMap = !initialVariant
   let text = options.text ?? ''
   let layoutOptions = options.layout
-  // the slant explicitly asked for, restored whenever a raw font swaps in
+  // the slant explicitly asked for; a variant's synthetic oblique adds to it,
+  // and a raw font swap drops back to it alone
   const requestedSlant = options.geometry?.slant
   let geometryOptions: TextGeometryOptions | undefined = initialVariant
-    ? { ...options.geometry, slant: initialVariant.synthetic.slant }
+    ? { ...options.geometry, slant: (requestedSlant ?? 0) + initialVariant.synthetic.slant }
     : options.geometry
 
   let currentLayout = layout(font, text, layoutOptions)
@@ -141,7 +145,7 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     },
     swapFont,
     setVariant(variant, next = {}) {
-      geometryOptions = { ...geometryOptions, slant: variant.synthetic.slant }
+      geometryOptions = { ...geometryOptions, slant: (requestedSlant ?? 0) + variant.synthetic.slant }
       applyFont({ font: variant.font, map: variant.map, ...next }, false)
     },
     async warmup(renderer, camera, scene) {
