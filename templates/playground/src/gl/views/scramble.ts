@@ -13,7 +13,7 @@ export interface ScrambleView {
 const TEXT = 'DECODING\nTHE ATLAS'
 const POOL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
-/** fig. 03 — the glyph scramble: glyphs re-roll through the atlas while
+/** fig. 05 — the glyph scramble: glyphs re-roll through the atlas while
  * driven, engaging in stable random order. */
 export async function createScrambleView(stage: Stage, el: HTMLElement): Promise<ScrambleView> {
   const scene = new Scene()

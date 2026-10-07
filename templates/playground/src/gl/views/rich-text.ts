@@ -1,0 +1,138 @@
+import { PerspectiveCamera, Scene } from 'three/webgpu'
+import { createRichText } from 'lettra/three'
+import type { RichSpan, VariantKey } from 'lettra/three'
+import type { Stage } from '../stage'
+import { frameText } from '../stage'
+
+export type SpanSetName = 'plain' | 'weight' | 'mixed' | 'repeated'
+
+export interface RichTextState {
+  spans: SpanSetName
+  align: 'left' | 'center'
+}
+
+/** Run and draw-call counts for the DOM readout: the whole point of bucketing
+ * is that the second number stays small. */
+export interface RichTextInfo {
+  runs: number
+  draws: number
+  note: string
+}
+
+export interface RichTextView {
+  apply(state: RichTextState): RichTextInfo | null
+  dispose(): void
+}
+
+const TEXT =
+  'One paragraph, one layout: a word set in bold, another in italic, and a measure that wraps across all of them.'
+/** In the bake's px (every Inter variant is baked at 64), so the sentence
+ * wraps to three lines and the spans straddle the breaks. */
+const MEASURE = 1150
+
+/** Offsets found by word, so editing the sentence cannot silently shift a
+ * span onto the wrong characters. */
+const word = (text: string, key: VariantKey = {}): RichSpan => {
+  const start = TEXT.indexOf(text)
+  if (start < 0) throw new Error(`[playground] "${text}" is not in the rich-text sentence`)
+  return { ...key, start, end: start + text.length }
+}
+
+const SPAN_SETS: Record<SpanSetName, { spans: RichSpan[]; note: string }> = {
+  plain: { spans: [], note: 'no spans: the base variant alone' },
+  weight: { spans: [word('bold', { weight: 700 })], note: 'a weight span cuts the paragraph in three runs' },
+  mixed: {
+    spans: [word('bold', { weight: 700 }), word('italic', { style: 'italic' })],
+    note: 'weight and style spans, still one layout',
+  },
+  repeated: {
+    spans: [
+      word('One paragraph', { style: 'italic' }),
+      word('bold', { weight: 700 }),
+      word('italic', { style: 'italic' }),
+    ],
+    note: 'the two italic spans share one draw call',
+  },
+}
+
+/** fig. 03: weight and italic spans inside one paragraph, drawing from the
+ * same stage-owned family as fig. 02. */
+export async function createRichTextView(stage: Stage, el: HTMLElement, initial: RichTextState): Promise<RichTextView> {
+  const scene = new Scene()
+  const camera = new PerspectiveCamera(35, 1, 0.1, 100)
+  camera.position.z = 10
+
+  const inter = stage.inter
+  // the stage owns the family, so only what this view made is in here
+  const created: Array<() => void> = []
+  const teardown = () => {
+    for (const dispose of [...created].reverse()) dispose()
+  }
+  let disposed = false
+
+  try {
+    // spans resolve through the synchronous family.get, so every variant a
+    // span can ask for has to be loaded before the first build
+    await inter.loadAll()
+    inter.warmup(stage.renderer)
+
+    const rich = createRichText({
+      family: inter,
+      text: TEXT,
+      spans: SPAN_SETS[initial.spans].spans,
+      layout: { align: initial.align, maxWidth: MEASURE },
+      material: { fill: '#414141' },
+    })
+    created.push(() => rich.dispose())
+    scene.add(rich.group)
+
+    const frame = () => {
+      frameText(camera, {
+        width: rich.layout.width,
+        height: rich.layout.height,
+        fontSize: rich.layout.metrics.fontSize,
+      })
+      handle.invalidate()
+    }
+
+    const handle = stage.addView(el, {
+      scene,
+      camera,
+      resize(width, height) {
+        camera.aspect = width / height
+        camera.updateProjectionMatrix()
+        frame()
+      },
+    })
+    created.push(() => handle.dispose())
+    rich.onChange(() => handle.invalidate())
+
+    await rich.warmup(stage.renderer, camera, scene)
+    frame()
+
+    const describe = (name: SpanSetName): RichTextInfo => ({
+      runs: rich.layout.runs.length,
+      draws: rich.group.children.length,
+      note: SPAN_SETS[name].note,
+    })
+
+    return {
+      apply(next) {
+        if (disposed) return null
+        // one call re-spans and re-lays out: wrapping, alignment and the
+        // baseline stay paragraph-wide across the new runs
+        rich.setText(TEXT, SPAN_SETS[next.spans].spans, { align: next.align, maxWidth: MEASURE })
+        frame()
+        return describe(next.spans)
+      },
+      dispose() {
+        if (disposed) return
+        disposed = true
+        teardown()
+      },
+    }
+  } catch (error) {
+    teardown()
+    throw error
+  }
+}

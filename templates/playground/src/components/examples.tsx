@@ -15,12 +15,21 @@ import {
   SnippetPanel,
 } from '@/components/layout'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
-import { familySnippet, specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
+import {
+  familySnippet,
+  richTextSnippet,
+  specimenSnippet,
+  wipeSnippet,
+  scrambleSnippet,
+  liquidSnippet,
+} from '@/lib/snippets'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
 import type { Align, SpecimenState } from '@/gl/views/specimen'
 import { createFamilyView } from '@/gl/views/family'
 import type { FamilyInfo, FamilyState } from '@/gl/views/family'
+import { createRichTextView } from '@/gl/views/rich-text'
+import type { RichTextInfo, RichTextState, SpanSetName } from '@/gl/views/rich-text'
 import { createWipeView } from '@/gl/views/wipe'
 import { createScrambleView } from '@/gl/views/scramble'
 import { createLiquidView } from '@/gl/views/liquid'
@@ -279,7 +288,7 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
         Three weights and two italics are baked here. The slider snaps through the CSS weight ladder, with the baked
         weights ticked darker, and the readout says which atlas answered: a weight in between serves the closest bake
         unmodified, since weight is never synthesized. Only the oblique is, and this family bakes both italics, so it
-        never needs one. The small line underneath puts regular, bold and italic in a single layout.
+        never needs one.
       </Prose>
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
@@ -333,7 +342,89 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
           </div>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 02 · weights and italics from one family · defineFamily + createRichText</FigCaption>
+          <FigCaption>fig. 02 · weights and italics from one family · defineFamily</FigCaption>
+        </figcaption>
+      </figure>
+    </Row>
+  )
+}
+
+const RICH_INITIAL: RichTextState = { spans: 'mixed', align: 'center' }
+const SPAN_SETS: Array<{ name: SpanSetName; label: string }> = [
+  { name: 'plain', label: 'none' },
+  { name: 'weight', label: 'bold' },
+  { name: 'mixed', label: 'bold + italic' },
+  { name: 'repeated', label: 'repeated' },
+]
+
+export function RichTextExample({ stage }: { stage: Stage | null }) {
+  const elRef = useRef<HTMLDivElement>(null)
+  const [state, setState] = useState(RICH_INITIAL)
+  const [info, setInfo] = useState<RichTextInfo | null>(null)
+  const [open, setOpen] = useState(false)
+  const view = useGLView(stage, elRef, (s, el) => createRichTextView(s, el, RICH_INITIAL))
+
+  useEffect(() => {
+    if (!view) return
+    setInfo(view.apply(state))
+  }, [state, view])
+
+  const patch = (partial: Partial<RichTextState>) => setState((previous) => ({ ...previous, ...partial }))
+
+  return (
+    <Row
+      id="rich-text"
+      className="pt-20"
+      asideClassName="lg:pt-20"
+      aside={
+        <SnippetPanel
+          open={open}
+          title="rich-text.ts"
+          code={richTextSnippet(state)}
+          onToggle={() => setOpen((value) => !value)}
+        />
+      }
+    >
+      <SectionTitle caption="rich text">Spans in one paragraph</SectionTitle>
+      <Prose className="mt-5">
+        A span is a <span className="font-mono text-[13px]">{'{ start, end, weight, style }'}</span> range over the same
+        string, resolved through the same family. One layout measures the whole paragraph, so the wrap, the alignment
+        and the baseline hold across every run, and the runs bucket by resolved variant: the two italic spans in{' '}
+        <span className="font-mono text-[13px]">repeated</span> cost one draw call, not two. Kerning is the one thing
+        that stops at a boundary, since the pair tables are per font.
+      </Prose>
+      <figure className="mt-8">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+          <ControlBar>
+            <ControlCell label="spans">
+              {SPAN_SETS.map(({ name, label }) => (
+                <Segment key={name} active={state.spans === name} onClick={() => patch({ spans: name })}>
+                  {label}
+                </Segment>
+              ))}
+            </ControlCell>
+            <ControlCell label="align">
+              <Segment active={state.align === 'left'} onClick={() => patch({ align: 'left' })}>
+                left
+              </Segment>
+              <Segment active={state.align === 'center'} onClick={() => patch({ align: 'center' })}>
+                center
+              </Segment>
+            </ControlCell>
+          </ControlBar>
+          <div ref={elRef} className="aspect-[16/9] w-full" />
+          {/* runs vs draws is the whole point of bucketing: fixed-width cells
+              so the readout never reflows on a span change */}
+          <div className="flex items-center gap-3 bg-paper px-3 py-2.5 font-mono text-[11px] tracking-[0.02em]">
+            <span className="inline-block w-[96px] bg-ink/10 px-1.5 py-0.5 text-center text-ink">
+              {info ? `${info.runs} runs` : '…'}
+            </span>
+            <span className="inline-block min-w-[110px] text-ink">{info ? `${info.draws} draw calls` : null}</span>
+            <span className="text-ink-faint">{info?.note}</span>
+          </div>
+        </div>
+        <figcaption className="mt-5">
+          <FigCaption>fig. 03 · weight and italic spans in one layout · createRichText</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -386,7 +477,7 @@ export function WipeExample({
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 03 · threshold erosion · plays as it enters</FigCaption>
+          <FigCaption>fig. 04 · threshold erosion · plays as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -454,7 +545,7 @@ export function ScrambleExample({
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 04 · atlas scramble · decodes as it enters</FigCaption>
+          <FigCaption>fig. 05 · atlas scramble · decodes as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
@@ -501,7 +592,7 @@ export function LiquidExample({
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 05 · fluid-sim ink driving the scramble</FigCaption>
+          <FigCaption>fig. 06 · fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
       </figure>
     </Row>

@@ -1,5 +1,6 @@
 import type { SpecimenState } from '../gl/views/specimen'
 import type { FamilyState } from '../gl/views/family'
+import type { RichTextState } from '../gl/views/rich-text'
 
 /** The code a consumer would write to reproduce the current specimen state. */
 export function specimenSnippet(state: SpecimenState): string {
@@ -100,11 +101,11 @@ const text = createText({
 // the sim is view code, not library code -- swap it for a wipe
 // front or an audio level and nothing else changes`
 
-/** The code a consumer would write to reproduce the family figure: the big
- * block above, then the mixed line below it. */
+/** The code a consumer would write to reproduce the family figure at its
+ * current weight and style. */
 export function familySnippet(state: FamilyState): string {
   const key = state.style === 'italic' ? `{ weight: ${state.weight}, style: 'italic' }` : `{ weight: ${state.weight} }`
-  return `import { createRichText, createText, defineFamily } from 'lettra/three'
+  return `import { createText, defineFamily } from 'lettra/three'
 
 // next/font-style declaration; bakes come from \`npx lettra bake\`
 const inter = defineFamily({
@@ -128,22 +129,53 @@ const text = createText({
 scene.add(text.mesh)
 
 // weight changes ride the atomic swapFont path
-text.setVariant(await inter.load({ weight: 700 }))
+text.setVariant(await inter.load({ weight: 700 }))`
+}
 
-// the line below: spans resolve through the same family, in one layout,
-// so wrapping and the baseline stay paragraph-wide
+const SPAN_SETS: Record<RichTextState['spans'], string> = {
+  plain: '[]',
+  weight: `[span('bold', { weight: 700 })]`,
+  mixed: `[span('bold', { weight: 700 }), span('italic', { style: 'italic' })]`,
+  repeated: `[
+    span('One paragraph', { style: 'italic' }),
+    span('bold', { weight: 700 }),
+    span('italic', { style: 'italic' }),
+  ]`,
+}
+
+/** The code behind the rich-text figure at its current span set. */
+export function richTextSnippet(state: RichTextState): string {
+  return `import { createRichText } from 'lettra/three'
+
+// spans resolve through the synchronous family.get, so every variant one
+// can ask for has to be loaded before the first build
 await inter.loadAll()
+
+const TEXT = 'One paragraph, one layout: a word set in bold, …'
+
+// offsets by word, so editing the sentence cannot shift a span onto the
+// wrong characters
+const span = (text, key) => {
+  const start = TEXT.indexOf(text)
+  return { ...key, start, end: start + text.length }
+}
 
 const rich = createRichText({
   family: inter,
-  text: 'one layout, regular to bold to italic',
-  spans: [
-    { start: 23, end: 27, weight: 700 },
-    { start: 31, end: 37, style: 'italic' },
-  ],
-  layout: { align: 'center' },
+  text: TEXT,
+  spans: ${SPAN_SETS[state.spans]},
+  // paragraph-wide: the measure wraps across runs, and every run sits on
+  // the same baseline
+  layout: { align: '${state.align}', maxWidth: 1150 },
 })
-scene.add(rich.group)`
+scene.add(rich.group)
+
+// one mesh per resolved variant, under one Group — repeated spans share
+// a draw call, and the uniform bag is shared across all of them
+rich.group.children.length
+
+// re-span and re-lay out in a single call
+rich.setText(TEXT, ${SPAN_SETS[state.spans]}, { align: '${state.align}', maxWidth: 1150 })`
 }
 
 export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing

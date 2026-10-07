@@ -36,7 +36,7 @@ export interface LiquidView {
   dispose(): void
 }
 
-/* fig. 04 — the composition seam, end to end. A small GPU fluid sim (one
+/* fig. 06 — the composition seam, end to end. A small GPU fluid sim (one
  * half-float ping-pong texture: rg = velocity, b = ink) is splatted along
  * the cursor stroke, advected semi-Lagrangian style, and dissipated every
  * frame — ink swirls with your motion and soaks away on its own. That dye
