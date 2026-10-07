@@ -1,5 +1,6 @@
 import type { SpecimenState } from '../gl/views/specimen'
 import type { FamilyState } from '../gl/views/family'
+import { RICH_MEASURE } from '../gl/views/rich-text'
 import type { RichTextState } from '../gl/views/rich-text'
 
 /** The code a consumer would write to reproduce the current specimen state. */
@@ -132,18 +133,20 @@ scene.add(text.mesh)
 text.setVariant(await inter.load({ weight: 700 }))`
 }
 
-const SPAN_SETS: Record<RichTextState['spans'], string> = {
-  plain: '[]',
-  weight: `[span('bold', { weight: 700 })]`,
-  mixed: `[span('bold', { weight: 700 }), span('italic', { style: 'italic' })]`,
-  repeated: `[
-    span('One paragraph', { style: 'italic' }),
-    span('bold', { weight: 700 }),
-    span('italic', { style: 'italic' }),
-  ]`,
+/** The spans as the figure currently holds them, printed as the literals a
+ * consumer would write. */
+function printSpans(spans: RichTextState['spans']): string {
+  if (spans.length === 0) return '[]'
+  const lines = spans.map((span) => {
+    const key = [`start: ${span.start}`, `end: ${span.end}`]
+    if (span.weight !== undefined) key.push(`weight: ${span.weight}`)
+    if (span.style === 'italic') key.push(`style: 'italic'`)
+    return `    { ${key.join(', ')} },`
+  })
+  return `[\n${lines.join('\n')}\n  ]`
 }
 
-/** The code behind the rich-text figure at its current span set. */
+/** The code behind the rich-text figure in its current state. */
 export function richTextSnippet(state: RichTextState): string {
   return `import { createRichText } from 'lettra/three'
 
@@ -151,31 +154,24 @@ export function richTextSnippet(state: RichTextState): string {
 // can ask for has to be loaded before the first build
 await inter.loadAll()
 
-const TEXT = 'One paragraph, one layout: a word set in bold, …'
-
-// offsets by word, so editing the sentence cannot shift a span onto the
-// wrong characters
-const span = (text, key) => {
-  const start = TEXT.indexOf(text)
-  return { ...key, start, end: start + text.length }
-}
+const text = ${JSON.stringify(state.text)}
 
 const rich = createRichText({
   family: inter,
-  text: TEXT,
-  spans: ${SPAN_SETS[state.spans]},
+  text,
+  spans: ${printSpans(state.spans)},
   // paragraph-wide: the measure wraps across runs, and every run sits on
   // the same baseline
-  layout: { align: '${state.align}', maxWidth: 1150 },
+  layout: { align: '${state.align}', maxWidth: ${RICH_MEASURE} },
 })
 scene.add(rich.group)
 
-// one mesh per resolved variant, under one Group — repeated spans share
-// a draw call, and the uniform bag is shared across all of them
+// one mesh per resolved variant, under one Group: repeated spans share a
+// draw call, and the uniform bag is shared across all of them
 rich.group.children.length
 
 // re-span and re-lay out in a single call
-rich.setText(TEXT, ${SPAN_SETS[state.spans]}, { align: '${state.align}', maxWidth: 1150 })`
+rich.setText(text, ${printSpans(state.spans)}, { align: '${state.align}', maxWidth: ${RICH_MEASURE} })`
 }
 
 export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
