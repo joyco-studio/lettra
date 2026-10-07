@@ -95,6 +95,9 @@ export function scramble({ font, chars, rate = 15, drive, capacity }: ScrambleOp
 
   return {
     uniforms,
+    // the rects below are ratios of this font's atlas, so another font's bucket
+    // would sample them against the wrong texture
+    fontBound: true,
     stages: {
       uv: (prev: Vec2Node) => {
         const seed = attribute('glyphIndex', 'float')

@@ -3,18 +3,34 @@ import type { Camera, Scene, Texture, WebGPURenderer } from 'three/webgpu'
 import { layout } from '../core/layout'
 import { parseFont } from '../core/parse'
 import type { FontInput, LayoutOptions, LayoutResult } from '../core/types'
+import type { LoadedVariant } from './family'
 import { buildTextGeometry } from './geometry'
 import type { TextGeometryOptions } from './geometry'
 import { createTextMaterial } from './material'
 import type { EffectUniforms, TextEffect, TextGraph, TextMaterialOptions, TextUniforms } from './material'
 import { warmup } from './lifecycle'
 
-export interface CreateTextOptions<E extends TextEffect | undefined = undefined> {
-  /** Parsed font, or raw font JSON (routed through `parseFont`, which is
-   * memoized — the same JSON object shared across texts parses once). */
-  font: FontInput
-  /** Loaded atlas texture (see `loadFontTexture`). */
-  map: Texture
+/** Where the text's font and atlas come from: a raw pair (you own the map),
+ * or a family-resolved variant (the family owns the map). */
+export type TextSource =
+  | {
+      /** Parsed font, or raw font JSON (routed through `parseFont`, which is
+       * memoized — the same JSON object shared across texts parses once). */
+      font: FontInput
+      /** Loaded atlas texture (see `loadFontTexture`). */
+      map: Texture
+      variant?: never
+    }
+  | {
+      /** A family-resolved variant (see `defineFamily().load`). A synthetic
+       * oblique applies automatically when the family had no italic bake, on
+       * top of any `geometry.slant` of your own. */
+      variant: LoadedVariant
+      font?: never
+      map?: never
+    }
+
+export type CreateTextOptions<E extends TextEffect | undefined = undefined> = TextSource & {
   text?: string
   layout?: LayoutOptions
   geometry?: TextGeometryOptions
@@ -42,15 +58,22 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
   /** Re-lays out and rebuilds geometry in place. Safe per keystroke. */
   setText(text: string, layoutOptions?: LayoutOptions): void
   /** Swaps font + atlas + geometry in one synchronous block, so no frame can
-   * render the new atlas with the old geometry (or vice versa). */
+   * render the new atlas with the old geometry (or vice versa). The outgoing
+   * atlas is left to you: dispose it yourself if nothing else holds it. */
   swapFont(next: SwapFontOptions): void
+  /** Swaps to a family-resolved variant: font, atlas and synthetic slant, all
+   * in the same synchronous block (`swapFont` underneath). The outgoing atlas
+   * is left to you here too — dispose it yourself if nothing else holds it,
+   * since the text stops tracking it and the family owns the incoming one. */
+  setVariant(variant: LoadedVariant, next?: { text?: string; layout?: LayoutOptions }): void
   /** Uploads the atlas and compiles the pipeline off the hot path. */
   warmup(renderer: WebGPURenderer, camera: Camera, scene?: Scene): Promise<void>
   /** Fires whenever the rendered output changed (text set, font swapped,
    * warmup finished) — invalidate a frame in demand-driven loops. */
   onChange(listener: () => void): () => void
-  /** Disposes geometry and material; disposes the current atlas too unless
-   * `{ map: false }` (keep it when atlases are shared or re-swapped). */
+  /** Disposes geometry and material. The atlas is disposed too when this
+   * text owns it — i.e. the current one came in as `{ font, map }` — and left
+   * alone when it came from a family variant; `{ map }` overrides either. */
   dispose(options?: { map?: boolean }): void
 }
 
@@ -58,15 +81,23 @@ export interface TextHandle<E extends TextEffect | undefined = undefined> {
  * lifecycle contract. For custom node graphs, drop down to
  * `buildTextGeometry` + `createTextMaterial` directly. */
 export function createText<E extends TextEffect | undefined = undefined>(options: CreateTextOptions<E>): TextHandle<E> {
-  let font = parseFont(options.font)
-  let map = options.map
+  const initialVariant = options.variant
+  let font = parseFont(initialVariant ? initialVariant.font : options.font)
+  let map = initialVariant ? initialVariant.map : options.map
+  let ownsMap = !initialVariant
   let text = options.text ?? ''
   let layoutOptions = options.layout
-  const geometryOptions = options.geometry
+  // the slant explicitly asked for; a variant's synthetic oblique adds to it,
+  // and a raw font swap drops back to it alone
+  const requestedSlant = options.geometry?.slant
+  let geometryOptions: TextGeometryOptions | undefined = initialVariant
+    ? { ...options.geometry, slant: (requestedSlant ?? 0) + initialVariant.synthetic.slant }
+    : options.geometry
 
   let currentLayout = layout(font, text, layoutOptions)
-  const { material, uniforms, textureNode, nodes } = createTextMaterial({ map, ...options.material })
-  const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), material)
+
+  const active = createTextMaterial({ ...options.material, map } as TextMaterialOptions<E>)
+  const mesh = new Mesh(buildTextGeometry(currentLayout, geometryOptions), active.material)
 
   const listeners = new Set<() => void>()
   const notify = () => listeners.forEach((listener) => listener())
@@ -77,10 +108,31 @@ export function createText<E extends TextEffect | undefined = undefined>(options
     previous.dispose()
   }
 
+  // `owns` tracks the incoming atlas, so dispose() follows the current map and
+  // not whatever the text started with
+  const applyFont = (next: SwapFontOptions, owns: boolean) => {
+    font = parseFont(next.font)
+    map = next.map
+    ownsMap = owns
+    if (next.text !== undefined) text = next.text
+    if (next.layout) layoutOptions = next.layout
+    currentLayout = layout(font, text, layoutOptions)
+    // geometry and atlas rebind in the same tick — atomic for the renderer
+    active.textureNode.value = map
+    rebuildGeometry()
+    notify()
+  }
+
+  const swapFont = (next: SwapFontOptions) => {
+    // a raw pair carries no synthetic correction: drop a slant setVariant left
+    geometryOptions = { ...geometryOptions, slant: requestedSlant }
+    applyFont(next, true)
+  }
+
   return {
     mesh,
-    uniforms,
-    nodes,
+    uniforms: active.uniforms,
+    nodes: active.nodes,
     get layout() {
       return currentLayout
     },
@@ -91,16 +143,10 @@ export function createText<E extends TextEffect | undefined = undefined>(options
       rebuildGeometry()
       notify()
     },
-    swapFont(next) {
-      font = parseFont(next.font)
-      map = next.map
-      if (next.text !== undefined) text = next.text
-      if (next.layout) layoutOptions = next.layout
-      currentLayout = layout(font, text, layoutOptions)
-      // geometry and atlas rebind in the same tick — atomic for the renderer
-      textureNode.value = map
-      rebuildGeometry()
-      notify()
+    swapFont,
+    setVariant(variant, next = {}) {
+      geometryOptions = { ...geometryOptions, slant: (requestedSlant ?? 0) + variant.synthetic.slant }
+      applyFont({ font: variant.font, map: variant.map, ...next }, false)
     },
     async warmup(renderer, camera, scene) {
       await warmup(renderer, mesh, camera, { scene, textures: [map] })
@@ -110,10 +156,10 @@ export function createText<E extends TextEffect | undefined = undefined>(options
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    dispose({ map: disposeMap = true } = {}) {
+    dispose({ map: disposeMap = ownsMap } = {}) {
       listeners.clear()
       mesh.geometry.dispose()
-      material.dispose()
+      active.material.dispose()
       if (disposeMap) map.dispose()
     },
   }

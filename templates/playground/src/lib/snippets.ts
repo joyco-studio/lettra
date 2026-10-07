@@ -1,4 +1,5 @@
 import type { SpecimenState } from '../gl/views/specimen'
+import type { FamilyState } from '../gl/views/family'
 
 /** The code a consumer would write to reproduce the current specimen state. */
 export function specimenSnippet(state: SpecimenState): string {
@@ -99,15 +100,59 @@ const text = createText({
 // the sim is view code, not library code -- swap it for a wipe
 // front or an audio level and nothing else changes`
 
-export const bakeRecipe = `# instance variable fonts first: variable GPOS kerning
-# bakes to 0 pairs otherwise (static GPOS reads fine)
-python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf
+/** The code a consumer would write to reproduce the family figure: the big
+ * block above, then the mixed line below it. */
+export function familySnippet(state: FamilyState): string {
+  const key = state.style === 'italic' ? `{ weight: ${state.weight}, style: 'italic' }` : `{ weight: ${state.weight} }`
+  return `import { createRichText, createText, defineFamily } from 'lettra/three'
 
-# bake: MSDF atlas PNG + BMFont JSON metrics
-# -r 8 is the distance range, required for smooth erosion wipes
-npx -y -p msdf-bmfont-xml msdf-bmfont \\
-  -f json -i charset.txt -s 64 -r 8 -p 2 \\
-  -t msdf --smart-size static.ttf`
+// next/font-style declaration; bakes come from \`npx lettra bake\`
+const inter = defineFamily({
+  src: [
+    { json: '/fonts/inter-200.json', atlas: '/fonts/inter-200.png', weight: 200 },
+    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
+    { json: '/fonts/inter-700i.json', atlas: '/fonts/inter-700i.png', weight: 700, style: 'italic' },
+  ],
+})
+
+// CSS-like resolution: the closest bake serves, and an italic
+// request with no italic bake gets a sheared oblique
+const variant = await inter.load(${key})
+const text = createText({
+  variant,
+  text: 'Sphinx of black quartz,\\njudge my vow',
+  layout: { align: 'center' },
+})
+scene.add(text.mesh)
+
+// weight changes ride the atomic swapFont path
+text.setVariant(await inter.load({ weight: 700 }))
+
+// the line below: spans resolve through the same family, in one layout,
+// so wrapping and the baseline stay paragraph-wide
+await inter.loadAll()
+
+const rich = createRichText({
+  family: inter,
+  text: 'one layout, regular to bold to italic',
+  spans: [
+    { start: 23, end: 27, weight: 700 },
+    { start: 31, end: 37, style: 'italic' },
+  ],
+  layout: { align: 'center' },
+})
+scene.add(rich.group)`
+}
+
+export const bakeRecipe = `# one command: sfnt preflight, fontTools instancing
+# (variable GPOS kerning survives), pinned MSDF settings,
+# lettra-native JSON, a ready defineFamily src block
+npx lettra bake Inter.ttf --weights 200,400,700 \\
+  --italic Inter-Italic.ttf --charset latin-es \\
+  --size 64 --pxrange 8 --out public/fonts/inter
+`
 
 /** Static code blocks highlighted server-side at build. */
 export interface HighlightedSnippets {

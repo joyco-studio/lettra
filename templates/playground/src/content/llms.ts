@@ -56,18 +56,27 @@ pnpm add lettra three
 ${QUICKSTART}
 \`\`\`
 
-Two things that bite agents wiring this up for the first time:
+Three things that bite agents wiring this up for the first time:
 
-1. **Fonts are baked ahead of time, and there is no bake CLI in the package.**
+1. **Fonts are baked ahead of time, with the CLI the package ships.**
    \`createText\` starts from an atlas PNG plus a metrics JSON. Produce them with
-   \`${BAKE_COMMAND}\`, or the browser tool at
-   [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).
-   Keep distance range 8: erosion wipes need the headroom. Single atlas page, no
-   rotated packing.
-2. **Instance variable fonts to a static weight before baking.** Variable fonts
-   whose kerning lives in variable GPOS bake to 0 kerning pairs, silently. Run
-   \`${INSTANCE_COMMAND}\` first.
-   \`parseFont\` warns at runtime when a font arrives with an empty kerning table.
+   \`${BAKE_COMMAND}\`. It preflights the font, instances variable fonts with
+   fontTools (install once: \`pip3 install fonttools\`), recovers the class-based
+   GPOS pairs the generator's parser misses, and prints a ready \`defineFamily\`
+   block. Keep distance range 8: erosion wipes need the headroom. Single atlas
+   page, no rotated packing.
+2. **Check the kerning count the bake reports.** Variable fonts whose kerning
+   lives in variable GPOS bake to 0 pairs silently; the CLI's instancing step is
+   what keeps them. Baking by hand means running
+   \`${INSTANCE_COMMAND}\` first. \`parseFont\` warns at
+   runtime when a font arrives with an empty kerning table.
+3. **Weights and styles compose into a family, not separate texts.**
+   \`defineFamily({ src: [...] })\` declares the bakes and resolves requests
+   CSS-like: an exact hit serves its atlas, a weight in between serves the
+   closest bake unmodified, and an italic request with no italic bake gets a
+   sheared one. \`createRichText({ family, text, spans })\` puts several
+   variants in one paragraph, so an italic run keeps the paragraph's wrapping
+   and baseline.
 
 ## Docs
 

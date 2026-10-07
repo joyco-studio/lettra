@@ -1,0 +1,7 @@
+{
+  "name": "@packages/bake",
+  "type": "module",
+  "main": "./cli.ts",
+  "private": true,
+  "changeset": { "ignore": true }
+}

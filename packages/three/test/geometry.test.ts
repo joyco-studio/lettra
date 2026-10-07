@@ -62,6 +62,55 @@ describe('buildTextGeometry', () => {
     expect(attr(geometry, 'lineIndex')).toEqual([0, 0, 0, 0, 1, 1, 1, 1])
   })
 
+  it('applies no shear at slant 0', () => {
+    const plain = buildTextGeometry(layout(font, 'Ha'))
+    const zero = buildTextGeometry(layout(font, 'Ha'), { slant: 0 })
+    expect(attr(zero, 'position')).toEqual(attr(plain, 'position'))
+  })
+
+  it('shears corners about each line baseline, proportional to baseline distance', () => {
+    // 'H': rect top at y = 1, bottom at y = 9 = baseline → bottom corners fixed
+    const result = layout(font, 'H')
+    const plain = buildTextGeometry(result, { anchor: 'baseline-left' })
+    const slanted = buildTextGeometry(result, { anchor: 'baseline-left', slant: 0.25 })
+    const p = attr(plain, 'position')
+    const s = attr(slanted, 'position')
+    // TL.x shifts by slant × (9 − 1) × scale = 0.25 × 8 / 10 = 0.2
+    expect(s[0] - p[0]).toBeCloseTo(0.2)
+    expect(s[3] - p[3]).toBeCloseTo(0.2) // TR
+    expect(s[6] - p[6]).toBeCloseTo(0) // BR sits on the baseline
+    expect(s[9] - p[9]).toBeCloseTo(0) // BL
+    // second line shears about its own baseline: same per-corner deltas
+    const twoLines = layout(font, 'H\nH')
+    const s2 = attr(buildTextGeometry(twoLines, { anchor: 'baseline-left', slant: 0.25 }), 'position')
+    const p2 = attr(buildTextGeometry(twoLines, { anchor: 'baseline-left' }), 'position')
+    expect(s2[12] - p2[12]).toBeCloseTo(0.2) // line 1 TL.x
+    expect(s2[18] - p2[18]).toBeCloseTo(0) // line 1 BR.x
+  })
+
+  it('anchors and normalizes layoutX against overridden bounds', () => {
+    // one combined layout vs the same quads built against shared bounds
+    const combined = layout(font, 'HH')
+    const reference = buildTextGeometry(combined)
+    const bounds = {
+      inkOrigin: combined.inkOrigin,
+      width: combined.width,
+      height: combined.height,
+      baseline: combined.metrics.baseline,
+    }
+    const rebuilt = buildTextGeometry(combined, { bounds })
+    expect(attr(rebuilt, 'position')).toEqual(attr(reference, 'position'))
+    expect(attr(rebuilt, 'layoutX')).toEqual(attr(reference, 'layoutX'))
+    // halved width doubles nothing at 0 but rescales the right edge
+    const stretched = buildTextGeometry(combined, { bounds: { ...bounds, width: bounds.width * 2 } })
+    expect(Math.max(...attr(stretched, 'layoutX'))).toBeCloseTo(0.5)
+  })
+
+  it('takes glyphIndex from a resolver, for per-run geometries', () => {
+    const geometry = buildTextGeometry(layout(font, 'Ha'), { glyphIndexOf: (glyph) => glyph.index + 3 })
+    expect(attr(geometry, 'glyphIndex')).toEqual([3, 3, 3, 3, 4, 4, 4, 4])
+  })
+
   it('builds an empty, drawable geometry for empty layouts', () => {
     const geometry = buildTextGeometry(layout(font, ''))
     expect(geometry.getAttribute('position').count).toBe(0)

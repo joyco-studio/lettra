@@ -3,21 +3,24 @@ import { useObserve } from '@joycostudio/metri/react'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Caption,
   ControlBar,
   ControlCell,
   ControlValue,
+  DemoTitle,
   FigCaption,
   Prose,
   Row,
+  SectionTitle,
   Segment,
   SnippetPanel,
 } from '@/components/layout'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
-import { specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
+import { familySnippet, specimenSnippet, wipeSnippet, scrambleSnippet, liquidSnippet } from '@/lib/snippets'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
 import type { Align, SpecimenState } from '@/gl/views/specimen'
+import { createFamilyView } from '@/gl/views/family'
+import type { FamilyInfo, FamilyState } from '@/gl/views/family'
 import { createWipeView } from '@/gl/views/wipe'
 import { createScrambleView } from '@/gl/views/scramble'
 import { createLiquidView } from '@/gl/views/liquid'
@@ -38,14 +41,21 @@ function useGLView<V extends { dispose(): void }>(
     if (!stage || !el) return
     let disposed = false
     let current: V | null = null
-    createRef.current(stage, el).then((created) => {
-      if (disposed) {
-        created.dispose()
-        return
-      }
-      current = created
-      setView(created)
-    })
+    createRef
+      .current(stage, el)
+      .then((created) => {
+        if (disposed) {
+          created.dispose()
+          return
+        }
+        current = created
+        setView(created)
+      })
+      // an atlas that 404s or a warmup that rejects leaves the plate blank;
+      // without this it is also an unhandled rejection with no clue attached
+      .catch((error) => {
+        if (!disposed) console.error('[playground] figure failed to start', error)
+      })
     return () => {
       disposed = true
       current?.dispose()
@@ -211,7 +221,118 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
   )
 }
 
-export function WipeExample({ stage, html }: { stage: Stage | null; html: string }) {
+const FAMILY_INITIAL: FamilyState = { weight: 400, style: 'normal' }
+/** The weights actually baked; the slider magnetizes to these so exact hits
+ * are reachable by drag. */
+const BAKED_STOPS = [200, 400, 700]
+
+export function FamilyExample({ stage }: { stage: Stage | null }) {
+  const elRef = useRef<HTMLDivElement>(null)
+  const [state, setState] = useState(FAMILY_INITIAL)
+  const [info, setInfo] = useState<FamilyInfo | null>(null)
+  const [open, setOpen] = useState(false)
+  const view = useGLView(stage, elRef, (s, el) => createFamilyView(s, el, FAMILY_INITIAL))
+
+  useEffect(() => {
+    if (!view) return
+    let live = true
+    view
+      .apply(state)
+      .then((resolved) => {
+        if (live && resolved) setInfo(resolved)
+      })
+      .catch((error) => {
+        // clear the readout: leaving the last result up would have the figure
+        // claim an exact hit while the mesh still shows the previous variant
+        console.error('[playground] family variant failed to load', error)
+        if (live) setInfo(null)
+      })
+    return () => {
+      live = false
+    }
+  }, [state, view])
+
+  const patch = (partial: Partial<FamilyState>) => setState((previous) => ({ ...previous, ...partial }))
+
+  return (
+    <Row
+      id="family"
+      className="pt-20"
+      asideClassName="lg:pt-20"
+      aside={
+        <SnippetPanel
+          open={open}
+          title="family.ts"
+          code={familySnippet(state)}
+          onToggle={() => setOpen((value) => !value)}
+        />
+      }
+    >
+      <SectionTitle caption="family">Families &amp; italics</SectionTitle>
+      <Prose className="mt-5">
+        Three weights and two italics are baked here. Ask for any weight or style and the readout below says which atlas
+        answered: a weight in between serves the closest bake unmodified, since weight is never synthesized. Only the
+        oblique is, and this family bakes both italics, so it never needs one. The small line underneath puts regular,
+        bold and italic in a single layout.
+      </Prose>
+      <figure className="mt-8">
+        <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+          <ControlBar>
+            <ControlCell label="style">
+              <Segment active={state.style === 'normal'} onClick={() => patch({ style: 'normal' })}>
+                roman
+              </Segment>
+              <Segment active={state.style === 'italic'} onClick={() => patch({ style: 'italic' })}>
+                italic
+              </Segment>
+            </ControlCell>
+            <ControlCell label="weight" grow>
+              <Slider
+                value={[state.weight]}
+                min={100}
+                max={900}
+                step={10}
+                className="min-w-16 flex-1"
+                onValueChange={([value]) => {
+                  // magnetize to the baked stops so exact hits are reachable
+                  const weight = BAKED_STOPS.find((stop) => Math.abs(value - stop) <= 25) ?? value
+                  patch({ weight })
+                }}
+              />
+              <ControlValue>{state.weight}</ControlValue>
+            </ControlCell>
+          </ControlBar>
+          <div ref={elRef} className="aspect-[16/9] w-full" />
+          {/* fixed-width cells so the readout never reflows while dragging */}
+          <div className="flex items-center gap-3 bg-paper px-3 py-2.5 font-mono text-[11px] tracking-[0.02em]">
+            <span
+              className={`inline-block w-[96px] px-1.5 py-0.5 text-center ${
+                info?.mode === 'exact' ? 'bg-ink/10 text-ink' : 'bg-[#b4542a]/15 text-[#b4542a]'
+              }`}
+            >
+              {info?.mode ?? '…'}
+            </span>
+            <span className="inline-block min-w-[110px] text-ink">{info?.served}</span>
+            <span className="text-ink-faint">{info?.details}</span>
+          </div>
+        </div>
+        <figcaption className="mt-5">
+          <FigCaption>fig. 02 · weights and italics from one family · defineFamily + createRichText</FigCaption>
+        </figcaption>
+      </figure>
+    </Row>
+  )
+}
+
+export function WipeExample({
+  stage,
+  html,
+  className = 'pt-20',
+}: {
+  stage: Stage | null
+  html: string
+  className?: string
+}) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const view = useGLView(stage, elRef, createWipeView)
@@ -221,7 +342,7 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
   return (
     <Row
       id="wipe"
-      className="pt-20"
+      className={className}
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -233,10 +354,7 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
         />
       }
     >
-      <div className="flex items-start gap-1">
-        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Erosion wipes</h2>
-        <Caption>[effect]</Caption>
-      </div>
+      <DemoTitle>Erosion wipes</DemoTitle>
       <Prose className="mt-5">
         The wipe never masks; it erodes. A front sweeps the ink and raises the distance threshold as it passes. Thin
         edges give way first, stroke skeletons hold out last, every glyph dissolving through its own field.
@@ -252,14 +370,22 @@ export function WipeExample({ stage, html }: { stage: Stage | null; html: string
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 02 · threshold erosion · plays as it enters</FigCaption>
+          <FigCaption>fig. 03 · threshold erosion · plays as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
   )
 }
 
-export function ScrambleExample({ stage, html }: { stage: Stage | null; html: string }) {
+export function ScrambleExample({
+  stage,
+  html,
+  className = 'pt-20',
+}: {
+  stage: Stage | null
+  html: string
+  className?: string
+}) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(0)
@@ -270,7 +396,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
   return (
     <Row
       id="scramble"
-      className="pt-20"
+      className={className}
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -282,10 +408,7 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
         />
       }
     >
-      <div className="flex items-start gap-1">
-        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Glyph scramble</h2>
-        <Caption>[effect]</Caption>
-      </div>
+      <DemoTitle>Glyph scramble</DemoTitle>
       <Prose className="mt-5">
         While driven, a glyph renders a random same-font glyph instead, re-rolled a few times a second: the decoder
         effect, straight from the atlas. Glyphs engage in stable random order, so sweeping the drive down decodes the
@@ -315,14 +438,22 @@ export function ScrambleExample({ stage, html }: { stage: Stage | null; html: st
           </ControlBar>
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 03 · atlas scramble · decodes as it enters</FigCaption>
+          <FigCaption>fig. 04 · atlas scramble · decodes as it enters</FigCaption>
         </figcaption>
       </figure>
     </Row>
   )
 }
 
-export function LiquidExample({ stage, html }: { stage: Stage | null; html: string }) {
+export function LiquidExample({
+  stage,
+  html,
+  className = 'pt-20',
+}: {
+  stage: Stage | null
+  html: string
+  className?: string
+}) {
   const elRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   useGLView(stage, elRef, createLiquidView)
@@ -330,7 +461,7 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
   return (
     <Row
       id="liquid"
-      className="pt-20"
+      className={className}
       asideClassName="lg:pt-20"
       aside={
         <SnippetPanel
@@ -342,10 +473,7 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
         />
       }
     >
-      <div className="flex items-start gap-1">
-        <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Water writes</h2>
-        <Caption>[composition]</Caption>
-      </div>
+      <DemoTitle>Water writes</DemoTitle>
       <Prose className="mt-5">
         The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU fluid
         sim: ink splatted along the cursor stroke, advected by its own velocity, swirling while you move and soaking
@@ -357,7 +485,7 @@ export function LiquidExample({ stage, html }: { stage: Stage | null; html: stri
           <div ref={elRef} className="aspect-[16/8] w-full touch-none" />
         </div>
         <figcaption className="mt-5">
-          <FigCaption>fig. 04 · fluid-sim ink driving the scramble</FigCaption>
+          <FigCaption>fig. 05 · fluid-sim ink driving the scramble</FigCaption>
         </figcaption>
       </figure>
     </Row>

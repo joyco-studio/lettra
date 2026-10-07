@@ -19,7 +19,6 @@
     "@radix-ui/react-tabs": "^1.1.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "fumadocs-core": "^16.15.17",
     "lettra": "workspace:*",
     "lucide-react": "^1.49.0",
     "react": "^19.3.0",

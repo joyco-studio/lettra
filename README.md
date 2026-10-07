@@ -282,18 +282,107 @@ Two interactions worth knowing:
 - **`onChange` still fires on warmup completion**, whichever path warmed the
   text. Demand-driven loops invalidate one frame from it either way.
 
-## Baking fonts
+## Families and variants
 
-Dev-time and currently manual: the library starts at the bake's output
-(atlas PNG + JSON). Two routes:
+A family declares its bakes next/font style and resolves CSS-like: an exact
+hit serves its atlas, a weight with no bake serves its neighbour unmodified,
+and an italic request with no italic bake gets a sheared oblique. Weight
+search follows CSS Fonts 4: above 500 heavier bakes are tried first, below
+400 lighter ones, and inside 400..500 the climb stops at 500 before falling
+back to lighter. So with 400 and 700 baked, 450 serves the 400 and 550
+serves the 700.
 
-```bash
-# CLI (msdf-bmfont-xml)
-npx -y -p msdf-bmfont-xml msdf-bmfont \
-  -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
+```ts
+import { createText, defineFamily } from 'lettra/three'
+
+const inter = defineFamily({
+  src: [
+    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
+  ],
+})
+
+// load is the only async point; weight 500 serves the 400 bake
+const text = createText({ variant: await inter.load({ weight: 500 }), text: 'Hello' })
+text.setVariant(await inter.load({ weight: 700, style: 'italic' })) // atomic swap
+
+await inter.loadAll()            // or eager: everything sync via get() after
+inter.get({ weight: 700 })       // sync, null until loaded
+inter.has({ weight: 700 })       // true only for exact bakes
+inter.warmup(renderer)           // uploads every loaded atlas
+inter.dispose()                  // the family owns its atlases, texts never do
 ```
 
-or the browser tool [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).
+Weight is never synthesized: bake the weights you want. `synthesis: false`
+makes any miss throw instead of resolving. Bake every variant of a family at
+one size and distance range; `defineFamily` warns when loaded bakes
+disagree.
+
+## Italic spans inside one text
+
+`createRichText` lays out one paragraph across several variants, so an
+italic run inside a sentence is still a single layout: wrapping, alignment
+and the baseline are paragraph-wide, not per span.
+
+```ts
+import { createRichText, defineFamily } from 'lettra/three'
+
+await inter.loadAll()                     // spans resolve synchronously
+
+const rich = createRichText({
+  family: inter,
+  text: 'one layout, regular to bold to italic',
+  spans: [
+    { start: 23, end: 27, weight: 700 },
+    { start: 31, end: 37, style: 'italic' },
+  ],
+  layout: { align: 'center' },
+})
+scene.add(rich.group)
+```
+
+Spans carry the same `{ weight, style }` keys `family.load` takes, so they
+resolve through the same CSS-like path, the synthetic oblique included. Gaps
+between spans use the base `variant` key. Runs bucket by resolved variant,
+so two italic spans cost one draw call, not two.
+
+Worth knowing:
+
+- Variants must be loaded first — `createRichText` resolves through the
+  synchronous `family.get` and throws naming the missing weight and style.
+- Kerning drops at span boundaries; the pair tables are per font. Adjacent
+  runs resolving to the same bake are merged first, so a span that changes
+  nothing does not cost you a pair.
+- Spans must cover at least one character, and must not overlap.
+- Mixed bake sizes normalise to the first run's font, and baselines align to
+  the deepest one.
+- Paragraph-wide effects (`wipe`) ride every bucket. An effect that declares
+  `fontBound` (`scramble`, whose pool is rects of one font's atlas) rides only
+  the buckets drawing the base variant's font, since elsewhere it would sample
+  the wrong texture with those rects; the rest render without it.
+
+## Baking fonts
+
+Dev-time, one command. `npx lettra bake` preflights the font, instances
+variable fonts to static weights with fontTools (Python; the step that
+keeps GPOS kerning alive), bakes with pinned MSDF settings, recovers
+class-based GPOS pairs that the generator's parser misses, and emits the
+minified lettra JSON plus a ready `defineFamily` block:
+
+```bash
+npm i -D msdf-bmfont-xml  # the baker: an optional peer, so a browser-only install skips it
+pip3 install fonttools    # required for variable fonts, recommended for any kerned face
+npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
+  --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
+```
+
+`--out` is a path prefix, not a directory: `--out public/fonts/inter` writes
+`public/fonts/inter-400.json` and prints it as `/fonts/inter-400.json`, the
+URL it is actually served at under a standard public directory.
+
+Manual routes still work: raw msdf-bmfont-xml, or the browser tool
+[msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).
 
 `createText` (and `loadFont` / `parseFont`) accepts the raw BMFont JSON
 directly, or run it through `fromBMFont` once and ship the minified schema
@@ -309,7 +398,7 @@ Rules of thumb (the parser enforces the hard ones):
 - **No rotated glyph packing.**
 - **`-r 8`** distance range, for AA quality and wipe headroom.
 - Include **space and `?`** in the charset; they back the runtime fallbacks
-  (missing characters render as `?`).
+  (missing characters render as `?`). Every preset does.
 - **Check the kerning count** in the output. Variable fonts bake with **0
   pairs** when their kerning lives in variable GPOS; the generator's parser
   can't resolve the deltas, and Playfair Display loses all 2362 pairs this
@@ -326,8 +415,23 @@ Rules of thumb (the parser enforces the hard ones):
   `flipY: false`, linear filters, **no mipmaps**, `NoColorSpace` (the atlas
   is data; sRGB decode would warp the distance field).
 
-Charset preset used by the playground (`latin-es`):
-ASCII printable + `áéíóúüñÁÉÍÓÚÜÑ¿¡—–“”‘’`.
+### Charsets
+
+`--charset` takes a preset name, a file path, or a literal string:
+
+```bash
+npx lettra bake font.ttf --charset latin-es          # preset
+npx lettra bake font.ttf --charset ./charset.txt     # file
+npx lettra bake font.ttf --charset 'LETTRA 0123'     # literal, for a logotype
+```
+
+Presets are ASCII printable plus curly quotes, dashes and the ellipsis,
+then the language's accents: `ascii`, `latin`, `latin-es`, `latin-pt`,
+`latin-fr`, `latin-de`, `latin-ext` (all of them in one bake).
+
+Characters the font has no glyph for are dropped with a warning rather than
+baked. Without that check they pack as `.notdef` tofu, waste atlas space and
+ship as boxes; dropping them lets the runtime's `?` fallback do its job.
 
 ## Layout
 

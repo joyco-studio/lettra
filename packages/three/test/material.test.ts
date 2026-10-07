@@ -40,8 +40,9 @@ describe('node contracts', () => {
       band: float(0.25),
     } satisfies NodeInputs<typeof wipeErosion>
     const erosion = wipeErosion(erosionInputs)
-    const coverage = msdfFill({ distance, threshold: msdfThreshold({ erosion, aa }), aa })
-    for (const node of [distance, aa, erosion, coverage]) {
+    const threshold = msdfThreshold({ erosion, aa })
+    const coverage = msdfFill({ distance, threshold, aa })
+    for (const node of [distance, aa, erosion, threshold, coverage]) {
       expect(node).toBeDefined()
       expect((node as { isNode?: boolean }).isNode).toBe(true)
     }

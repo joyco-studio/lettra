@@ -1,4 +1,4 @@
-import { BAKE_COMMAND, INSTANCE_COMMAND } from '@/content/quickstart'
+import { BAKE_COMMAND, FAMILY_QUICKSTART } from '@/content/quickstart'
 import { README_URL } from '@/lib/site'
 
 /** The "copy agent prompt" payload. Rendered by the homepage button and
@@ -15,9 +15,10 @@ scene.add(text.mesh)
 await text.warmup(renderer, camera, scene) // pipeline compile + atlas upload off the hot path
 text.uniforms.wipeIn.value = 1 // tween 0 -> 1 to reveal; wipeOut consumes
 
-Fonts are baked once at build time (manual):
+Fonts are baked once at build time with the bundled CLI (it instances variable fonts and recovers GPOS kerning):
 ${BAKE_COMMAND}
-- instance variable fonts to a static weight first (${INSTANCE_COMMAND}) or GPOS kerning bakes to 0 pairs
+Weight/style variants compose into a family:
+${FAMILY_QUICKSTART}
 - keep distance range 8 (erosion wipes need the SDF headroom), single atlas page, no rotated packing
 
 Full API (layout engine, effects, composing TSL nodes, lifecycle contract): ${README_URL}`

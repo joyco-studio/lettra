@@ -8,30 +8,53 @@ import {
   CodePanel,
   CommandLine,
   CopyAction,
+  DemoTitle,
   MonoButton,
   Prose,
   Row,
   SectionBreak,
+  SectionTitle,
   SnippetPanel,
 } from '@/components/layout'
 import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
-import type { TocSection } from '@/components/toc'
-import { LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
+import type { TocGroup } from '@/components/toc'
+import { FamilyExample, LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
 import { AGENT_PROMPT } from '@/content/agent-prompt'
 import { bakeRecipe } from '@/lib/snippets'
 import type { HighlightedSnippets } from '@/lib/snippets'
 import { createStage } from '../gl/stage'
 import type { Stage } from '../gl/stage'
 
-const SECTIONS: TocSection[] = [
-  { id: 'specimen', index: '01', label: 'Specimen' },
-  { id: 'pipeline', index: '02', label: 'Pipeline' },
-  { id: 'wipe', index: '03', label: 'Wipe' },
-  { id: 'scramble', index: '04', label: 'Scramble' },
-  { id: 'liquid', index: '05', label: 'Water trail' },
-  { id: 'implementation', index: '06', label: 'Implementation' },
-  { id: 'colophon', index: '07', label: 'Colophon' },
+const GROUPS: TocGroup[] = [
+  {
+    label: 'Contents',
+    sections: [
+      { id: 'specimen', index: '01', label: 'Specimen' },
+      { id: 'family', index: '02', label: 'Families' },
+      { id: 'pipeline', index: '03', label: 'Pipeline' },
+    ],
+  },
+  {
+    label: 'Effects',
+    id: 'effects',
+    sections: [
+      { id: 'wipe', index: '04', label: 'Wipe' },
+      { id: 'scramble', index: '05', label: 'Scramble' },
+    ],
+  },
+  {
+    label: 'Composition',
+    id: 'composition',
+    sections: [{ id: 'liquid', index: '06', label: 'Water writes' }],
+  },
+  {
+    label: 'Appendix',
+    sections: [
+      { id: 'ecosystem', index: '07', label: 'Ecosystem' },
+      { id: 'colophon', index: '08', label: 'Colophon' },
+    ],
+  },
 ]
 
 const INSTALL_COMMAND = 'pnpm add lettra three'
@@ -39,7 +62,7 @@ const INSTALL_COMMAND = 'pnpm add lettra three'
 function GettingStarted() {
   return (
     <div className="mt-10">
-      <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">Getting started</h2>
+      <DemoTitle>Getting started</DemoTitle>
       <div className="mt-4">
         <CommandLine command={INSTALL_COMMAND} />
       </div>
@@ -76,6 +99,66 @@ function MetaTable() {
   )
 }
 
+/** Complementary libraries, not dependencies: Lettra ships none of this. */
+function RecommendedTable() {
+  const rows: [string, string, string][] = [
+    [
+      '@joycostudio/metri',
+      'https://hub.joyco.studio/toolbox/metri',
+      'DOM rects in document space, one shared observer',
+    ],
+    ['@joycostudio/susano', 'https://www.npmjs.com/package/@joycostudio/susano', 'asset loading and preload dedupe'],
+    ['@joycostudio/xyz', 'https://www.npmjs.com/package/@joycostudio/xyz', 'scene-wide warmup, text meshes included'],
+    ['webgl scroll sync', 'https://hub.joyco.studio/logs/08-webgl-scroll-sync', 'pinning one canvas to the document'],
+  ]
+  return (
+    <table className="mt-6 w-full border-collapse text-left">
+      <tbody className="divide-y divide-ink-faint/30">
+        {rows.map(([name, href, note]) => (
+          <tr key={name}>
+            <td className="w-[180px] py-[9px] pr-4 align-top font-mono text-[11.5px] font-semibold tracking-[0.02em]">
+              <a href={href} className="text-ink underline decoration-1 underline-offset-2 hover:text-ink-faint">
+                {name}
+              </a>
+            </td>
+            <td className="py-[9px] align-top font-serif text-[14px] leading-[1.35] text-[#6b6b6b]">{note}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+/** Effects and composition are separate ideas, so each gets its own lead-in
+ * before the figures that demonstrate it. */
+function EffectsIntro() {
+  return (
+    <Row id="effects" className="pt-20">
+      <SectionTitle caption="effects">Opt-in effects</SectionTitle>
+      <Prose className="mt-5">
+        The base material is plain MSDF fill and opacity. An effect is a uniform bag plus a set of per-wire transforms:
+        pass one as <span className="font-mono text-[13px]">material.effect</span> and its uniforms merge into{' '}
+        <span className="font-mono text-[13px]">text.uniforms</span>, fully typed. Each ships from its own module, so an
+        effect you never import never reaches your bundle. The two below are what the library ships with.
+      </Prose>
+    </Row>
+  )
+}
+
+function CompositionIntro() {
+  return (
+    <Row id="composition" className="pt-20">
+      <SectionTitle caption="composition">Stacking and driving</SectionTitle>
+      <Prose className="mt-5">
+        Two effects on one text is <span className="font-mono text-[13px]">composeEffects(a, b)</span>: uniforms merge,
+        uv remaps chain, erosions add, and the typing carries through. The deeper seam is{' '}
+        <span className="font-mono text-[13px]">drive</span>, which takes any TSL node at all. That is where the library
+        stops and your scene starts, so an audio level, a cursor distance or a whole fluid sim all plug in the same way.
+      </Prose>
+    </Row>
+  )
+}
+
 export default function Playground({
   stageSource,
   specimenSource,
@@ -98,14 +181,19 @@ export default function Playground({
   useEffect(() => {
     let disposed = false
     let created: Stage | null = null
-    createStage(canvasRef.current!, metri).then((result) => {
-      if (disposed) {
-        result.dispose()
-        return
-      }
-      created = result
-      setStage(result)
-    })
+    createStage(canvasRef.current!, metri)
+      .then((result) => {
+        if (disposed) {
+          result.dispose()
+          return
+        }
+        created = result
+        setStage(result)
+      })
+      // no WebGPU and no WebGL fallback blanks every figure on the page: say so
+      .catch((error) => {
+        if (!disposed) console.error('[playground] stage failed to start', error)
+      })
     return () => {
       disposed = true
       created?.dispose()
@@ -132,7 +220,7 @@ export default function Playground({
               <div className="flex items-center pb-10">
                 <img src="/brand/wordmark.svg" alt="Lettra®" className="h-[26px] w-auto [filter:brightness(0.32)]" />
               </div>
-              <Toc sections={SECTIONS} />
+              <Toc groups={GROUPS} />
               <a
                 href="https://joyco.studio"
                 aria-label="JOYCO"
@@ -171,7 +259,11 @@ export default function Playground({
             <SpecimenExample stage={stage} />
 
             <SectionBreak />
-            {/* 02 — pipeline */}
+            {/* fig. 02 — families & variable weight */}
+            <FamilyExample stage={stage} />
+
+            <SectionBreak />
+            {/* 03 — pipeline */}
             <Row
               id="pipeline"
               className="pt-20"
@@ -187,12 +279,7 @@ export default function Playground({
                 />
               }
             >
-              <div className="flex items-start gap-1">
-                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
-                  How it works
-                </h2>
-                <Caption>[pipeline]</Caption>
-              </div>
+              <SectionTitle caption="pipeline">How it works</SectionTitle>
 
               <div className="mt-6 flex flex-col gap-5">
                 <Prose>
@@ -217,24 +304,27 @@ export default function Playground({
               </div>
             </Row>
 
-            {/* fig. 02 — wipe, fig. 03 — scramble, fig. 04 — water trail */}
+            {/* 04 — effects: one lead-in, then fig. 03 wipe and fig. 04 scramble */}
             <SectionBreak />
-            <WipeExample stage={stage} html={highlighted.wipe} />
+            <EffectsIntro />
+            <WipeExample stage={stage} html={highlighted.wipe} className="pt-12" />
+            <ScrambleExample stage={stage} html={highlighted.scramble} className="pt-16" />
+
+            {/* 05 — composition: the drive seam, demonstrated by fig. 05 */}
             <SectionBreak />
-            <ScrambleExample stage={stage} html={highlighted.scramble} />
-            <SectionBreak />
-            <LiquidExample stage={stage} html={highlighted.liquid} />
+            <CompositionIntro />
+            <LiquidExample stage={stage} html={highlighted.liquid} className="pt-12" />
 
             <SectionBreak />
-            {/* 06 — implementation */}
-            <Row id="implementation" className="pt-20">
-              <div className="flex items-start gap-1">
-                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
-                  One canvas, tracked
-                </h2>
-                <Caption>[stage]</Caption>
-              </div>
+            {/* 06 — ecosystem: what Lettra deliberately leaves to other libraries */}
+            <Row id="ecosystem" className="pt-20">
+              <SectionTitle caption="ecosystem">What pairs with it</SectionTitle>
               <Prose className="mt-5">
+                Lettra draws text. It does not own your canvas, your scroll, or your render loop, and it never will.
+                Those are someone else&apos;s job, so here is what we reach for and how this very page is built.
+              </Prose>
+              <RecommendedTable />
+              <Prose className="mt-8">
                 The page keeps a single WebGPU canvas in page space and slides it back over the viewport each frame, the
                 &ldquo;absolute&rdquo; approach from the JOYCO{' '}
                 <a
@@ -262,7 +352,7 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 05 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
+                    fig. 06 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
                   </span>
                 </summary>
                 <div className="mt-4">
@@ -282,7 +372,7 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 06 · a view{' '}
+                    fig. 07 · a view{' '}
                     <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
                   </span>
                 </summary>
@@ -298,15 +388,13 @@ export default function Playground({
             </Row>
 
             <SectionBreak />
-            {/* 07 — colophon */}
+            {/* 08 — colophon */}
             <Row id="colophon" className="pt-20">
               <div className="pb-10">
                 <MetaTable />
               </div>
               <div className="flex flex-col gap-3">
-                <h2 className="font-serif text-[21px] leading-[1.15] font-bold tracking-[-0.02em] text-ink">
-                  From readme.md
-                </h2>
+                <SectionTitle caption="colophon">From readme.md</SectionTitle>
                 <Prose className="text-[14px] text-[#6b6b6b]">
                   Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi;
                   that work belongs to a real shaper. Layout ported from Jam3&apos;s layout-bmfont-text (MIT). Specimen

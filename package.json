@@ -32,6 +32,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "lettra": "./dist/cli.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -69,6 +72,7 @@
     "eslint-plugin-prettier": "^5.2.3",
     "globals": "^15.14.0",
     "prettier": "^3.4.2",
+    "msdf-bmfont-xml": "^2.7.0",
     "three": "^0.186.1",
     "tsup": "^8.0.2",
     "typescript": "^5.7.3",
@@ -76,11 +80,16 @@
     "vitest": "^3.2.6"
   },
   "peerDependencies": {
-    "three": ">=0.185.0"
+    "three": ">=0.185.0",
+    "msdf-bmfont-xml": "^2.7.0"
   },
   "peerDependenciesMeta": {
     "three": {
       "optional": true
+    },
+    "msdf-bmfont-xml": {
+      "optional": true
     }
   }
 }
+
