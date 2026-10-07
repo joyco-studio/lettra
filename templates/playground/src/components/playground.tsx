@@ -160,10 +160,14 @@ function CompositionIntro() {
 }
 
 export default function Playground({
+  version,
   stageSource,
   specimenSource,
   highlighted,
 }: {
+  /** `VERSION` from the package itself, read on the server so the string is
+   * all that reaches the client. */
+  version: string
   stageSource: string
   specimenSource: string
   highlighted: HighlightedSnippets
@@ -217,8 +221,9 @@ export default function Playground({
           <div className="sticky top-0 hidden h-screen w-[280px] shrink-0 self-start pt-14 pb-10 xl:block">
             {/* block hugs the body column; content inside stays left-aligned */}
             <div className="ml-auto flex h-full w-full max-w-[280px] flex-col">
-              <div className="flex items-center pb-10">
+              <div className="flex flex-col items-start gap-2 pb-10">
                 <img src="/brand/wordmark.svg" alt="Lettra®" className="h-[26px] w-auto [filter:brightness(0.32)]" />
+                <span className="font-mono text-[10px] tracking-[0.02em] text-ink-faint">v{version}</span>
               </div>
               <Toc groups={GROUPS} />
               <a

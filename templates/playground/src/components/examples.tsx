@@ -222,9 +222,15 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
 }
 
 const FAMILY_INITIAL: FamilyState = { weight: 400, style: 'normal' }
-/** The weights actually baked; the slider magnetizes to these so exact hits
- * are reachable by drag. */
+/** The CSS weight ladder. Weight is never interpolated, so the slider snaps
+ * through the ladder instead of sweeping: every position is a request a real
+ * page would make. */
+const WEIGHT_STOPS = [100, 200, 300, 400, 500, 600, 700, 800, 900]
+/** The three actually baked, ticked darker so an exact hit is aimable. */
 const BAKED_STOPS = [200, 400, 700]
+/** Half the thumb, which is `w-1.5`: the track's usable span is inset by it,
+ * so a tick at value v sits at v × (100% − thumb) + half. */
+const THUMB_HALF = '3px'
 
 export function FamilyExample({ stage }: { stage: Stage | null }) {
   const elRef = useRef<HTMLDivElement>(null)
@@ -270,10 +276,10 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
     >
       <SectionTitle caption="family">Families &amp; italics</SectionTitle>
       <Prose className="mt-5">
-        Three weights and two italics are baked here. Ask for any weight or style and the readout below says which atlas
-        answered: a weight in between serves the closest bake unmodified, since weight is never synthesized. Only the
-        oblique is, and this family bakes both italics, so it never needs one. The small line underneath puts regular,
-        bold and italic in a single layout.
+        Three weights and two italics are baked here. The slider snaps through the CSS weight ladder, with the baked
+        weights ticked darker, and the readout says which atlas answered: a weight in between serves the closest bake
+        unmodified, since weight is never synthesized. Only the oblique is, and this family bakes both italics, so it
+        never needs one. The small line underneath puts regular, bold and italic in a single layout.
       </Prose>
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
@@ -287,18 +293,28 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
               </Segment>
             </ControlCell>
             <ControlCell label="weight" grow>
-              <Slider
-                value={[state.weight]}
-                min={100}
-                max={900}
-                step={10}
-                className="min-w-16 flex-1"
-                onValueChange={([value]) => {
-                  // magnetize to the baked stops so exact hits are reachable
-                  const weight = BAKED_STOPS.find((stop) => Math.abs(value - stop) <= 25) ?? value
-                  patch({ weight })
-                }}
-              />
+              <div className="relative min-w-16 flex-1">
+                <Slider
+                  value={[state.weight]}
+                  min={WEIGHT_STOPS[0]}
+                  max={WEIGHT_STOPS[WEIGHT_STOPS.length - 1]}
+                  step={100}
+                  onValueChange={([weight]) => patch({ weight })}
+                />
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 mt-[7px]">
+                  {WEIGHT_STOPS.map((stop) => (
+                    <span
+                      key={stop}
+                      className={`absolute h-1 w-px -translate-x-1/2 ${
+                        BAKED_STOPS.includes(stop) ? 'bg-ink' : 'bg-ink/25'
+                      }`}
+                      style={{
+                        left: `calc(${(stop - WEIGHT_STOPS[0]) / (WEIGHT_STOPS[WEIGHT_STOPS.length - 1] - WEIGHT_STOPS[0])} * (100% - ${THUMB_HALF} * 2) + ${THUMB_HALF})`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
               <ControlValue>{state.weight}</ControlValue>
             </ControlCell>
           </ControlBar>
