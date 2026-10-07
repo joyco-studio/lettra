@@ -4,7 +4,7 @@
     "registry": "https://registry.npmjs.org",
     "access": "public"
   },
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Runtime MSDF text for Three.js WebGPURenderer + TSL. Baked atlas in, kerned layout and a composable node material out.",
   "repository": {
     "type": "git",
@@ -92,4 +92,3 @@
     }
   }
 }
-
