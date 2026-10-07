@@ -72,12 +72,12 @@ export const liquidSnippet = `import { composeEffects, createText, scramble } fr
 import type { TextEffect } from 'lettra/three'
 import { color, max, mix, saturate, smoothstep, texture, float } from 'three/tsl'
 
-// a tiny GPU fluid sim: one half-float ping-pong texture,
-// rg = velocity, b = ink. Each frame: backtrace by velocity,
-// damp + dissipate, splat the cursor stroke in as a capsule.
+// a tiny GPU flow field: one half-float ping-pong texture,
+// rg = flow, b = ink. Each frame: the flow fades in place, the
+// ink drifts along it and fades, the cursor stroke splats in.
 // (~30 lines of TSL -- see gl/views/liquid.ts for the pass)
 
-// the dye texture read back out as a scalar field
+// the ink read back out as a scalar field
 const field = texture(sim.texture, simUv).b
 const rim = saturate(float(1).sub(field.sub(0.4).abs().div(0.25)))
 const wet = smoothstep(0.4, 0.8, field)
@@ -85,7 +85,7 @@ const wet = smoothstep(0.4, 0.8, field)
 // interior wetness tints the ink through the color wire
 const wetInk: TextEffect = {
   uniforms: {},
-  stages: { color: (prev) => mix(prev, color('#1d3557'), wet) },
+  stages: { color: (prev) => mix(prev, color('#454a52'), wet) },
 }
 
 const text = createText({

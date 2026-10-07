@@ -590,10 +590,10 @@ export function LiquidExample({
     >
       <DemoTitle>Water writes</DemoTitle>
       <Prose className="mt-5">
-        The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU fluid
-        sim: ink splatted along the cursor stroke, advected by its own velocity, swirling while you move and soaking
-        away when you stop. Glyphs on its rim re-roll through the atlas, the wet interior darkens the ink. None of it is
-        library code; an audio level or a wipe front plugs into the same seam.
+        The scramble&apos;s drive is just a scalar field, so anything can hold the pen. Here it&apos;s a small GPU flow
+        field: the cursor stroke paints flow and ink, the ink drifts along the flow and soaks away when you stop, tinted
+        a faint pearl by the direction you moved. Glyphs on its rim re-roll through the atlas, the wet interior tints
+        the ink. None of it is library code; an audio level or a wipe front plugs into the same seam.
       </Prose>
       <figure className="mt-8">
         <div className="bg-[#dcdcda] p-[2px]">
