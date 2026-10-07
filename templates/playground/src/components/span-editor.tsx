@@ -1,7 +1,7 @@
 'use client'
 
 import { EditorContent, Mark, mergeAttributes, useEditor, useEditorState } from '@tiptap/react'
-import type { Editor } from '@tiptap/react'
+import type { Node as DocNode } from '@tiptap/pm/model'
 import { BubbleMenu } from '@tiptap/react/menus'
 import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
@@ -77,14 +77,25 @@ export function spansToHtml(text: string, spans: RichSpan[]): string {
   return `<p>${html}</p>`
 }
 
+/** The editor's extensions, shared with the tests so they build the same schema. */
+export const EDITOR_EXTENSIONS = [
+  Document.extend({ content: 'paragraph' }),
+  Paragraph,
+  Text,
+  HardBreak,
+  Italic,
+  Weight,
+  SingleParagraph,
+]
+
 /** The editor's document as lettra sees it: the flat string plus one span per
  * styled run. ProseMirror already splits text nodes at every mark boundary, so
  * the runs come out sorted and disjoint, which is exactly what
  * `createRichText` asks for. */
-function read(editor: Editor): { text: string; spans: RichSpan[] } {
+export function readDoc(doc: DocNode): { text: string; spans: RichSpan[] } {
   let text = ''
   const spans: RichSpan[] = []
-  editor.state.doc.descendants((node) => {
+  doc.descendants((node) => {
     // a hard break carries no glyph, so it joins the string but starts no span
     if (node.type.name === 'hardBreak') {
       text += '\n'
@@ -125,22 +136,14 @@ export function SpanEditor({ defaultText, defaultSpans, onChange }: SpanEditorPr
   const editor = useEditor({
     // Next renders this on the server first; Tiptap has to wait for the DOM
     immediatelyRender: false,
-    extensions: [
-      Document.extend({ content: 'paragraph' }),
-      Paragraph,
-      Text,
-      HardBreak,
-      Italic,
-      Weight,
-      SingleParagraph,
-    ],
+    extensions: EDITOR_EXTENSIONS,
     content: spansToHtml(defaultText, defaultSpans),
     editorProps: {
       attributes: {
         class: `${FIELD_TEXT} min-h-[4.5rem] outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic`,
       },
     },
-    onUpdate: ({ editor: instance }) => onChange(read(instance)),
+    onUpdate: ({ editor: instance }) => onChange(readDoc(instance.state.doc)),
   })
 
   // useEditor alone does not re-render per transaction in v3, so the toolbar

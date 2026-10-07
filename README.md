@@ -388,7 +388,7 @@ per variant, and prints a ready `defineFamily` block to paste.
 | --- | --- | --- |
 | `--weights 400,700` | `400` | Weights to instance and bake. Variable fonts only: a static face has one real weight and is always labelled from its OS/2 `usWeightClass`, with a warning if the flag disagrees. |
 | `--italic file.ttf` | none | Companion italic face, baked at the same weights and tagged `style: 'italic'`. Without one, italic requests fall back to a synthetic oblique at runtime. |
-| `--charset <set>` | ASCII + typographic | Preset name, file path, or literal string. See [Charsets](#charsets). |
+| `--charset <set>` | ASCII printable | Preset name, file path, or literal string. Use `--charset latin` to add curly quotes, dashes, and the ellipsis. See [Charsets](#charsets). |
 | `--size 64` | `64` | Bake font size in px. Every variant of a family must share it, or layout options mean different things per variant. |
 | `--pxrange 8` | `8` | Distance-field range. Keep 8: anti-aliasing quality and the erosion wipes both need the headroom. |
 | `--padding 2` | `2` | Texture padding between glyphs. |
@@ -415,15 +415,18 @@ npx lettra bake font.ttf --charset ./charset.txt     # file
 npx lettra bake font.ttf --charset 'LETTRA 0123'     # literal, for a logotype
 ```
 
-Presets are ASCII printable plus curly quotes, dashes and the ellipsis,
-then the language's accents: `ascii`, `latin`, `latin-es`, `latin-pt`,
-`latin-fr`, `latin-de`, `latin-ext` (all of them in one bake).
+`ascii` is ASCII printable. Every other preset adds curly quotes, dashes
+and the ellipsis, then the language's accents: `latin`, `latin-es`,
+`latin-pt`, `latin-fr`, `latin-de`, `latin-ext` (all of them in one bake).
 
-A typo'd preset or a missing file is rejected rather than quietly baked as
-its own letters, and characters the font has no glyph for are dropped with
-a warning. Without that check they pack as `.notdef` tofu, waste atlas
-space and ship as boxes; dropping them lets the runtime's `?` fallback do
-its job.
+An unknown dashed name (`latin-xx`) is rejected, and so is a missing file
+that can only be a path (a `.txt`, `.json` or `.charset` name, or one
+starting with `./`, `../`, `/` or `~/`). Anything else that is not a preset
+or a file is baked as literal characters, so `latn` bakes the letters `l`,
+`a`, `t`, `n`; check the glyph count in the output. Characters the font has
+no glyph for are dropped with a warning. Baked, they would pack as
+`.notdef` tofu, waste atlas space and ship as boxes; dropping them lets the
+runtime's `?` fallback do its job.
 
 ## Baking fonts
 

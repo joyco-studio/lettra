@@ -148,7 +148,18 @@ function printSpans(spans: RichTextState['spans']): string {
 
 /** The code behind the rich-text figure in its current state. */
 export function richTextSnippet(state: RichTextState): string {
-  return `import { createRichText } from 'lettra/three'
+  return `import { createRichText, defineFamily } from 'lettra/three'
+
+// the same family the families panel declares
+const inter = defineFamily({
+  src: [
+    { json: '/fonts/inter-200.json', atlas: '/fonts/inter-200.png', weight: 200 },
+    { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+    { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+    { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
+    { json: '/fonts/inter-700i.json', atlas: '/fonts/inter-700i.png', weight: 700, style: 'italic' },
+  ],
+})
 
 // spans resolve through the synchronous family.get, so every variant one
 // can ask for has to be loaded before the first build
