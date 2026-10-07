@@ -7,6 +7,7 @@ import Document from '@tiptap/extension-document'
 import Paragraph from '@tiptap/extension-paragraph'
 import Text from '@tiptap/extension-text'
 import Italic from '@tiptap/extension-italic'
+import HardBreak from '@tiptap/extension-hard-break'
 import { Extension } from '@tiptap/core'
 import type { RichSpan } from 'lettra/three'
 import { FIELD_TEXT, FieldLabel, Segment } from '@/components/layout'
@@ -36,13 +37,14 @@ const Weight = Mark.create({
   },
 })
 
-/** One paragraph, always: lettra wraps the measure itself, and a second block
- * would mean a newline the spans would have to step over. */
+/** One paragraph, always. Enter inserts a hard break rather than a second
+ * block, which keeps the span offsets on one string: a break is a `\n` in it,
+ * and lettra's wrap honours those alongside the measure. */
 const SingleParagraph = Extension.create({
   name: 'singleParagraph',
   addKeyboardShortcuts() {
     return {
-      Enter: () => true,
+      Enter: () => this.editor.commands.setHardBreak(),
       'Mod-b': () => this.editor.chain().focus().setMark('weight', { weight: 700 }).run(),
       'Mod-i': () => this.editor.chain().focus().toggleItalic().run(),
     }
@@ -50,7 +52,13 @@ const SingleParagraph = Extension.create({
 })
 
 const escapeHtml = (text: string) =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    // a line break in the string is a hard break in the document
+    .replace(/\n/g, '<br>')
 
 /** Spans back to markup, for seeding the editor from a preset. */
 export function spansToHtml(text: string, spans: RichSpan[]): string {
@@ -77,6 +85,11 @@ function read(editor: Editor): { text: string; spans: RichSpan[] } {
   let text = ''
   const spans: RichSpan[] = []
   editor.state.doc.descendants((node) => {
+    // a hard break carries no glyph, so it joins the string but starts no span
+    if (node.type.name === 'hardBreak') {
+      text += '\n'
+      return
+    }
     if (!node.isText) return
     const start = text.length
     text += node.text ?? ''
@@ -112,7 +125,15 @@ export function SpanEditor({ defaultText, defaultSpans, onChange }: SpanEditorPr
   const editor = useEditor({
     // Next renders this on the server first; Tiptap has to wait for the DOM
     immediatelyRender: false,
-    extensions: [Document.extend({ content: 'paragraph' }), Paragraph, Text, Italic, Weight, SingleParagraph],
+    extensions: [
+      Document.extend({ content: 'paragraph' }),
+      Paragraph,
+      Text,
+      HardBreak,
+      Italic,
+      Weight,
+      SingleParagraph,
+    ],
     content: spansToHtml(defaultText, defaultSpans),
     editorProps: {
       attributes: {

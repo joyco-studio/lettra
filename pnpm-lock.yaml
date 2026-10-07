@@ -89,6 +89,9 @@ importers:
       '@tiptap/extension-document':
         specifier: ^3.31.4
         version: 3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))
+      '@tiptap/extension-hard-break':
+        specifier: ^3.31.4
+        version: 3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))
       '@tiptap/extension-italic':
         specifier: ^3.31.4
         version: 3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))
@@ -1603,6 +1606,11 @@ packages:
       '@floating-ui/dom': ^1.0.0
       '@tiptap/core': 3.31.4
       '@tiptap/pm': 3.31.4
+
+  '@tiptap/extension-hard-break@3.31.4':
+    resolution: {integrity: sha512-oLNajLyUvRMg1qtzFgKGduygTlpaHFB9PU+M+pUWdA4sa1bRnxS2Y++Ao4lHYopJ7nxatLndrYoCIHkotqkPDQ==}
+    peerDependencies:
+      '@tiptap/core': 3.31.4
 
   '@tiptap/extension-italic@3.31.4':
     resolution: {integrity: sha512-pftTQBPYZocNDAj/u6OyDIp7YxmN0+N895cQPogJQ6qMHdLiRhzgawiEewJkniyN1w8k3Wx/Etp8pTKrxaOOBQ==}
@@ -4872,6 +4880,10 @@ snapshots:
       '@tiptap/core': 3.31.4(@tiptap/pm@3.31.4)
       '@tiptap/pm': 3.31.4
     optional: true
+
+  '@tiptap/extension-hard-break@3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))':
+    dependencies:
+      '@tiptap/core': 3.31.4(@tiptap/pm@3.31.4)
 
   '@tiptap/extension-italic@3.31.4(@tiptap/core@3.31.4(@tiptap/pm@3.31.4))':
     dependencies:

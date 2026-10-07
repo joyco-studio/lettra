@@ -24,3 +24,11 @@ describe('spansToHtml', () => {
     expect(html).toContain('<em>')
   })
 })
+
+describe('hard breaks', () => {
+  it('seeds a newline as a break and keeps the span offsets around it', () => {
+    expect(spansToHtml('ab\ncd', [{ start: 3, end: 5, weight: 700 }])).toBe(
+      '<p>ab<br><span data-weight="700">cd</span></p>'
+    )
+  })
+})
