@@ -151,7 +151,7 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
       <figure>
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <ControlBar>
-            <ControlCell label="font">
+            <ControlCell>
               {FONTS.map(({ name, label }) => (
                 <Segment
                   key={name}
@@ -167,7 +167,7 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
                 </Segment>
               ))}
             </ControlCell>
-            <ControlCell label="align">
+            <ControlCell>
               {ALIGNS.map((align) => {
                 const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight
                 return (
@@ -218,7 +218,7 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
               value={state.text}
               spellCheck={false}
               rows={2}
-              className="mt-1.5 min-h-0 w-full resize-none border-0 bg-field px-2 py-1.5 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-field"
+              className="mt-1.5 min-h-0 w-full resize-none border-0 bg-transparent p-0 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-transparent"
               onChange={(event) => patch({ text: event.target.value })}
             />
           </label>
@@ -295,7 +295,7 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <ControlBar>
-            <ControlCell label="style">
+            <ControlCell>
               <Segment active={state.style === 'normal'} onClick={() => patch({ style: 'normal' })}>
                 roman
               </Segment>
@@ -396,7 +396,7 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <ControlBar>
-            <ControlCell label="align">
+            <ControlCell>
               {ALIGNS.map((align) => {
                 const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight
                 return (

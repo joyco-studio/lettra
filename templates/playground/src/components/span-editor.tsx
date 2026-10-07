@@ -118,7 +118,7 @@ export function SpanEditor({ defaultText, defaultSpans, onChange }: SpanEditorPr
       attributes: {
         // the padded box is the editable itself, so a click anywhere in it lands
         class:
-          'mt-1.5 min-h-[4.5rem] w-full bg-field px-2 py-1.5 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic',
+          'mt-1.5 min-h-[4.5rem] w-full font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic',
       },
     },
     onUpdate: ({ editor: instance }) => onChange(read(instance)),

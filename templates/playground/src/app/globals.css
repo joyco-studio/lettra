@@ -5,8 +5,6 @@
   --paper: #e4e4e4;
   --ink: #414141;
   --ink-faint: #9b9b9b;
-  /* editable surfaces: a touch lighter than the paper cell they sit in */
-  --field: #ededeb;
   --night: #121217;
 }
 
@@ -17,7 +15,6 @@
     --color-paper: var(--paper);
     --color-ink: var(--ink);
     --color-ink-faint: var(--ink-faint);
-    --color-field: var(--field);
     --color-night: var(--night);
     --gap: 0.25rem;
     --spacing-gap: var(--gap);

@@ -209,7 +209,11 @@ export function Segment({
       aria-pressed={active}
       className={cn(
         'flex h-7 cursor-pointer items-center px-2.5 font-mono text-[11px] font-semibold tracking-[0.04em] transition-colors',
-        active ? 'bg-night text-paper' : 'text-ink-faint hover:bg-ink/8 hover:text-ink'
+        // the selected one takes the house corner cut, on the diagonal the
+        // snippet panel uses — it is what marks a filled block as chosen here
+        active
+          ? 'bg-night text-paper [clip-path:polygon(5px_0,100%_0,100%_calc(100%-5px),calc(100%-5px)_100%,0_100%,0_5px)]'
+          : 'text-ink-faint hover:bg-ink/8 hover:text-ink'
       )}
     >
       {children}
