@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useObserve } from '@joycostudio/metri/react'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 import {
   ControlBar,
   ControlCell,
   ControlValue,
   DemoTitle,
+  FIELD_TEXT,
   FieldLabel,
   FigCaption,
   Prose,
@@ -218,7 +220,10 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
               value={state.text}
               spellCheck={false}
               rows={2}
-              className="mt-1.5 min-h-0 w-full resize-none border-0 bg-transparent p-0 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className={cn(
+                FIELD_TEXT,
+                'min-h-0 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 dark:bg-transparent'
+              )}
               onChange={(event) => patch({ text: event.target.value })}
             />
           </label>

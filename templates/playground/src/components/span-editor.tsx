@@ -9,7 +9,7 @@ import Text from '@tiptap/extension-text'
 import Italic from '@tiptap/extension-italic'
 import { Extension } from '@tiptap/core'
 import type { RichSpan } from 'lettra/three'
-import { FieldLabel, Segment } from '@/components/layout'
+import { FIELD_TEXT, FieldLabel, Segment } from '@/components/layout'
 
 /** 200, 400 and 700 are baked; 500 is not, and serves 400. 400 clears the
  * mark rather than setting one, since it is what the base variant already is. */
@@ -116,10 +116,7 @@ export function SpanEditor({ defaultText, defaultSpans, onChange }: SpanEditorPr
     content: spansToHtml(defaultText, defaultSpans),
     editorProps: {
       attributes: {
-        // set in the UI sans, not mono: this is the copy the figure renders,
-        // and the weights have to be legible as weights
-        class:
-          'mt-2 min-h-[4.5rem] w-full text-[15px] leading-[1.5] text-ink outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic',
+        class: `${FIELD_TEXT} min-h-[4.5rem] outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic`,
       },
     },
     onUpdate: ({ editor: instance }) => onChange(read(instance)),

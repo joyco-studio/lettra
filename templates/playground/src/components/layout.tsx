@@ -221,6 +221,11 @@ export function Segment({
   )
 }
 
+/** Every editable field on the page: set in the UI sans, never mono. These
+ * hold the copy the figures render, so weights and italics have to read as
+ * themselves. */
+export const FIELD_TEXT = 'mt-2 w-full text-[15px] leading-[1.5] text-ink'
+
 /** Caption above an editable field, so the input gets the full width. Tinted,
  * so it reads as a tag on the field rather than as part of its contents. */
 export function FieldLabel({ children }: { children: React.ReactNode }) {
