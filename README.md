@@ -362,13 +362,11 @@ Worth knowing:
   the buckets drawing the base variant's font, since elsewhere it would sample
   the wrong texture with those rects; the rest render without it.
 
-## Baking fonts
+## The bake CLI
 
-Dev-time, one command. `npx lettra bake` preflights the font, instances
-variable fonts to static weights with fontTools (Python; the step that
-keeps GPOS kerning alive), bakes with pinned MSDF settings, recovers
-class-based GPOS pairs that the generator's parser misses, and emits the
-minified lettra JSON plus a ready `defineFamily` block:
+`lettra bake` is the dev-time half of the package: a `bin` entry, never
+imported by your app. One command takes a `.ttf` or `.otf` to the atlases
+and metrics `defineFamily` wants.
 
 ```bash
 npm i -D msdf-bmfont-xml  # the baker: an optional peer, so a browser-only install skips it
@@ -377,11 +375,63 @@ npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
   --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
 ```
 
-`--out` is a path prefix, not a directory: `--out public/fonts/inter` writes
-`public/fonts/inter-400.json` and prints it as `/fonts/inter-400.json`, the
-URL it is actually served at under a standard public directory.
+What it does in that one pass, in order: reads the sfnt tables to classify
+the face and check cmap coverage, instances a variable font to each
+requested weight with fontTools (the step that keeps GPOS kerning alive),
+bakes with pinned MSDF settings, recovers the class-based GPOS pairs the
+generator's parser misses, writes the minified lettra JSON plus its atlas
+per variant, and prints a ready `defineFamily` block to paste.
 
-Manual routes still work: raw msdf-bmfont-xml, or the browser tool
+### Options
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--weights 400,700` | `400` | Weights to instance and bake. Variable fonts only: a static face has one real weight and is always labelled from its OS/2 `usWeightClass`, with a warning if the flag disagrees. |
+| `--italic file.ttf` | none | Companion italic face, baked at the same weights and tagged `style: 'italic'`. Without one, italic requests fall back to a synthetic oblique at runtime. |
+| `--charset <set>` | ASCII printable | Preset name, file path, or literal string. Use `--charset latin` to add curly quotes, dashes, and the ellipsis. See [Charsets](#charsets). |
+| `--size 64` | `64` | Bake font size in px. Every variant of a family must share it, or layout options mean different things per variant. |
+| `--pxrange 8` | `8` | Distance-field range. Keep 8: anti-aliasing quality and the erosion wipes both need the headroom. |
+| `--padding 2` | `2` | Texture padding between glyphs. |
+| `--texture 1024` | `1024` | Atlas width and height. Raise it if the bake overflows one page; multi-page bakes are rejected. |
+| `--out dir/name` | `./<font name>` | Output path prefix, not a directory. |
+| `--help` | | Print this. |
+
+`--out public/fonts/inter` writes `public/fonts/inter-400.json` and
+`-400.png` (plus `-400i` for italics) and prints them as
+`/fonts/inter-400.json`, the URL they are actually served at under a
+standard public directory.
+
+Read the output: it reports the glyph and kerning-pair count per variant,
+warns when the charset has no space or `?` glyph, and warns when characters
+were dropped for having no glyph in the font.
+
+### Charsets
+
+`--charset` takes a preset name, a file path, or a literal string:
+
+```bash
+npx lettra bake font.ttf --charset latin-es          # preset
+npx lettra bake font.ttf --charset ./charset.txt     # file
+npx lettra bake font.ttf --charset 'LETTRA 0123'     # literal, for a logotype
+```
+
+`ascii` is ASCII printable. Every other preset adds curly quotes, dashes
+and the ellipsis, then the language's accents: `latin`, `latin-es`,
+`latin-pt`, `latin-fr`, `latin-de`, `latin-ext` (all of them in one bake).
+
+An unknown dashed name (`latin-xx`) is rejected, and so is a missing file
+that can only be a path (a `.txt`, `.json` or `.charset` name, or one
+starting with `./`, `../`, `/` or `~/`). Anything else that is not a preset
+or a file is baked as literal characters, so `latn` bakes the letters `l`,
+`a`, `t`, `n`; check the glyph count in the output. Characters the font has
+no glyph for are dropped with a warning. Baked, they would pack as
+`.notdef` tofu, waste atlas space and ship as boxes; dropping them lets the
+runtime's `?` fallback do its job.
+
+## Baking fonts
+
+The CLI above is the short road. Manual routes still work: raw
+msdf-bmfont-xml, or the browser tool
 [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com).
 
 `createText` (and `loadFont` / `parseFont`) accepts the raw BMFont JSON
@@ -414,24 +464,6 @@ Rules of thumb (the parser enforces the hard ones):
 - Texture setup is handled by `loadFontTexture` / `configureFontTexture`:
   `flipY: false`, linear filters, **no mipmaps**, `NoColorSpace` (the atlas
   is data; sRGB decode would warp the distance field).
-
-### Charsets
-
-`--charset` takes a preset name, a file path, or a literal string:
-
-```bash
-npx lettra bake font.ttf --charset latin-es          # preset
-npx lettra bake font.ttf --charset ./charset.txt     # file
-npx lettra bake font.ttf --charset 'LETTRA 0123'     # literal, for a logotype
-```
-
-Presets are ASCII printable plus curly quotes, dashes and the ellipsis,
-then the language's accents: `ascii`, `latin`, `latin-es`, `latin-pt`,
-`latin-fr`, `latin-de`, `latin-ext` (all of them in one bake).
-
-Characters the font has no glyph for are dropped with a warning rather than
-baked. Without that check they pack as `.notdef` tofu, waste atlas space and
-ship as boxes; dropping them lets the runtime's `?` fallback do its job.
 
 ## Layout
 

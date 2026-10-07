@@ -84,7 +84,8 @@ Three things that bite agents wiring this up for the first time:
 - [README](${README_URL}): full API, effects, composing your own node material, lifecycle contract
 - [Quickstart](${REPO_URL}#quickstart): install and first mesh
 - [Effects](${REPO_URL}#effects): wipe, scramble, composeEffects, writing your own
-- [Baking fonts](${REPO_URL}#baking-fonts): charset, distance range, kerning pitfalls
+- [The bake CLI](${REPO_URL}#the-bake-cli): every \`lettra bake\` flag, charset presets, what the output reports
+- [Baking fonts](${REPO_URL}#baking-fonts): the format's rules, manual routes, kerning pitfalls
 - [Layout](${REPO_URL}#layout): the renderer-agnostic layout pass and its options
 - [npm package](${NPM_URL}): versions and install size
 - [Issues](${ISSUES_URL}): bug reports and questions

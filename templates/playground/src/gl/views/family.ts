@@ -1,6 +1,6 @@
 import { PerspectiveCamera, Scene } from 'three/webgpu'
-import { createRichText, createText, defineFamily } from 'lettra/three'
-import type { FontFamily, LoadedVariant, TextHandle } from 'lettra/three'
+import { createText } from 'lettra/three'
+import type { LoadedVariant, TextHandle } from 'lettra/three'
 import type { Stage } from '../stage'
 import { frameText } from '../stage'
 
@@ -23,27 +23,20 @@ export interface FamilyView {
 
 const TEXT = 'Sphinx of black quartz,\njudge my vow'
 
-/** fig. 02: a family resolving weight and style, with a rich-text line below
- * mixing three variants in one layout. */
+/** fig. 02: a family resolving weight and style. Spans get their own figure
+ * (`rich-text.ts`), on this same stage-owned family. */
 export async function createFamilyView(stage: Stage, el: HTMLElement, initial: FamilyState): Promise<FamilyView> {
   const scene = new Scene()
   const camera = new PerspectiveCamera(35, 1, 0.1, 100)
   camera.position.z = 10
 
-  const inter: FontFamily = defineFamily({
-    src: [
-      { json: '/fonts/inter-200.json', atlas: '/fonts/inter-200.png', weight: 200 },
-      { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
-      { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
-      { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' },
-      { json: '/fonts/inter-700i.json', atlas: '/fonts/inter-700i.png', weight: 700, style: 'italic' },
-    ],
-  })
+  const inter = stage.inter
 
   // unwound in reverse on a failed build: the stage view is registered before
   // the last awaits, so a rejected load or warmup would otherwise leave it
-  // rendering, unreachable and undisposable
-  const created: Array<() => void> = [() => inter.dispose()]
+  // rendering, unreachable and undisposable. The family is not in here: the
+  // stage owns it, and the rich-text figure is drawing from it too
+  const created: Array<() => void> = []
   const teardown = () => {
     for (const dispose of [...created].reverse()) dispose()
   }
@@ -55,7 +48,7 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
   try {
     // the demo exercises every variant; a page would family.load() what it uses.
     // Promise.all short-circuits, so one 404 leaves the atlases that did land
-    // for inter.dispose() to free
+    // for the stage's inter.dispose() to free
     await inter.loadAll()
     inter.warmup(stage.renderer)
 
@@ -70,30 +63,12 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
     created.push(() => text.dispose()) // family-owned atlas: skipped automatically
     scene.add(text.mesh)
 
-    // one paragraph, three variants; spans resolve through the same family
-    const rich = createRichText({
-      family: inter,
-      text: 'one layout, regular to bold to italic',
-      spans: [
-        { start: 23, end: 27, weight: 700 },
-        { start: 31, end: 37, style: 'italic' },
-      ],
-      layout: { align: 'center' },
-      material: { fill: '#8a8a86' },
-    })
-    created.push(() => rich.dispose())
-    scene.add(rich.group)
-
     const frame = () => {
       frameText(camera, {
         width: text.layout.width,
         height: text.layout.height,
         fontSize: text.layout.metrics.fontSize,
       })
-      // park the rich line under the main block, in em units
-      const mainHalf = text.layout.height / text.layout.metrics.fontSize / 2
-      rich.group.position.y = -(mainHalf + 1.1)
-      rich.group.scale.setScalar(0.42)
       handle.invalidate()
     }
 
@@ -108,10 +83,8 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
     })
     created.push(() => handle.dispose())
     text.onChange(() => handle.invalidate())
-    rich.onChange(() => handle.invalidate())
 
     await text.warmup(stage.renderer, camera, scene)
-    await rich.warmup(stage.renderer, camera, scene)
     frame()
 
     const describe = (state: FamilyState, variant: LoadedVariant): FamilyInfo => {
@@ -152,8 +125,7 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
         if (disposed) return
         disposed = true
         // bump the token too, so an apply already past its await bails instead
-        // of rebuilding geometry on a disposed text — or, because a family is
-        // reusable after dispose, restarting its loads and leaking fresh atlases
+        // of rebuilding geometry on a disposed text
         token++
         teardown()
       },

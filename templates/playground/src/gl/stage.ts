@@ -2,7 +2,8 @@ import { PerspectiveCamera, Scene, WebGPURenderer } from 'three/webgpu'
 import type { Texture } from 'three/webgpu'
 import type { Bounds, Metri, Viewport } from '@joycostudio/metri'
 import type { MSDFFont } from 'lettra'
-import { loadFont, loadFontTexture } from 'lettra/three'
+import { defineFamily, loadFont, loadFontTexture } from 'lettra/three'
+import type { FontFamily } from 'lettra/three'
 
 export type FontName = 'bebas' | 'lora' | 'respira' | 'roboto' | 'lettra'
 
@@ -30,10 +31,25 @@ export interface ViewHandle {
 export interface Stage {
   renderer: WebGPURenderer
   fonts: Record<FontName, FontBundle>
+  /** Declared here and shared by every figure that wants a variant, so the
+   * five Inter bakes are one set of atlases however many figures use them.
+   * Lazy: nothing loads until a view awaits `load`/`loadAll`, and concurrent
+   * awaits of one bake share its request. Stage-owned — views never dispose
+   * it. */
+  inter: FontFamily
   addView(el: HTMLElement, view: StageView): ViewHandle
   invalidate(): void
   dispose(): void
 }
+
+/** Baked by `npx lettra bake Inter.ttf --weights 200,400,700 --italic …`. */
+const INTER_SRC = [
+  { json: '/fonts/inter-200.json', atlas: '/fonts/inter-200.png', weight: 200 },
+  { json: '/fonts/inter-400.json', atlas: '/fonts/inter-400.png', weight: 400 },
+  { json: '/fonts/inter-700.json', atlas: '/fonts/inter-700.png', weight: 700 },
+  { json: '/fonts/inter-400i.json', atlas: '/fonts/inter-400i.png', weight: 400, style: 'italic' as const },
+  { json: '/fonts/inter-700i.json', atlas: '/fonts/inter-700i.png', weight: 700, style: 'italic' as const },
+]
 
 async function loadFontBundle(name: FontName): Promise<FontBundle> {
   const [font, map] = await Promise.all([loadFont(`/fonts/${name}.json`), loadFontTexture(`/fonts/${name}.png`)])
@@ -63,6 +79,7 @@ export async function createStage(canvas: HTMLCanvasElement, metri: Metri): Prom
     loadFontBundle('lettra'),
   ])
   const fonts = { bebas, lora, respira, roboto, lettra }
+  const inter = defineFamily({ src: INTER_SRC })
 
   const renderer = new WebGPURenderer({
     canvas,
@@ -172,6 +189,7 @@ export async function createStage(canvas: HTMLCanvasElement, metri: Metri): Prom
   return {
     renderer,
     fonts,
+    inter,
     addView,
     invalidate,
     dispose() {
@@ -179,6 +197,7 @@ export async function createStage(canvas: HTMLCanvasElement, metri: Metri): Prom
       for (const registered of [...views]) registered.dispose()
       metri.off('viewportResize', onViewportResize)
       for (const bundle of Object.values(fonts)) bundle.map.dispose()
+      inter.dispose()
       renderer.dispose()
     },
   }

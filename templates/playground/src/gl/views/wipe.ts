@@ -11,7 +11,7 @@ export interface WipeView {
 
 const TEXT = 'EDGES FIRST,\nBONES LAST.'
 
-/** fig. 02 — the erosion wipe: glyphs dissolve through the distance field. */
+/** fig. 04 — the erosion wipe: glyphs dissolve through the distance field. */
 export async function createWipeView(stage: Stage, el: HTMLElement): Promise<WipeView> {
   const scene = new Scene()
   const camera = new PerspectiveCamera(35, 1, 0.1, 100)

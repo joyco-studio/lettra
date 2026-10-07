@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Metadata } from 'next'
 import { codeToHtml } from 'shiki'
+import { VERSION } from 'lettra'
 import Playground from '@/components/playground'
 import { bakeRecipe, liquidSnippet, scrambleSnippet, wipeSnippet } from '@/lib/snippets'
 import { homeStructuredData, serializeStructuredData } from '@/lib/structured-data'
@@ -40,6 +41,7 @@ export default async function Page() {
         dangerouslySetInnerHTML={{ __html: serializeStructuredData(homeStructuredData()) }}
       />
       <Playground
+        version={VERSION}
         stageSource={stageSource}
         specimenSource={specimenSource}
         highlighted={{ stage, specimen, bake, wipe, scramble, liquid }}

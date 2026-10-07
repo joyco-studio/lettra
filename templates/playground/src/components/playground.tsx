@@ -19,7 +19,14 @@ import {
 import { Toc } from '@/components/toc'
 import { JoycoLogo } from '@/components/joyco-logo'
 import type { TocGroup } from '@/components/toc'
-import { FamilyExample, LiquidExample, ScrambleExample, SpecimenExample, WipeExample } from '@/components/examples'
+import {
+  FamilyExample,
+  LiquidExample,
+  RichTextExample,
+  ScrambleExample,
+  SpecimenExample,
+  WipeExample,
+} from '@/components/examples'
 import { AGENT_PROMPT } from '@/content/agent-prompt'
 import { bakeRecipe } from '@/lib/snippets'
 import type { HighlightedSnippets } from '@/lib/snippets'
@@ -32,27 +39,28 @@ const GROUPS: TocGroup[] = [
     sections: [
       { id: 'specimen', index: '01', label: 'Specimen' },
       { id: 'family', index: '02', label: 'Families' },
-      { id: 'pipeline', index: '03', label: 'Pipeline' },
+      { id: 'rich-text', index: '03', label: 'Rich text' },
+      { id: 'pipeline', index: '04', label: 'Pipeline' },
     ],
   },
   {
     label: 'Effects',
     id: 'effects',
     sections: [
-      { id: 'wipe', index: '04', label: 'Wipe' },
-      { id: 'scramble', index: '05', label: 'Scramble' },
+      { id: 'wipe', index: '05', label: 'Wipe' },
+      { id: 'scramble', index: '06', label: 'Scramble' },
     ],
   },
   {
     label: 'Composition',
     id: 'composition',
-    sections: [{ id: 'liquid', index: '06', label: 'Water writes' }],
+    sections: [{ id: 'liquid', index: '07', label: 'Water writes' }],
   },
   {
     label: 'Appendix',
     sections: [
-      { id: 'ecosystem', index: '07', label: 'Ecosystem' },
-      { id: 'colophon', index: '08', label: 'Colophon' },
+      { id: 'ecosystem', index: '08', label: 'Ecosystem' },
+      { id: 'colophon', index: '09', label: 'Colophon' },
     ],
   },
 ]
@@ -160,10 +168,14 @@ function CompositionIntro() {
 }
 
 export default function Playground({
+  version,
   stageSource,
   specimenSource,
   highlighted,
 }: {
+  /** `VERSION` from the package itself, read on the server so the string is
+   * all that reaches the client. */
+  version: string
   stageSource: string
   specimenSource: string
   highlighted: HighlightedSnippets
@@ -217,8 +229,9 @@ export default function Playground({
           <div className="sticky top-0 hidden h-screen w-[280px] shrink-0 self-start pt-14 pb-10 xl:block">
             {/* block hugs the body column; content inside stays left-aligned */}
             <div className="ml-auto flex h-full w-full max-w-[280px] flex-col">
-              <div className="flex items-center pb-10">
+              <div className="flex flex-col items-start gap-2 pb-10">
                 <img src="/brand/wordmark.svg" alt="Lettra®" className="h-[26px] w-auto [filter:brightness(0.32)]" />
+                <span className="font-mono text-[10px] tracking-[0.02em] text-ink-faint">v{version}</span>
               </div>
               <Toc groups={GROUPS} />
               <a
@@ -263,7 +276,11 @@ export default function Playground({
             <FamilyExample stage={stage} />
 
             <SectionBreak />
-            {/* 03 — pipeline */}
+            {/* fig. 03 — rich text, on the same stage-owned family */}
+            <RichTextExample stage={stage} />
+
+            <SectionBreak />
+            {/* 04 — pipeline */}
             <Row
               id="pipeline"
               className="pt-20"
@@ -304,13 +321,13 @@ export default function Playground({
               </div>
             </Row>
 
-            {/* 04 — effects: one lead-in, then fig. 03 wipe and fig. 04 scramble */}
+            {/* 05 — effects: one lead-in, then fig. 04 wipe and fig. 05 scramble */}
             <SectionBreak />
             <EffectsIntro />
             <WipeExample stage={stage} html={highlighted.wipe} className="pt-12" />
             <ScrambleExample stage={stage} html={highlighted.scramble} className="pt-16" />
 
-            {/* 05 — composition: the drive seam, demonstrated by fig. 05 */}
+            {/* 06 — composition: the drive seam, demonstrated by fig. 06 */}
             <SectionBreak />
             <CompositionIntro />
             <LiquidExample stage={stage} html={highlighted.liquid} className="pt-12" />
@@ -352,7 +369,7 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 06 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
+                    fig. 07 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
                   </span>
                 </summary>
                 <div className="mt-4">
@@ -372,7 +389,7 @@ export default function Playground({
                     <span className="hidden group-open:inline">−</span>
                   </span>
                   <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 07 · a view{' '}
+                    fig. 08 · a view{' '}
                     <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
                   </span>
                 </summary>

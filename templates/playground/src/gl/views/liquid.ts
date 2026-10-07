@@ -14,7 +14,9 @@ import {
   Vector3,
 } from 'three/webgpu'
 import {
+  atan,
   color,
+  cos,
   float,
   max,
   mix,
@@ -22,9 +24,11 @@ import {
   saturate,
   smoothstep,
   texture,
+  time,
   uniform,
   uv,
   vec2,
+  vec3,
   vec4,
 } from 'three/tsl'
 import { composeEffects, createText, scramble } from 'lettra/three'
@@ -36,25 +40,29 @@ export interface LiquidView {
   dispose(): void
 }
 
-/* fig. 04 — the composition seam, end to end. A small GPU fluid sim (one
- * half-float ping-pong texture: rg = velocity, b = ink) is splatted along
- * the cursor stroke, advected semi-Lagrangian style, and dissipated every
- * frame — ink swirls with your motion and soaks away on its own. That dye
- * texture is one scalar field used three ways: a translucent plane draws
- * the water, its rim drives the scramble (glyphs re-roll where the edge
- * touches them), and its interior tints the ink wet. The library
- * contributes only `scramble({ drive })` — the sim is view code, and any
- * other field plugs into the same seam. */
+/* fig. 06 — the composition seam, end to end. A minimal flow field (one
+ * half-float ping-pong texture: rg = flow, b = ink), after shaders.com's
+ * ChromaFlow but on the GPU: the cursor stroke paints flow and ink, the
+ * flow stays put and fades, the ink drifts along it and soaks away. The ink
+ * is one scalar field used three ways: a translucent ghost plane draws it,
+ * its rim drives the scramble (glyphs re-roll where the edge touches them),
+ * and its interior tints the ink. The flow's direction picks a faint pearl
+ * hue. The library contributes only `scramble({ drive })` — the sim is view
+ * code, and any other field plugs into the same seam. */
 
 const SIM_W = 384
 const SIM_H = 192
-const INK_DISSIPATE = 0.975 // per 60 Hz step — gone in ~1.5 s
-const VEL_DAMP = 0.94
+const FLOW_LIFE = 0.6 // s, e-folding time of the painted flow
+const INK_LIFE = 0.7 // s, e-folding time of the ink
+const DRIFT = 0.5 // how far the ink rides the flow
+const RADIUS = 0.09 // brush radius at full speed, sim height units
+const FULL_SPEED = 0.6 // uv/s at which the brush reaches full radius
+const SHEEN = 0.45 // 0 = monochrome ghost, 1 = full pearl rainbow
 const SETTLE_MS = 3200
 
 const PARAGRAPH =
   'Drag the cursor through this text. Ink splats into a tiny fluid sim, ' +
-  'swirls with your motion, and soaks away. Every glyph the rim touches ' +
+  'drifts with your motion, and soaks away. Every glyph the rim touches ' +
   're-rolls through the atlas.'
 
 export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<LiquidView> {
@@ -79,28 +87,30 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   let write = targets[1]
 
   const dtU = uniform(1 / 60)
+  const flowFadeU = uniform(1)
+  const inkFadeU = uniform(1)
   const aspectU = uniform(2)
   /** Stroke segment endpoints in aspect-corrected sim uv. */
   const splatA = uniform(new Vector2(-10, -10))
   const splatB = uniform(new Vector2(-10, -10))
   const splatVelU = uniform(new Vector2(0, 0))
-  const splatRadiusU = uniform(0.09)
+  const splatRadiusU = uniform(RADIUS)
   const inkStrengthU = uniform(0)
 
-  // semi-Lagrangian step: sample state, backtrace by its own velocity,
-  // damp + dissipate, then splat the cursor stroke in as a capsule
+  // one step: the flow fades where it was painted, the ink is carried
+  // along it and fades, then the cursor stroke splats in as a capsule
   const here = texture(read.texture, uv())
-  const back = texture(read.texture, uv().sub(here.rg.mul(dtU)))
+  const back = texture(read.texture, uv().sub(here.rg.mul(dtU.mul(DRIFT))))
   const p = uv().mul(vec2(aspectU, 1))
   const pa = p.sub(splatA)
   const ba = splatB.sub(splatA)
   const h = saturate(pa.dot(ba).div(ba.dot(ba).add(1e-6)))
   const gauss = pa.sub(ba.mul(h)).length().div(splatRadiusU).pow(2).negate().exp()
-  const velocity = back.rg.mul(VEL_DAMP).add(splatVelU.mul(gauss))
-  const ink = back.b.mul(INK_DISSIPATE).add(gauss.mul(inkStrengthU)).min(1.3)
+  const flow = here.rg.mul(flowFadeU).add(splatVelU.mul(gauss)).clamp(-2.5, 2.5)
+  const ink = back.b.mul(inkFadeU).add(gauss.mul(inkStrengthU)).min(1)
 
   const simMaterial = new MeshBasicNodeMaterial()
-  simMaterial.fragmentNode = vec4(velocity, ink, 1)
+  simMaterial.fragmentNode = vec4(flow, ink, 1)
   const quad = new QuadMesh(simMaterial)
 
   /* ── world ↔ sim mapping (visible rect at z = 0) ───────────────────── */
@@ -108,11 +118,26 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   const worldSizeInvU = uniform(new Vector2(0.5, 0.5))
   const simUv = positionWorld.xy.sub(worldMinU).mul(worldSizeInvU)
 
-  /* the field, read back out of the dye — rim scrambles, interior wets */
+  /* the field, read back out of the ink — rim scrambles, interior wets */
   const fieldTex = texture(read.texture, simUv)
   const field = fieldTex.b
   const rim = saturate(float(1).sub(field.sub(0.4).abs().div(0.25)))
   const wet = smoothstep(0.4, 0.8, field)
+
+  // the ghost: a cool grey that takes a pastel hue from the flow's
+  // direction while it moves, drifting slowly, and settles back to grey
+  const moving = smoothstep(0.05, 0.6, fieldTex.rg.length())
+  const hue = atan(fieldTex.y, fieldTex.x)
+    .div(Math.PI * 2)
+    .add(time.mul(0.05))
+  const pearl = cos(
+    vec3(0, 0.33, 0.67)
+      .add(hue)
+      .mul(Math.PI * 2)
+  )
+    .mul(0.5)
+    .add(0.5)
+  const ghost = mix(color('#8a9099'), pearl.mul(0.75), moving.mul(SHEEN))
 
   const { font, map } = stage.fonts.lettra
   // the paragraph minifies the bake ~2x on 1x displays; mips kill the crunch (lettra only lives here)
@@ -123,7 +148,7 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   // as the scramble, so both compose instead of overwriting colorNode
   const wetInk: TextEffect = {
     uniforms: {},
-    stages: { color: (prev) => mix(prev, color('#1d3557'), wet) },
+    stages: { color: (prev) => mix(prev, ghost.mul(0.5), wet) },
   }
   const text = createText({
     font,
@@ -138,10 +163,10 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   text.mesh.renderOrder = 1
   scene.add(text.mesh)
 
-  /* the water itself: a wash for the ink body, a darker line on the rim */
+  /* the ghost itself: a faint wash for the ink body, a darker line on the rim */
   const waterMaterial = new MeshBasicNodeMaterial()
-  waterMaterial.colorNode = mix(color('#86a4bf'), color('#3c5e82'), rim)
-  waterMaterial.opacityNode = smoothstep(0.08, 0.6, field).mul(0.34).add(rim.mul(0.26))
+  waterMaterial.colorNode = mix(ghost, ghost.mul(0.7), rim)
+  waterMaterial.opacityNode = smoothstep(0.08, 0.6, field).mul(0.22).add(rim.mul(0.2))
   waterMaterial.transparent = true
   waterMaterial.depthWrite = false
   const water = new Mesh(new PlaneGeometry(1, 1), waterMaterial)
@@ -225,6 +250,8 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
         const limit = 2.5
         const k = speed > limit ? limit / speed : 1
         splatVelU.value.set(vx * k * 0.9, vy * k * 0.9)
+        // slow strokes paint a thin line, fast ones the full brush
+        splatRadiusU.value = RADIUS * Math.max(0.2, Math.min(1, (speed / FULL_SPEED) ** 2))
         // ink is purely motion-driven — a resting cursor splats nothing,
         // so the pool always dissipates to zero instead of self-refreshing
         inkStrengthU.value = Math.min(1, speed * 0.7)
@@ -237,6 +264,8 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
         inkStrengthU.value = 0
       }
       dtU.value = dt
+      flowFadeU.value = Math.exp(-dt / FLOW_LIFE)
+      inkFadeU.value = Math.exp(-dt / INK_LIFE)
 
       // ping-pong: read → write, then everything samples the fresh state
       const renderer = stage.renderer
