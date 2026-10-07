@@ -4,8 +4,9 @@ import { createRichText, defineFamily } from '../index'
 import type { RichSpan } from '../index'
 import type { MSDFFont } from '../../core/types'
 
-/* Mirrors the playground span editor's two rules, which are the only things
- * keeping createRichText's validation from firing on a user's edit. */
+/* An editor hands setText a new (text, spans) pair per keystroke. These are
+ * the two rules that keep the pair valid — clip to the text, and let a new
+ * span evict what it overlaps — run against a long stream of edits. */
 const clipSpans = (spans: RichSpan[], length: number): RichSpan[] =>
   spans.filter((s) => s.start < length).map((s) => (s.end > length ? { ...s, end: length } : s))
 

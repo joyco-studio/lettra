@@ -23,7 +23,9 @@ import {
   scrambleSnippet,
   liquidSnippet,
 } from '@/lib/snippets'
+import type { Editor } from '@tiptap/react'
 import type { RichSpan } from 'lettra/three'
+import { SpanEditor, spansToHtml } from '@/components/span-editor'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
 import type { Align, SpecimenState } from '@/gl/views/specimen'
@@ -351,58 +353,12 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
 }
 
 const RICH_INITIAL: RichTextState = { text: RICH_TEXT, spans: SPAN_PRESETS[2].spans, align: 'center' }
-const WEIGHT_OPTIONS = [200, 400, 500, 700]
-
-const sameSpans = (a: RichSpan[], b: RichSpan[]) =>
-  a.length === b.length &&
-  a.every((span, i) => {
-    const other = b[i]
-    return (
-      span.start === other.start &&
-      span.end === other.end &&
-      (span.weight ?? 400) === (other.weight ?? 400) &&
-      (span.style ?? 'normal') === (other.style ?? 'normal')
-    )
-  })
-
-/** Keeps spans inside a shortened text: the library would throw on one that
- * overruns, and an editor trimming the string did not mean to restyle it. */
-const clipSpans = (spans: RichSpan[], length: number): RichSpan[] =>
-  spans.filter((span) => span.start < length).map((span) => (span.end > length ? { ...span, end: length } : span))
-
-/** Square mono control, sized to sit inline in a span chip. */
-function ChipButton({
-  active,
-  title,
-  onClick,
-  children,
-}: {
-  active?: boolean
-  title: string
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-pressed={active}
-      onClick={onClick}
-      className={`flex h-5 cursor-pointer items-center px-1.5 font-mono text-[10px] leading-none font-semibold transition-colors ${
-        active ? 'bg-night text-paper' : 'bg-ink/10 text-ink-faint hover:bg-ink/20 hover:text-ink'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
 
 export function RichTextExample({ stage }: { stage: Stage | null }) {
   const elRef = useRef<HTMLDivElement>(null)
-  const textRef = useRef<HTMLTextAreaElement>(null)
   const [state, setState] = useState(RICH_INITIAL)
   const [info, setInfo] = useState<RichTextInfo | null>(null)
-  const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
+  const [editor, setEditor] = useState<Editor | null>(null)
   const [open, setOpen] = useState(false)
   const view = useGLView(stage, elRef, (s, el) => createRichTextView(s, el, RICH_INITIAL))
 
@@ -413,22 +369,9 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
 
   const patch = (partial: Partial<RichTextState>) => setState((previous) => ({ ...previous, ...partial }))
 
-  const setSpan = (index: number, key: Partial<RichSpan>) =>
-    patch({ spans: state.spans.map((span, i) => (i === index ? { ...span, ...key } : span)) })
-
-  /** Adds the selection as a span. Anything it overlaps is dropped first: the
-   * library rejects overlapping spans, and the newer intent is the one meant. */
-  const addSelection = () => {
-    if (!selection) return
-    const kept = state.spans.filter((span) => span.end <= selection.start || span.start >= selection.end)
-    patch({ spans: [...kept, { ...selection, weight: 700 }].sort((a, b) => a.start - b.start) })
-    setSelection(null)
-    textRef.current?.setSelectionRange(selection.end, selection.end)
-  }
-
-  const readSelection = (element: HTMLTextAreaElement) => {
-    const { selectionStart: start, selectionEnd: end } = element
-    setSelection(end > start ? { start, end } : null)
+  const seed = (spans: RichSpan[]) => {
+    editor?.commands.setContent(spansToHtml(RICH_TEXT, spans))
+    patch({ text: RICH_TEXT, spans })
   }
 
   return (
@@ -453,95 +396,40 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
         call, not two. Kerning is the one thing that stops at a boundary, since the pair tables are per font.
       </Prose>
       <Prose className="mt-4 text-[14px] text-[#6b6b6b]">
-        Edit the sentence below, select any part of it to cut a new span, and set each one&apos;s weight and style.
-        Weight 500 has no bake, so it serves 400 and the draw count stays put.
+        Write in the field under the figure and select a few words to set a weight or an italic on them. The editor is
+        the <span className="font-mono text-[12px]">{'{ text, spans }'}</span> pair, nothing more. 500 has no bake, so
+        it serves 400 and folds back into its neighbours: the draw count does not move.
       </Prose>
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <ControlBar>
             <ControlCell label="preset">
               {SPAN_PRESETS.map((preset) => (
-                <Segment
-                  key={preset.label}
-                  active={state.text === RICH_TEXT && sameSpans(state.spans, preset.spans)}
-                  onClick={() => patch({ text: RICH_TEXT, spans: preset.spans })}
-                >
+                <Segment key={preset.label} onClick={() => seed(preset.spans)}>
                   {preset.label}
                 </Segment>
               ))}
             </ControlCell>
             <ControlCell label="align">
-              <Segment active={state.align === 'left'} onClick={() => patch({ align: 'left' })}>
-                left
-              </Segment>
-              <Segment active={state.align === 'center'} onClick={() => patch({ align: 'center' })}>
-                center
-              </Segment>
+              {ALIGNS.map((align) => {
+                const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight
+                return (
+                  <Segment key={align} title={align} active={state.align === align} onClick={() => patch({ align })}>
+                    <Icon size={13} strokeWidth={2.25} />
+                  </Segment>
+                )
+              })}
             </ControlCell>
           </ControlBar>
           <div ref={elRef} className="aspect-[16/9] w-full" />
-
-          <label className="flex items-start gap-3 bg-paper px-3 py-2.5">
-            <span className="pt-[3px] font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">text</span>
-            <Textarea
-              ref={textRef}
-              value={state.text}
-              spellCheck={false}
-              rows={2}
-              className="min-h-0 flex-1 resize-none border-0 bg-transparent p-0 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-transparent"
-              onSelect={(event) => readSelection(event.currentTarget)}
-              onChange={(event) => {
-                const text = event.target.value
-                setState((previous) => ({ ...previous, text, spans: clipSpans(previous.spans, text.length) }))
-                readSelection(event.currentTarget)
-              }}
-            />
-          </label>
-
-          <div className="flex flex-wrap items-center gap-2 bg-paper px-3 py-2.5">
-            <span className="font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">spans</span>
-            {state.spans.map((span, index) => (
-              <span key={`${span.start}-${span.end}`} className="flex items-center gap-1 bg-ink/5 py-1 pr-1 pl-2">
-                <span className="max-w-[16ch] truncate font-mono text-[11px] text-ink">
-                  {state.text.slice(span.start, span.end)}
-                </span>
-                {WEIGHT_OPTIONS.map((weight) => (
-                  <ChipButton
-                    key={weight}
-                    active={(span.weight ?? 400) === weight}
-                    title={`weight ${weight}`}
-                    onClick={() => setSpan(index, { weight })}
-                  >
-                    {weight}
-                  </ChipButton>
-                ))}
-                <ChipButton
-                  active={span.style === 'italic'}
-                  title="italic"
-                  onClick={() => setSpan(index, { style: span.style === 'italic' ? 'normal' : 'italic' })}
-                >
-                  i
-                </ChipButton>
-                <ChipButton
-                  title="remove span"
-                  onClick={() => patch({ spans: state.spans.filter((_, i) => i !== index) })}
-                >
-                  ×
-                </ChipButton>
-              </span>
-            ))}
-            <button
-              type="button"
-              disabled={!selection}
-              onClick={addSelection}
-              className="flex h-7 cursor-pointer items-center px-2.5 font-mono text-[11px] font-semibold tracking-[0.04em] text-ink-faint transition-colors not-disabled:hover:bg-ink/8 not-disabled:hover:text-ink disabled:cursor-default disabled:opacity-40"
-            >
-              {selection ? `+ span from “${state.text.slice(selection.start, selection.end)}”` : '+ select text to add'}
-            </button>
-          </div>
-
+          <SpanEditor
+            defaultText={RICH_INITIAL.text}
+            defaultSpans={RICH_INITIAL.spans}
+            onReady={setEditor}
+            onChange={({ text, spans }) => patch({ text, spans })}
+          />
           {/* runs vs draws is the whole point of bucketing: fixed-width cells
-              so the readout never reflows while editing */}
+              so the readout never reflows while typing */}
           <div className="flex items-center gap-3 bg-paper px-3 py-2.5 font-mono text-[11px] tracking-[0.02em]">
             <span className="inline-block w-[96px] bg-ink/10 px-1.5 py-0.5 text-center text-ink">
               {info ? `${info.runs} runs` : '…'}

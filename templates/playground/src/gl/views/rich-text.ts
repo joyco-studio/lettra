@@ -7,7 +7,7 @@ import { frameText } from '../stage'
 export interface RichTextState {
   text: string
   spans: RichSpan[]
-  align: 'left' | 'center'
+  align: 'left' | 'center' | 'right'
 }
 
 /** Run and draw-call counts for the DOM readout: the whole point of bucketing
