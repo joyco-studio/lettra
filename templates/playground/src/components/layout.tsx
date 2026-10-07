@@ -217,6 +217,11 @@ export function Segment({
   )
 }
 
+/** Caption above an editable field, so the input gets the full width. */
+export function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <span className="block font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">{children}</span>
+}
+
 export function ControlValue({ children }: { children: React.ReactNode }) {
   return (
     <span className="min-w-[4ch] text-right font-mono text-[11px] font-semibold tracking-[0.02em] text-ink tabular-nums">

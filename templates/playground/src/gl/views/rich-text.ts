@@ -36,21 +36,8 @@ const word = (text: string, key: VariantKey = {}): RichSpan => {
   return { ...key, start, end: start + text.length }
 }
 
-/** Starting points for the editor, not the whole story: the figure lets you
- * draw your own. */
-export const SPAN_PRESETS: Array<{ label: string; spans: RichSpan[] }> = [
-  { label: 'none', spans: [] },
-  { label: 'bold', spans: [word('bold', { weight: 700 })] },
-  { label: 'bold + italic', spans: [word('bold', { weight: 700 }), word('italic', { style: 'italic' })] },
-  {
-    label: 'repeated',
-    spans: [
-      word('One paragraph', { style: 'italic' }),
-      word('bold', { weight: 700 }),
-      word('italic', { style: 'italic' }),
-    ],
-  },
-]
+/** What the editor opens with; everything after that is typed. */
+export const RICH_SPANS: RichSpan[] = [word('bold', { weight: 700 }), word('italic', { style: 'italic' })]
 
 /** fig. 03: weight and italic spans inside one paragraph, drawing from the
  * same stage-owned family as fig. 02. */

@@ -7,6 +7,7 @@ import {
   ControlCell,
   ControlValue,
   DemoTitle,
+  FieldLabel,
   FigCaption,
   Prose,
   Row,
@@ -23,15 +24,13 @@ import {
   scrambleSnippet,
   liquidSnippet,
 } from '@/lib/snippets'
-import type { Editor } from '@tiptap/react'
-import type { RichSpan } from 'lettra/three'
-import { SpanEditor, spansToHtml } from '@/components/span-editor'
+import { SpanEditor } from '@/components/span-editor'
 import type { FontName, Stage } from '@/gl/stage'
 import { createSpecimenView } from '@/gl/views/specimen'
 import type { Align, SpecimenState } from '@/gl/views/specimen'
 import { createFamilyView } from '@/gl/views/family'
 import type { FamilyInfo, FamilyState } from '@/gl/views/family'
-import { createRichTextView, RICH_TEXT, SPAN_PRESETS } from '@/gl/views/rich-text'
+import { createRichTextView, RICH_SPANS, RICH_TEXT } from '@/gl/views/rich-text'
 import type { RichTextInfo, RichTextState } from '@/gl/views/rich-text'
 import { createWipeView } from '@/gl/views/wipe'
 import { createScrambleView } from '@/gl/views/scramble'
@@ -213,13 +212,13 @@ export function SpecimenExample({ stage }: { stage: Stage | null }) {
             </ControlCell>
           </ControlBar>
           <div ref={elRef} className="aspect-[16/10] w-full cursor-grab touch-none active:cursor-grabbing" />
-          <label className="flex items-start gap-3 bg-paper px-3 py-2.5">
-            <span className="pt-[3px] font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">text</span>
+          <label className="block bg-paper px-3 pt-2 pb-2.5">
+            <FieldLabel>text</FieldLabel>
             <Textarea
               value={state.text}
               spellCheck={false}
               rows={2}
-              className="min-h-0 flex-1 resize-none border-0 bg-transparent p-0 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className="mt-1.5 min-h-0 w-full resize-none border-0 bg-field px-2 py-1.5 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink shadow-none focus-visible:ring-0 dark:bg-field"
               onChange={(event) => patch({ text: event.target.value })}
             />
           </label>
@@ -352,13 +351,12 @@ export function FamilyExample({ stage }: { stage: Stage | null }) {
   )
 }
 
-const RICH_INITIAL: RichTextState = { text: RICH_TEXT, spans: SPAN_PRESETS[2].spans, align: 'center' }
+const RICH_INITIAL: RichTextState = { text: RICH_TEXT, spans: RICH_SPANS, align: 'center' }
 
 export function RichTextExample({ stage }: { stage: Stage | null }) {
   const elRef = useRef<HTMLDivElement>(null)
   const [state, setState] = useState(RICH_INITIAL)
   const [info, setInfo] = useState<RichTextInfo | null>(null)
-  const [editor, setEditor] = useState<Editor | null>(null)
   const [open, setOpen] = useState(false)
   const view = useGLView(stage, elRef, (s, el) => createRichTextView(s, el, RICH_INITIAL))
 
@@ -368,11 +366,6 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
   }, [state, view])
 
   const patch = (partial: Partial<RichTextState>) => setState((previous) => ({ ...previous, ...partial }))
-
-  const seed = (spans: RichSpan[]) => {
-    editor?.commands.setContent(spansToHtml(RICH_TEXT, spans))
-    patch({ text: RICH_TEXT, spans })
-  }
 
   return (
     <Row
@@ -403,13 +396,6 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
           <ControlBar>
-            <ControlCell label="preset">
-              {SPAN_PRESETS.map((preset) => (
-                <Segment key={preset.label} onClick={() => seed(preset.spans)}>
-                  {preset.label}
-                </Segment>
-              ))}
-            </ControlCell>
             <ControlCell label="align">
               {ALIGNS.map((align) => {
                 const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight
@@ -425,7 +411,6 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
           <SpanEditor
             defaultText={RICH_INITIAL.text}
             defaultSpans={RICH_INITIAL.spans}
-            onReady={setEditor}
             onChange={({ text, spans }) => patch({ text, spans })}
           />
           {/* runs vs draws is the whole point of bucketing: fixed-width cells

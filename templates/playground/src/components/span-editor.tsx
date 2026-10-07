@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect } from 'react'
 import { EditorContent, Mark, mergeAttributes, useEditor, useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
@@ -10,7 +9,7 @@ import Text from '@tiptap/extension-text'
 import Italic from '@tiptap/extension-italic'
 import { Extension } from '@tiptap/core'
 import type { RichSpan } from 'lettra/three'
-import { Segment } from '@/components/layout'
+import { FieldLabel, Segment } from '@/components/layout'
 
 /** 200, 400 and 700 are baked; 500 is not, and serves 400. 400 clears the
  * mark rather than setting one, since it is what the base variant already is. */
@@ -104,13 +103,12 @@ export interface SpanEditorProps {
   defaultText: string
   defaultSpans: RichSpan[]
   onChange(value: { text: string; spans: RichSpan[] }): void
-  onReady(editor: Editor | null): void
 }
 
 /** Rich-text input for the spans figure: type, select, and set a weight or an
  * italic on the selection. What comes out is the `{ text, spans }` pair
  * `createRichText` takes. */
-export function SpanEditor({ defaultText, defaultSpans, onChange, onReady }: SpanEditorProps) {
+export function SpanEditor({ defaultText, defaultSpans, onChange }: SpanEditorProps) {
   const editor = useEditor({
     // Next renders this on the server first; Tiptap has to wait for the DOM
     immediatelyRender: false,
@@ -118,17 +116,13 @@ export function SpanEditor({ defaultText, defaultSpans, onChange, onReady }: Spa
     content: spansToHtml(defaultText, defaultSpans),
     editorProps: {
       attributes: {
+        // the padded box is the editable itself, so a click anywhere in it lands
         class:
-          'min-h-[3.5rem] w-full font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic',
+          'mt-1.5 min-h-[4.5rem] w-full bg-field px-2 py-1.5 font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic',
       },
     },
     onUpdate: ({ editor: instance }) => onChange(read(instance)),
   })
-
-  useEffect(() => {
-    onReady(editor)
-    return () => onReady(null)
-  }, [editor, onReady])
 
   // useEditor alone does not re-render per transaction in v3, so the toolbar
   // subscribes to just the two things it paints
@@ -141,9 +135,9 @@ export function SpanEditor({ defaultText, defaultSpans, onChange, onReady }: Spa
   })
 
   return (
-    <div className="flex items-start gap-3 bg-paper px-3 py-2.5">
-      <span className="pt-[3px] font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">rich text</span>
-      <div className="min-w-0 flex-1">
+    <div className="bg-paper px-3 pt-2 pb-2.5">
+      <FieldLabel>rich text</FieldLabel>
+      <div className="min-w-0">
         <EditorContent editor={editor} />
         {editor ? (
           <BubbleMenu editor={editor} className="flex bg-[#dcdcda] p-[2px] shadow-md">

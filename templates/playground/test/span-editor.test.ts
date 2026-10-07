@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { spansToHtml } from '@/components/span-editor'
-import { RICH_TEXT, SPAN_PRESETS } from '@/gl/views/rich-text'
+import { RICH_SPANS, RICH_TEXT } from '@/gl/views/rich-text'
 
 describe('spansToHtml', () => {
   it('nests a weight around an italic and leaves the gaps alone', () => {
@@ -13,14 +13,14 @@ describe('spansToHtml', () => {
     expect(spansToHtml('a <b> & "c"', [])).toBe('<p>a &lt;b&gt; &amp; &quot;c&quot;</p>')
   })
 
-  it('seeds every preset without dropping or duplicating a character', () => {
-    for (const preset of SPAN_PRESETS) {
-      const html = spansToHtml(RICH_TEXT, preset.spans)
-      const text = html
-        .replace(/<[^>]+>/g, '')
-        .replace(/&amp;/g, '&')
-        .replace(/&quot;/g, '"')
-      expect(text).toBe(RICH_TEXT)
-    }
+  it('seeds the figure without dropping or duplicating a character', () => {
+    const html = spansToHtml(RICH_TEXT, RICH_SPANS)
+    const text = html
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+    expect(text).toBe(RICH_TEXT)
+    expect(html).toContain('data-weight="700"')
+    expect(html).toContain('<em>')
   })
 })
