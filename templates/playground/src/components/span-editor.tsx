@@ -116,9 +116,10 @@ export function SpanEditor({ defaultText, defaultSpans, onChange }: SpanEditorPr
     content: spansToHtml(defaultText, defaultSpans),
     editorProps: {
       attributes: {
-        // the padded box is the editable itself, so a click anywhere in it lands
+        // set in the UI sans, not mono: this is the copy the figure renders,
+        // and the weights have to be legible as weights
         class:
-          'mt-1.5 min-h-[4.5rem] w-full font-mono text-[13px] leading-[1.6] tracking-[0.02em] text-ink outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic',
+          'mt-2 min-h-[4.5rem] w-full text-[15px] leading-[1.5] text-ink outline-none [&_[data-weight="200"]]:font-light [&_[data-weight="500"]]:font-medium [&_[data-weight="700"]]:font-bold [&_em]:italic',
       },
     },
     onUpdate: ({ editor: instance }) => onChange(read(instance)),

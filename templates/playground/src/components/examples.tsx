@@ -395,6 +395,8 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
       </Prose>
       <figure className="mt-8">
         <div className="flex flex-col gap-[2px] bg-[#dcdcda] p-[2px]">
+          <div ref={elRef} className="aspect-[16/9] w-full" />
+          {/* the one layout option here, docked to the editor it applies to */}
           <ControlBar>
             <ControlCell>
               {ALIGNS.map((align) => {
@@ -407,7 +409,6 @@ export function RichTextExample({ stage }: { stage: Stage | null }) {
               })}
             </ControlCell>
           </ControlBar>
-          <div ref={elRef} className="aspect-[16/9] w-full" />
           <SpanEditor
             defaultText={RICH_INITIAL.text}
             defaultSpans={RICH_INITIAL.spans}

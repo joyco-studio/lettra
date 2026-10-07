@@ -221,9 +221,14 @@ export function Segment({
   )
 }
 
-/** Caption above an editable field, so the input gets the full width. */
+/** Caption above an editable field, so the input gets the full width. Tinted,
+ * so it reads as a tag on the field rather than as part of its contents. */
 export function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="block font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">{children}</span>
+  return (
+    <span className="inline-block bg-ink/10 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-[0.02em] text-ink-faint">
+      {children}
+    </span>
+  )
 }
 
 export function ControlValue({ children }: { children: React.ReactNode }) {
