@@ -94,7 +94,7 @@ Three things that bite agents wiring this up for the first time:
 
 - [JOYCO](${ORG_URL}): the studio that maintains Lettra
 - [MSDF reconstruction notes](https://hub.joyco.studio/toolbox/msdfgen): why the median-of-three trick works
-- [Page-space WebGL scroll sync](https://hub.joyco.studio/logs/08-webgl-scroll-sync): how this site pins one canvas to the document
+- [PortalGL](https://hub.joyco.studio/toolbox/portalgl): keeps this site's WebGPU views aligned with the DOM
 - [@joycostudio/susano](https://www.npmjs.com/package/@joycostudio/susano): asset loading and preload dedupe used alongside Lettra
 - [@joycostudio/xyz](https://www.npmjs.com/package/@joycostudio/xyz): scene-wide warmup that covers text meshes
 - [Repository](${REPO_URL}): source, layout engine, and tests

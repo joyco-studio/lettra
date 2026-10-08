@@ -1,7 +1,7 @@
 import { PerspectiveCamera, Scene } from 'three/webgpu'
 import { createText, scramble } from 'lettra/three'
 import type { Stage } from '../stage'
-import { createTweener, frameText } from '../stage'
+import { createTweener, frameText, reframeOnResize } from '../stage'
 
 export interface ScrambleView {
   /** Scramble everything, then decode back to clean glyphs. */
@@ -36,22 +36,10 @@ export async function createScrambleView(stage: Stage, el: HTMLElement): Promise
       height: text.layout.height,
       fontSize: text.layout.metrics.fontSize,
     })
-    handle.invalidate()
   }
 
-  const handle = stage.addView(el, {
-    scene,
-    camera,
-    resize(width, height) {
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      frame()
-    },
-    // the re-roll is time-driven — keep frames coming while any glyph scrambles
-    update: () => text.uniforms.scramble.value > 0.001,
-  })
-  text.onChange(() => handle.invalidate())
-  const tweener = createTweener(() => handle.invalidate())
+  const view = stage.dom.addView(el, { scene, camera, onFrame: reframeOnResize(camera, frame) })
+  const tweener = createTweener()
 
   await text.warmup(stage.renderer, camera, scene)
   frame()
@@ -66,11 +54,10 @@ export async function createScrambleView(stage: Stage, el: HTMLElement): Promise
     setAmount(value) {
       tweener.cancel()
       text.uniforms.scramble.value = value
-      handle.invalidate()
     },
     dispose() {
       tweener.cancel()
-      handle.dispose()
+      view.destroy()
       text.dispose({ map: false })
     },
   }

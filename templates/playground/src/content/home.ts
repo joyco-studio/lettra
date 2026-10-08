@@ -167,20 +167,18 @@ CJS build of that subpath exists but is only usable through bundlers.
 Lettra draws text. It does not own your canvas, your scroll, or your render
 loop, and it never will. What we reach for alongside it:
 
-- [@joycostudio/metri](https://hub.joyco.studio/toolbox/metri) measures DOM
-  elements into cached document-space rects behind one shared ResizeObserver,
-  which is how each figure here finds its viewport.
+- [PortalGL](https://hub.joyco.studio/toolbox/portalgl) keeps Three.js views
+  aligned with their DOM placeholders as the page scrolls, which is how each
+  figure here follows its box.
 - [@joycostudio/susano](https://www.npmjs.com/package/@joycostudio/susano) for
   asset loading and preload dedupe, including the atlas PNG and metrics JSON.
 - [@joycostudio/xyz](https://www.npmjs.com/package/@joycostudio/xyz) for
   scene-wide warmup that covers text meshes along with everything else.
-- The [WebGL scroll sync](https://hub.joyco.studio/logs/08-webgl-scroll-sync)
-  log for pinning one canvas to the document without drift.
 
 ## This site
 
-Every figure on the homepage is ink on one shared WebGPU canvas in page space,
-scroll-synced to the document. Append \`?forceWebGL\` to exercise the WebGL2
+Every figure on the homepage is a WebGPU view that PortalGL keeps aligned with
+its placeholder. Append \`?forceWebGL\` to exercise the WebGL2
 fallback. Specimen faces: Bebas Neue and Lora, OFL. Layout ported from Jam3's
 layout-bmfont-text (MIT).
 

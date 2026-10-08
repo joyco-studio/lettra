@@ -1,7 +1,7 @@
 import { PerspectiveCamera, Scene } from 'three/webgpu'
 import { createText, wipe } from 'lettra/three'
 import type { Stage } from '../stage'
-import { createTweener, frameText } from '../stage'
+import { createTweener, frameText, reframeOnResize } from '../stage'
 
 export interface WipeView {
   wipe(direction: 'in' | 'out'): void
@@ -33,20 +33,10 @@ export async function createWipeView(stage: Stage, el: HTMLElement): Promise<Wip
       height: text.layout.height,
       fontSize: text.layout.metrics.fontSize,
     })
-    handle.invalidate()
   }
 
-  const handle = stage.addView(el, {
-    scene,
-    camera,
-    resize(width, height) {
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      frame()
-    },
-  })
-  text.onChange(() => handle.invalidate())
-  const tweener = createTweener(() => handle.invalidate())
+  const view = stage.dom.addView(el, { scene, camera, onFrame: reframeOnResize(camera, frame) })
+  const tweener = createTweener()
 
   await text.warmup(stage.renderer, camera, scene)
   frame()
@@ -74,7 +64,7 @@ export async function createWipeView(stage: Stage, el: HTMLElement): Promise<Wip
     },
     dispose() {
       tweener.cancel()
-      handle.dispose()
+      view.destroy()
       text.dispose({ map: false })
     },
   }

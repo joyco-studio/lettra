@@ -2,7 +2,7 @@ import { PerspectiveCamera, Scene } from 'three/webgpu'
 import { createRichText } from 'lettra/three'
 import type { RichSpan, VariantKey } from 'lettra/three'
 import type { Stage } from '../stage'
-import { frameText } from '../stage'
+import { frameText, reframeOnResize } from '../stage'
 
 export interface RichTextState {
   text: string
@@ -76,20 +76,10 @@ export async function createRichTextView(stage: Stage, el: HTMLElement, initial:
         height: rich.layout.height,
         fontSize: rich.layout.metrics.fontSize,
       })
-      handle.invalidate()
     }
 
-    const handle = stage.addView(el, {
-      scene,
-      camera,
-      resize(width, height) {
-        camera.aspect = width / height
-        camera.updateProjectionMatrix()
-        frame()
-      },
-    })
-    created.push(() => handle.dispose())
-    rich.onChange(() => handle.invalidate())
+    const view = stage.dom.addView(el, { scene, camera, onFrame: reframeOnResize(camera, frame) })
+    created.push(() => view.destroy())
 
     await rich.warmup(stage.renderer, camera, scene)
     frame()

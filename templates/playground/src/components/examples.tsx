@@ -38,7 +38,7 @@ import { createWipeView } from '@/gl/views/wipe'
 import { createScrambleView } from '@/gl/views/scramble'
 import { createLiquidView } from '@/gl/views/liquid'
 
-/** Owns one tracked view on the shared stage: creates it when the stage is
+/** Owns one PortalGL view on the shared stage: creates it when the stage is
  * ready, disposes it (or the late-arriving promise) on unmount. */
 function useGLView<V extends { dispose(): void }>(
   stage: Stage | null,
