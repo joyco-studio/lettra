@@ -2,7 +2,7 @@ import { PerspectiveCamera, Scene } from 'three/webgpu'
 import { createText } from 'lettra/three'
 import type { LoadedVariant, TextHandle } from 'lettra/three'
 import type { Stage } from '../stage'
-import { frameText } from '../stage'
+import { frameText, reframeOnResize } from '../stage'
 
 export interface FamilyState {
   weight: number
@@ -69,20 +69,10 @@ export async function createFamilyView(stage: Stage, el: HTMLElement, initial: F
         height: text.layout.height,
         fontSize: text.layout.metrics.fontSize,
       })
-      handle.invalidate()
     }
 
-    const handle = stage.addView(el, {
-      scene,
-      camera,
-      resize(width, height) {
-        camera.aspect = width / height
-        camera.updateProjectionMatrix()
-        frame()
-      },
-    })
-    created.push(() => handle.dispose())
-    text.onChange(() => handle.invalidate())
+    const view = stage.dom.addView(el, { scene, camera, onFrame: reframeOnResize(camera, frame) })
+    created.push(() => view.destroy())
 
     await text.warmup(stage.renderer, camera, scene)
     frame()

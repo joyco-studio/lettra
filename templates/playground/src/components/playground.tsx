@@ -1,8 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Metri } from '@joycostudio/metri'
-import { MetriProvider } from '@joycostudio/metri/react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Caption,
   CodePanel,
@@ -88,7 +86,7 @@ function MetaTable() {
     ['package', 'lettra · npm'],
     ['renderer', 'webgpu · webgl fallback'],
     ['engine', 'three/webgpu + tsl'],
-    ['tracking', '@joycostudio/metri'],
+    ['tracking', 'portalgl'],
     ['license', 'mit'],
   ]
   return (
@@ -110,14 +108,10 @@ function MetaTable() {
 /** Complementary libraries, not dependencies: Lettra ships none of this. */
 function RecommendedTable() {
   const rows: [string, string, string][] = [
-    [
-      '@joycostudio/metri',
-      'https://hub.joyco.studio/toolbox/metri',
-      'DOM rects in document space, one shared observer',
-    ],
+    ['portalgl', 'https://hub.joyco.studio/toolbox/portalgl', 'keeps each canvas view on its DOM placeholder'],
+    ['@joycostudio/metri', 'https://hub.joyco.studio/toolbox/metri', 'DOM measurement and scroll triggers'],
     ['@joycostudio/susano', 'https://www.npmjs.com/package/@joycostudio/susano', 'asset loading and preload dedupe'],
     ['@joycostudio/xyz', 'https://www.npmjs.com/package/@joycostudio/xyz', 'scene-wide warmup, text meshes included'],
-    ['webgl scroll sync', 'https://hub.joyco.studio/logs/08-webgl-scroll-sync', 'pinning one canvas to the document'],
   ]
   return (
     <table className="mt-6 w-full border-collapse text-left">
@@ -180,20 +174,14 @@ export default function Playground({
   specimenSource: string
   highlighted: HighlightedSnippets
 }) {
-  const metri = useMemo(() => new Metri(), [])
-  useLayoutEffect(() => {
-    metri.initialize()
-    return () => metri.disposeAll()
-  }, [metri])
-
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const [stage, setStage] = useState<Stage | null>(null)
   const [bakeOpen, setBakeOpen] = useState(false)
 
   useEffect(() => {
     let disposed = false
     let created: Stage | null = null
-    createStage(canvasRef.current!, metri)
+    createStage(rootRef.current!)
       .then((result) => {
         if (disposed) {
           result.dispose()
@@ -211,221 +199,200 @@ export default function Playground({
       created?.dispose()
       setStage(null)
     }
-  }, [metri])
+  }, [])
 
   return (
-    <MetriProvider metri={metri}>
-      <div className="relative min-h-screen overflow-clip">
-        {/* the shared stage — one page-space canvas, every figure is a
-            Metri-tracked view scissored onto it */}
-        <canvas
-          ref={canvasRef}
-          aria-hidden
-          className="pointer-events-none absolute top-0 left-0 z-30 will-change-transform"
-        />
-
-        <div className="relative mx-auto flex max-w-[1440px] justify-center gap-14 px-6">
-          {/* left rail — hub-style contents */}
-          <div className="sticky top-0 hidden h-screen w-[280px] shrink-0 self-start pt-14 pb-10 xl:block">
-            {/* block hugs the body column; content inside stays left-aligned */}
-            <div className="ml-auto flex h-full w-full max-w-[280px] flex-col">
-              <div className="flex flex-col items-start gap-2 pb-10">
-                <img src="/brand/wordmark.svg" alt="Lettra®" className="h-[26px] w-auto [filter:brightness(0.32)]" />
-                <span className="font-mono text-[10px] tracking-[0.02em] text-ink-faint">v{version}</span>
-              </div>
-              <Toc groups={GROUPS} />
-              <a
-                href="https://joyco.studio"
-                aria-label="JOYCO"
-                className="mt-auto block w-fit text-ink-faint transition-colors hover:text-ink"
-              >
-                <JoycoLogo className="h-[15px] w-auto" />
-              </a>
+    // the stage container: PortalGL mounts its canvases here, at the document origin
+    <div ref={rootRef} className="relative min-h-screen overflow-clip">
+      <div className="relative mx-auto flex max-w-[1440px] justify-center gap-14 px-6">
+        {/* left rail — hub-style contents */}
+        <div className="sticky top-0 hidden h-screen w-[280px] shrink-0 self-start pt-14 pb-10 xl:block">
+          {/* block hugs the body column; content inside stays left-aligned */}
+          <div className="ml-auto flex h-full w-full max-w-[280px] flex-col">
+            <div className="flex flex-col items-start gap-2 pb-10">
+              <img src="/brand/wordmark.svg" alt="Lettra®" className="h-[26px] w-auto [filter:brightness(0.32)]" />
+              <span className="font-mono text-[10px] tracking-[0.02em] text-ink-faint">v{version}</span>
             </div>
-          </div>
-
-          {/* prose column + right rail */}
-          <div className="grid min-w-0 grid-cols-1 gap-x-14 pb-28 lg:grid-cols-[minmax(0,580px)_minmax(0,460px)]">
-            {/* masthead */}
-            <Row>
-              <div className="flex items-start gap-1 pt-14">
-                <h1 className="font-serif text-[32px] leading-[1.05] font-bold tracking-[-0.02em] text-ink">
-                  Sharp text, baked flat
-                </h1>
-                <Caption>[webgpu]</Caption>
-              </div>
-
-              <Prose className="mt-7 text-[18px] leading-[1.35]">
-                Lettra renders live, kerned typography on the GPU from a font baked once into a multi-channel signed
-                distance field. No runtime shaper, no wasm: a few kilobytes of layout and a composable Three.js node
-                material, sharp at any scale and any angle.
-              </Prose>
-              <Prose className="mt-4 text-[14px] text-[#6b6b6b]">
-                Every figure below is ink on one shared canvas, scroll-synced to the page. Hit the{' '}
-                <span className="font-mono text-[12px]">{'</>'}</span> square on any figure to read its snippet.
-              </Prose>
-
-              <GettingStarted />
-            </Row>
-
-            {/* fig. 01 — specimen */}
-            <SpecimenExample stage={stage} />
-
-            <SectionBreak />
-            {/* fig. 02 — families & variable weight */}
-            <FamilyExample stage={stage} />
-
-            <SectionBreak />
-            {/* fig. 03 — rich text, on the same stage-owned family */}
-            <RichTextExample stage={stage} />
-
-            <SectionBreak />
-            {/* 04 — pipeline */}
-            <Row
-              id="pipeline"
-              className="pt-20"
-              asideClassName="lg:pt-20"
-              aside={
-                <SnippetPanel
-                  open={bakeOpen}
-                  title="bake.sh"
-                  code={bakeRecipe}
-                  html={highlighted.bake}
-                  lang="bash"
-                  onToggle={() => setBakeOpen((value) => !value)}
-                />
-              }
+            <Toc groups={GROUPS} />
+            <a
+              href="https://joyco.studio"
+              aria-label="JOYCO"
+              className="mt-auto block w-fit text-ink-faint transition-colors hover:text-ink"
             >
-              <SectionTitle caption="pipeline">How it works</SectionTitle>
-
-              <div className="mt-6 flex flex-col gap-5">
-                <Prose>
-                  <span className="font-bold">Bake once.</span> A font becomes a small PNG atlas and a metrics JSON:
-                  each glyph a multi-channel distance field, each kerning pair carried over. It happens at build time,
-                  by hand or script. The library starts where the bake ends.{' '}
-                  <MonoButton active={bakeOpen} onClick={() => setBakeOpen((value) => !value)}>
-                    {bakeOpen ? 'hide recipe' : 'view recipe'}
-                  </MonoButton>
-                </Prose>
-                <Prose>
-                  <span className="font-bold">Lay out on the CPU.</span> A typed port of the classic BMFont pen walk:
-                  pairwise kerning, greedy word wrap, alignment, letter-spacing. Bounds come from the ink itself rather
-                  than font metrics, so display faces center the way they look, not the way their line boxes claim.
-                </Prose>
-                <Prose>
-                  <span className="font-bold">Reconstruct on the GPU.</span> The material takes the median of three
-                  channels, sharpens it over half a derivative&apos;s width, and exposes erosion wipes that dissolve
-                  glyphs through the distance field, edges first and stroke skeletons last. Every node is exported,
-                  typed, and replaceable.
-                </Prose>
-              </div>
-            </Row>
-
-            {/* 05 — effects: one lead-in, then fig. 04 wipe and fig. 05 scramble */}
-            <SectionBreak />
-            <EffectsIntro />
-            <WipeExample stage={stage} html={highlighted.wipe} className="pt-12" />
-            <ScrambleExample stage={stage} html={highlighted.scramble} className="pt-16" />
-
-            {/* 06 — composition: the drive seam, demonstrated by fig. 06 */}
-            <SectionBreak />
-            <CompositionIntro />
-            <LiquidExample stage={stage} html={highlighted.liquid} className="pt-12" />
-
-            <SectionBreak />
-            {/* 06 — ecosystem: what Lettra deliberately leaves to other libraries */}
-            <Row id="ecosystem" className="pt-20">
-              <SectionTitle caption="ecosystem">What pairs with it</SectionTitle>
-              <Prose className="mt-5">
-                Lettra draws text. It does not own your canvas, your scroll, or your render loop, and it never will.
-                Those are someone else&apos;s job, so here is what we reach for and how this very page is built.
-              </Prose>
-              <RecommendedTable />
-              <Prose className="mt-8">
-                The page keeps a single WebGPU canvas in page space and slides it back over the viewport each frame, the
-                &ldquo;absolute&rdquo; approach from the JOYCO{' '}
-                <a
-                  href="https://hub.joyco.studio/logs/08-webgl-scroll-sync"
-                  className="underline decoration-1 underline-offset-2 hover:text-ink"
-                >
-                  WebGL Scroll Sync
-                </a>{' '}
-                log. Content never drifts from the DOM during scroll; 25% padding top and bottom absorbs the
-                one-frame-stale transform. Each figure is a placeholder div measured by{' '}
-                <a
-                  href="https://hub.joyco.studio/toolbox/metri"
-                  className="underline decoration-1 underline-offset-2 hover:text-ink"
-                >
-                  Metri
-                </a>{' '}
-                (cached document-space bounds, one shared ResizeObserver) and rendered into its rect with a scissored
-                viewport. Frames are demand-driven: no scroll, no tween, no render.
-              </Prose>
-
-              <details className="group mt-8">
-                <summary className="flex cursor-pointer list-none items-center gap-3">
-                  <span className="flex size-7 shrink-0 items-center justify-center bg-ink/8 font-mono text-[14px] text-ink-faint transition-colors group-hover:bg-ink/15 group-hover:text-ink">
-                    <span className="group-open:hidden">+</span>
-                    <span className="hidden group-open:inline">−</span>
-                  </span>
-                  <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 07 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
-                  </span>
-                </summary>
-                <div className="mt-4">
-                  <CodePanel
-                    title="gl/stage.ts"
-                    code={stageSource}
-                    html={highlighted.stage}
-                    maxHeight="max-h-[480px]"
-                  />
-                </div>
-              </details>
-
-              <details className="group mt-6">
-                <summary className="flex cursor-pointer list-none items-center gap-3">
-                  <span className="flex size-7 shrink-0 items-center justify-center bg-ink/8 font-mono text-[14px] text-ink-faint transition-colors group-hover:bg-ink/15 group-hover:text-ink">
-                    <span className="group-open:hidden">+</span>
-                    <span className="hidden group-open:inline">−</span>
-                  </span>
-                  <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
-                    fig. 08 · a view{' '}
-                    <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
-                  </span>
-                </summary>
-                <div className="mt-4">
-                  <CodePanel
-                    title="gl/views/specimen.ts"
-                    code={specimenSource}
-                    html={highlighted.specimen}
-                    maxHeight="max-h-[480px]"
-                  />
-                </div>
-              </details>
-            </Row>
-
-            <SectionBreak />
-            {/* 08 — colophon */}
-            <Row id="colophon" className="pt-20">
-              <div className="pb-10">
-                <MetaTable />
-              </div>
-              <div className="flex flex-col gap-3">
-                <SectionTitle caption="colophon">From readme.md</SectionTitle>
-                <Prose className="text-[14px] text-[#6b6b6b]">
-                  Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi;
-                  that work belongs to a real shaper. Layout ported from Jam3&apos;s layout-bmfont-text (MIT). Specimen
-                  faces: Bebas Neue &amp; Lora, OFL. Append <span className="font-mono text-[12.5px]">?forceWebGL</span>{' '}
-                  to exercise the fallback. MIT ©{' '}
-                  <a href="https://joyco.studio" className="underline decoration-1 underline-offset-2 hover:text-ink">
-                    joyco.studio
-                  </a>
-                </Prose>
-              </div>
-            </Row>
+              <JoycoLogo className="h-[15px] w-auto" />
+            </a>
           </div>
         </div>
+
+        {/* prose column + right rail */}
+        <div className="grid min-w-0 grid-cols-1 gap-x-14 pb-28 lg:grid-cols-[minmax(0,580px)_minmax(0,460px)]">
+          {/* masthead */}
+          <Row>
+            <div className="flex items-start gap-1 pt-14">
+              <h1 className="font-serif text-[32px] leading-[1.05] font-bold tracking-[-0.02em] text-ink">
+                Sharp text, baked flat
+              </h1>
+              <Caption>[webgpu]</Caption>
+            </div>
+
+            <Prose className="mt-7 text-[18px] leading-[1.35]">
+              Lettra renders live, kerned typography on the GPU from a font baked once into a multi-channel signed
+              distance field. No runtime shaper, no wasm: a few kilobytes of layout and a composable Three.js node
+              material, sharp at any scale and any angle.
+            </Prose>
+            <Prose className="mt-4 text-[14px] text-[#6b6b6b]">
+              Every figure below is a WebGPU view that PortalGL keeps in sync with the page. Hit the{' '}
+              <span className="font-mono text-[12px]">{'</>'}</span> square on any figure to read its snippet.
+            </Prose>
+
+            <GettingStarted />
+          </Row>
+
+          {/* fig. 01 — specimen */}
+          <SpecimenExample stage={stage} />
+
+          <SectionBreak />
+          {/* fig. 02 — families & variable weight */}
+          <FamilyExample stage={stage} />
+
+          <SectionBreak />
+          {/* fig. 03 — rich text, on the same stage-owned family */}
+          <RichTextExample stage={stage} />
+
+          <SectionBreak />
+          {/* 04 — pipeline */}
+          <Row
+            id="pipeline"
+            className="pt-20"
+            asideClassName="lg:pt-20"
+            aside={
+              <SnippetPanel
+                open={bakeOpen}
+                title="bake.sh"
+                code={bakeRecipe}
+                html={highlighted.bake}
+                lang="bash"
+                onToggle={() => setBakeOpen((value) => !value)}
+              />
+            }
+          >
+            <SectionTitle caption="pipeline">How it works</SectionTitle>
+
+            <div className="mt-6 flex flex-col gap-5">
+              <Prose>
+                <span className="font-bold">Bake once.</span> A font becomes a small PNG atlas and a metrics JSON: each
+                glyph a multi-channel distance field, each kerning pair carried over. It happens at build time, by hand
+                or script. The library starts where the bake ends.{' '}
+                <MonoButton active={bakeOpen} onClick={() => setBakeOpen((value) => !value)}>
+                  {bakeOpen ? 'hide recipe' : 'view recipe'}
+                </MonoButton>
+              </Prose>
+              <Prose>
+                <span className="font-bold">Lay out on the CPU.</span> A typed port of the classic BMFont pen walk:
+                pairwise kerning, greedy word wrap, alignment, letter-spacing. Bounds come from the ink itself rather
+                than font metrics, so display faces center the way they look, not the way their line boxes claim.
+              </Prose>
+              <Prose>
+                <span className="font-bold">Reconstruct on the GPU.</span> The material takes the median of three
+                channels, sharpens it over half a derivative&apos;s width, and exposes erosion wipes that dissolve
+                glyphs through the distance field, edges first and stroke skeletons last. Every node is exported, typed,
+                and replaceable.
+              </Prose>
+            </div>
+          </Row>
+
+          {/* 05 — effects: one lead-in, then fig. 04 wipe and fig. 05 scramble */}
+          <SectionBreak />
+          <EffectsIntro />
+          <WipeExample stage={stage} html={highlighted.wipe} className="pt-12" />
+          <ScrambleExample stage={stage} html={highlighted.scramble} className="pt-16" />
+
+          {/* 06 — composition: the drive seam, demonstrated by fig. 06 */}
+          <SectionBreak />
+          <CompositionIntro />
+          <LiquidExample stage={stage} html={highlighted.liquid} className="pt-12" />
+
+          <SectionBreak />
+          {/* 06 — ecosystem: what Lettra deliberately leaves to other libraries */}
+          <Row id="ecosystem" className="pt-20">
+            <SectionTitle caption="ecosystem">What pairs with it</SectionTitle>
+            <Prose className="mt-5">
+              Lettra draws text. It does not own your canvas, your scroll, or your render loop, and it never will. Those
+              are someone else&apos;s job, so here is what we reach for and how this very page is built.
+            </Prose>
+            <RecommendedTable />
+            <Prose className="mt-8">
+              Each figure is a placeholder div registered as a{' '}
+              <a
+                href="https://hub.joyco.studio/toolbox/portalgl"
+                className="underline decoration-1 underline-offset-2 hover:text-ink"
+              >
+                PortalGL
+              </a>{' '}
+              view. PortalGL tracks its bounds as the page scrolls and resizes, keeps its camera&apos;s aspect in step,
+              and skips drawing it while it is offscreen. On native WebGPU each view gets its own canvas inside the
+              placeholder; the WebGL2 fallback shares one canvas pinned to the page. The stage is one renderer, the
+              atlases, and a loop that calls <span className="font-mono text-[13px]">dom.update()</span>.
+            </Prose>
+
+            <details className="group mt-8">
+              <summary className="flex cursor-pointer list-none items-center gap-3">
+                <span className="flex size-7 shrink-0 items-center justify-center bg-ink/8 font-mono text-[14px] text-ink-faint transition-colors group-hover:bg-ink/15 group-hover:text-ink">
+                  <span className="group-open:hidden">+</span>
+                  <span className="hidden group-open:inline">−</span>
+                </span>
+                <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
+                  fig. 07 · the stage <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/stage.ts</span>
+                </span>
+              </summary>
+              <div className="mt-4">
+                <CodePanel title="gl/stage.ts" code={stageSource} html={highlighted.stage} maxHeight="max-h-[480px]" />
+              </div>
+            </details>
+
+            <details className="group mt-6">
+              <summary className="flex cursor-pointer list-none items-center gap-3">
+                <span className="flex size-7 shrink-0 items-center justify-center bg-ink/8 font-mono text-[14px] text-ink-faint transition-colors group-hover:bg-ink/15 group-hover:text-ink">
+                  <span className="group-open:hidden">+</span>
+                  <span className="hidden group-open:inline">−</span>
+                </span>
+                <span className="font-serif text-[16px] tracking-[0.01em] text-ink-faint transition-colors group-hover:text-ink">
+                  fig. 08 · a view{' '}
+                  <span className="pl-1 font-mono text-[11px] text-ink-faint">gl/views/specimen.ts</span>
+                </span>
+              </summary>
+              <div className="mt-4">
+                <CodePanel
+                  title="gl/views/specimen.ts"
+                  code={specimenSource}
+                  html={highlighted.specimen}
+                  maxHeight="max-h-[480px]"
+                />
+              </div>
+            </details>
+          </Row>
+
+          <SectionBreak />
+          {/* 08 — colophon */}
+          <Row id="colophon" className="pt-20">
+            <div className="pb-10">
+              <MetaTable />
+            </div>
+            <div className="flex flex-col gap-3">
+              <SectionTitle caption="colophon">From readme.md</SectionTitle>
+              <Prose className="text-[14px] text-[#6b6b6b]">
+                Latin scripts, single and multiline, live string swap. No complex shaping, no color emoji, no bidi; that
+                work belongs to a real shaper. Layout ported from Jam3&apos;s layout-bmfont-text (MIT). Specimen faces:
+                Bebas Neue &amp; Lora, OFL. Append <span className="font-mono text-[12.5px]">?forceWebGL</span> to
+                exercise the fallback. MIT ©{' '}
+                <a href="https://joyco.studio" className="underline decoration-1 underline-offset-2 hover:text-ink">
+                  joyco.studio
+                </a>
+              </Prose>
+            </div>
+          </Row>
+        </div>
       </div>
-    </MetriProvider>
+    </div>
   )
 }

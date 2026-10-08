@@ -34,7 +34,7 @@ import {
 import { composeEffects, createText, scramble } from 'lettra/three'
 import type { TextEffect } from 'lettra/three'
 import type { Stage } from '../stage'
-import { frameText } from '../stage'
+import { frameText, reframeOnResize } from '../stage'
 
 export interface LiquidView {
   dispose(): void
@@ -186,14 +186,12 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
     worldMinU.value.set(-visibleW / 2, -visibleH / 2)
     worldSizeInvU.value.set(1 / visibleW, 1 / visibleH)
     aspectU.value = visibleW / visibleH
-    handle.invalidate()
   }
 
   /* ── pointer → stroke splats ───────────────────────────────────────── */
   let pointer: { x: number; y: number; at: number } | null = null
   let previous: { x: number; y: number; at: number } | null = null
   let lastSeen = 0
-  let lastTick = 0
 
   const toSimUv = (world: Vector3) => {
     const min = worldMinU.value
@@ -212,7 +210,6 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
     const sim = toSimUv(world)
     pointer = { x: sim.x, y: sim.y, at: performance.now() }
     lastSeen = pointer.at
-    handle.invalidate()
   }
   const onPointerLeave = () => {
     pointer = null
@@ -221,21 +218,16 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
   el.addEventListener('pointermove', onPointerMove)
   el.addEventListener('pointerleave', onPointerLeave)
 
-  const handle = stage.addView(el, {
+  const reframe = reframeOnResize(camera, frame)
+  const view = stage.dom.addView(el, {
     scene,
     camera,
-    resize(width, height) {
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      frame()
-    },
-    // one sim step per frame; keep rendering until the ink has soaked away
-    update() {
+    // one sim step per frame until the ink has soaked away
+    onFrame({ delta }) {
+      reframe()
       const now = performance.now()
-      const dt = Math.min(1 / 30, (now - (lastTick || now)) / 1000 || 1 / 60)
-      lastTick = now
-      const active = pointer !== null || now - lastSeen < SETTLE_MS
-      if (!active) return false
+      if (pointer === null && now - lastSeen >= SETTLE_MS) return
+      const dt = Math.min(1 / 30, delta || 1 / 60)
 
       const aspect = aspectU.value
       if (pointer) {
@@ -276,10 +268,8 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
       here.value = read.texture
       back.value = read.texture
       fieldTex.value = read.texture
-      return true
     },
   })
-  text.onChange(() => handle.invalidate())
 
   // clear both sim targets and compile the sim pipeline off the hot path
   for (const target of targets) {
@@ -295,7 +285,7 @@ export async function createLiquidView(stage: Stage, el: HTMLElement): Promise<L
     dispose() {
       el.removeEventListener('pointermove', onPointerMove)
       el.removeEventListener('pointerleave', onPointerLeave)
-      handle.dispose()
+      view.destroy()
       for (const target of targets) target.dispose()
       simMaterial.dispose()
       water.geometry.dispose()

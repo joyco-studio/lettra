@@ -2,7 +2,7 @@ import { Group, PerspectiveCamera, Scene } from 'three/webgpu'
 import type { LayoutOptions } from 'lettra'
 import { createText } from 'lettra/three'
 import type { FontName, Stage } from '../stage'
-import { frameText } from '../stage'
+import { frameText, reframeOnResize } from '../stage'
 
 export type Align = 'left' | 'center' | 'right'
 
@@ -56,19 +56,9 @@ export async function createSpecimenView(stage: Stage, el: HTMLElement, initial:
       height: text.layout.height,
       fontSize: text.layout.metrics.fontSize,
     })
-    handle.invalidate()
   }
 
-  const handle = stage.addView(el, {
-    scene,
-    camera,
-    resize(width, height) {
-      camera.aspect = width / height
-      camera.updateProjectionMatrix()
-      frame()
-    },
-  })
-  text.onChange(() => handle.invalidate())
+  const view = stage.dom.addView(el, { scene, camera, onFrame: reframeOnResize(camera, frame) })
 
   // pipeline compile off the hot path
   await text.warmup(stage.renderer, camera, scene)
@@ -90,7 +80,6 @@ export async function createSpecimenView(stage: Stage, el: HTMLElement, initial:
     rig.rotation.x = Math.max(-1.2, Math.min(1.2, rig.rotation.x + (event.clientY - lastY) * 0.005))
     lastX = event.clientX
     lastY = event.clientY
-    handle.invalidate()
   }
   const onPointerUp = () => {
     dragging = false
@@ -120,7 +109,7 @@ export async function createSpecimenView(stage: Stage, el: HTMLElement, initial:
       el.removeEventListener('pointerdown', onPointerDown)
       el.removeEventListener('pointermove', onPointerMove)
       el.removeEventListener('pointerup', onPointerUp)
-      handle.dispose()
+      view.destroy()
       text.dispose({ map: false })
     },
   }
