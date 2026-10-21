@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lettra"
+  short_description: "Build expressive Three.js typography with Lettra"
+  default_prompt: "Use $lettra to turn my font and idea into expressive typography in a Three.js scene."
