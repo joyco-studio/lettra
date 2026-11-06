@@ -73,3 +73,13 @@ A warm fill tint alone is a color transition, not a glow. For an ember-like hove
 Inspect thin handwriting against its actual background at the intended scale. Broad or bright halos can erase contrast and obscure letter shapes. Tune the core color, halo width/opacity, and eased hover strength together; verify both hover entry and exit. Associated banner-outline effects belong to the banner material, not the font atlas.
 
 Keep the result readable with reduced motion: settle reveals into a visible state, stop autonomous scrambling, and limit explicit interactions appropriately. Test both normal and reduced-motion paths; a stopped clock with hidden `wipeIn` is not a readable fallback.
+
+## Live text editing
+
+For text the user edits in place, don't hand-roll a caret: Lettra 0.4+ ships one, in three layers. Check the installed version's exports first.
+
+- `caretLayout(text, runs, layout)` (`lettra`) returns a stop per offset (`{ x, line }`) and each line's range, from the same pen `layoutRuns` draws with, so carets agree with the ink under alignment, tabs, letter spacing and mixed runs. A rich text handle exposes it as `handle.caret`. `hitTest`, `verticalMove`, `lineEdge`, `wordAt` and `sentenceAt` cover pointer and keyboard navigation.
+- `createEditableDocument` (`lettra/three`) stacks headings and paragraphs (`createTextDocument`) and draws the caret and selection. `pointAt(ndcX, ndcY, camera)` rays onto the text's plane; `caretOnScreen(camera, width, height)` projects the caret for DOM overlays. Call `update()` every frame for the blink, passing `reduced` so the caret holds steady under reduced motion. `maxHeight` clamps the page to whole lines, and `fits` refuses writing past it while still allowing restyling and deleting.
+- `attachEditor` (`lettra/editor`, optional peers `@tiptap/core` and `@tiptap/pm`) puts Tiptap on an invisible field that owns typing, IME, undo and clipboard. Import it lazily, call `sync()` every frame while editing so the field (and an IME's candidate window) follows the caret, and pass `ignore` with your toolbar's selector so its presses keep the selection.
+
+Keep editing accessible: a real button that calls `enter()`, `preventDefault` on toolbar `mousedown`, a field `label`, and the document's text available outside the canvas. Touch editing is off by default (`touch: true` opts in); a software keyboard resizing the viewport can reframe a camera tied to it.

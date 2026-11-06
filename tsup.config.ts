@@ -5,6 +5,7 @@ export default defineConfig([
     entry: {
       index: 'packages/core/index.ts',
       three: 'packages/three/index.ts',
+      editor: 'packages/editor/index.ts',
       cli: 'packages/bake/cli.ts',
     },
     format: ['cjs', 'esm'],
@@ -15,6 +16,6 @@ export default defineConfig([
     treeshake: true,
     minify: false,
     target: 'es2022',
-    external: ['three', 'three/webgpu', 'three/tsl'],
+    external: ['three', 'three/webgpu', 'three/tsl', '@tiptap/core', /^@tiptap\/pm(\/.*)?$/],
   },
 ])

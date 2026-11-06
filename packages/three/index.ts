@@ -59,5 +59,21 @@ export type {
   SyntheticCorrection,
   ResolvedVariant,
 } from '../core/family'
-export { createRichText } from './rich-text'
+export { createRichText, resolveRichRuns } from './rich-text'
 export type { CreateRichTextOptions, RichSpan, RichTextHandle } from './rich-text'
+export { createTextDocument, fitsDocument, sameText, DEFAULT_DOCUMENT_TYPE } from './document'
+export type {
+  CaretMove,
+  CaretRect,
+  CreateTextDocumentOptions,
+  DocumentBlock,
+  DocumentBlockKind,
+  DocumentSpan,
+  DocumentType,
+  PlacedBlock,
+  TextDocument,
+} from './document'
+export { createEditableDocument } from './editable'
+export type { CreateEditableDocumentOptions, EditableDocument, ScreenCaret } from './editable'
+export { caretLayout, hitTest, nearestOnLine, verticalMove, lineEdge, wordAt, sentenceAt } from '../core/caret'
+export type { CaretLayout, CaretLine, CaretStop, TextPoint, TextSelection } from '../core/caret'

@@ -23,7 +23,9 @@
     "text",
     "font",
     "bmfont",
-    "typography"
+    "typography",
+    "editor",
+    "caret"
   ],
   "sideEffects": false,
   "main": "dist/index.js",
@@ -45,6 +47,12 @@
       "import": "./dist/three.mjs",
       "require": "./dist/three.js",
       "default": "./dist/three.mjs"
+    },
+    "./editor": {
+      "types": "./dist/editor.d.ts",
+      "import": "./dist/editor.mjs",
+      "require": "./dist/editor.js",
+      "default": "./dist/editor.mjs"
     }
   },
   "scripts": {
@@ -63,6 +71,8 @@
   "devDependencies": {
     "@changesets/cli": "^2.27.11",
     "@eslint/js": "^9.18.0",
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
     "@types/node": "^20.11.24",
     "@types/three": "^0.186.0",
     "@typescript-eslint/eslint-plugin": "^8.21.0",
@@ -71,8 +81,9 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.3",
     "globals": "^15.14.0",
-    "prettier": "^3.4.2",
+    "happy-dom": "^21.0.4",
     "msdf-bmfont-xml": "^2.7.0",
+    "prettier": "^3.4.2",
     "three": "^0.186.1",
     "tsup": "^8.0.2",
     "typescript": "^5.7.3",
@@ -80,14 +91,22 @@
     "vitest": "^3.2.6"
   },
   "peerDependencies": {
+    "msdf-bmfont-xml": "^2.7.0",
     "three": ">=0.185.0",
-    "msdf-bmfont-xml": "^2.7.0"
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/pm": "^3.31.4"
   },
   "peerDependenciesMeta": {
     "three": {
       "optional": true
     },
     "msdf-bmfont-xml": {
+      "optional": true
+    },
+    "@tiptap/core": {
+      "optional": true
+    },
+    "@tiptap/pm": {
       "optional": true
     }
   }

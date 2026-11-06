@@ -26,9 +26,10 @@ function fail(message: string): never {
   throw new Error(`[lettra] ${message}`)
 }
 
-/** One pen, wrap pass and line grid across runs. Coordinates come out in the
- * first run font's layout px. */
-export function layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions = {}): RunsLayoutResult {
+/** Everything `layoutRuns` derives from the runs before placing a quad: the
+ * pen hooks, the wrapped lines and the shared line metrics. Shared with
+ * `caretLayout`, so caret stops come from the very pen walk that draws. */
+export function createRunPen(text: string, runs: LayoutRun[], opts: LayoutOptions = {}) {
   if (runs.length === 0) fail('layoutRuns requires at least one run')
   let cursor = 0
   for (const run of runs) {
@@ -50,7 +51,8 @@ export function layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions 
   const kernings = runs.map((run) => getFontLookup(run.font).kerning)
   // deepest baseline so mixed faces sit on one line
   const baseline = Math.max(...runs.map((run, r) => run.font.base * scales[r]))
-  const lineHeight = opts.lineHeight ?? Math.max(...runs.map((run, r) => run.font.lineHeight * scales[r]))
+  const fontLineHeight = Math.max(...runs.map((run, r) => run.font.lineHeight * scales[r]))
+  const lineHeight = opts.lineHeight ?? fontLineHeight
   const yShifts = runs.map((run, r) => baseline - run.font.base * scales[r])
 
   const runOf = new Array<number>(text.length)
@@ -73,6 +75,13 @@ export function layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions 
 
   const measure = createPenMeasure(hooks, letterSpacing)
   const lines = wrapLines(text, { width: opts.maxWidth, mode, measure })
+  return { hooks, lines, refSize, baseline, lineHeight, fontLineHeight, letterSpacing, align, runOf }
+}
+
+/** One pen, wrap pass and line grid across runs. Coordinates come out in the
+ * first run font's layout px. */
+export function layoutRuns(text: string, runs: LayoutRun[], opts: LayoutOptions = {}): RunsLayoutResult {
+  const { hooks, lines, refSize, baseline, lineHeight, letterSpacing, align, runOf } = createRunPen(text, runs, opts)
 
   const buckets: LayoutGlyph[][] = runs.map(() => [])
   const placed = placeLines(text, lines, hooks, { letterSpacing, lineHeight, align }, (glyph) =>
