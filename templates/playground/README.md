@@ -1,71 +1,50 @@
 # lettra playground
 
-Live lettra demo skinned with the [JOYCO UI kit](https://hub.joyco.studio)
-(Next.js App Router, `@joyco` shadcn registry, Tailwind v4). React owns only the control panel. The actual lettra usage lives
-in [`src/scene.ts`](./src/scene.ts) as plain imperative Three.js, exactly how a
-consumer without React would write it.
+The source of [lettra.joyco.studio](https://lettra.joyco.studio), the live
+specimen and docs site, skinned with the [JOYCO UI kit](https://hub.joyco.studio)
+(Next.js App Router, `@joyco` shadcn registry, Tailwind v4).
 
-- Editable text, font swap (exercises the atomic `swapFont` + scramble
-  `setPool`), align / letter-spacing / max-width, erosion wipe buttons, a
-  glyph-scramble button (the wipe front also drives it, so scrambled glyphs
-  ride the dissolve edge), drag to tilt, dpr ≤ 2.
-- **Code panel** (bottom right): the *usage* tab is a live snippet that
-  rewrites itself as you change controls; copy-paste it and you reproduce
-  the current canvas. The *implementation* tab shows `scene.ts` verbatim.
-- `?forceWebGL` exercises the WebGL2 fallback path.
+One `WebGPURenderer` draws every figure on the page;
+[PortalGL](https://www.npmjs.com/package/portalgl) keeps each view in sync with
+its DOM box ([`src/gl/stage.ts`](./src/gl/stage.ts)). Each figure is a plain
+imperative Three.js view under [`src/gl/views`](./src/gl/views), the way a
+consumer without React would write it; React owns only the page and controls.
+
+- `specimen.ts`: font switch, align, tracking, leading, measure, drag to tilt.
+- `family.ts`: `defineFamily` weight and italic resolution.
+- `rich-text.ts`: `createRichText` spans, edited with Tiptap.
+- `wipe.ts`, `scramble.ts`: the two built-in effects.
+- `liquid.ts`: a GPU fluid sim driving `scramble({ drive })`.
+
+Every figure has a code toggle that shows its snippet. `?forceWebGL` exercises
+the WebGL2 fallback. Every page also answers to `Accept: text/markdown`, and
+`/llms.txt` is generated from the same content.
 
 ```bash
 pnpm --filter @templates/playground dev
 ```
 
-## Baking the fonts (manual, for now)
+## Baking the fonts
 
-The fonts in `public/fonts/` were baked with [msdf-bmfont-xml](https://github.com/soimy/msdf-bmfont-xml)
-and minified with lettra' own `fromBMFont`:
+The atlases and metrics in `public/fonts/` are committed. To add or rebake a
+face, use lettra's bake CLI:
 
 ```bash
-# charset: ASCII + áéíóúüñÁÉÍÓÚÜÑ¿¡—–“”‘’ (one file, no newline)
-npx -y -p msdf-bmfont-xml msdf-bmfont \
-  -f json -i charset.txt -s 64 -r 8 -p 2 -t msdf --smart-size font.ttf
-
-node -e "import('lettra').then(({ fromBMFont }) => {
-  const fs = require('fs')
-  const font = fromBMFont(JSON.parse(fs.readFileSync('font.json', 'utf8')))
-  fs.writeFileSync('font.min.json', JSON.stringify(font))
-})"
+npx lettra bake Inter.ttf --weights 400,700 --italic Inter-Italic.ttf \
+  --charset latin-es --size 64 --pxrange 8 --out public/fonts/inter
 ```
 
-(The raw BMFont JSON also loads directly; `loadFont`/`createText` auto-detect
-it. The minify step just turns ~170 KB of generator output into ~9 KB.)
-
-Recipe notes:
-
-- `-r 8` (distanceRange) is deliberate: it leaves SDF headroom for the
-  threshold-erosion wipes. Shallow ranges make dissolves snap.
-- Keep the atlas on a **single page**; lettra rejects multi-page bakes.
-  If glyphs don't fit, raise the texture size instead.
-- Never enable rotated glyph packing; the UV builder assumes upright rects.
-- Check the reported kerning count. Variable fonts come out with **0 pairs**
-  when their kerning lives in variable GPOS; Playfair Display did exactly
-  this in testing. Instancing to a static weight first restores every pair
-  (Playfair: 0 → 2362):
-
-  ```bash
-  python3 -m fontTools.varLib.instancer font.ttf wght=400 -o static.ttf
-  ```
-
-  Bebas Neue bakes 1348 raw pairs, Lora 182 (same before/after instancing;
-  only resolve-at-default-instance kerning is affected).
-- A browser alternative: [msdf-font-generator.leomouraire.com](https://msdf-font-generator.leomouraire.com)
-  bakes the atlas + JSON without installing anything.
+See [The bake CLI](../../README.md#the-bake-cli) for the options and the manual
+msdf-bmfont-xml route.
 
 Fonts: [Bebas Neue](https://fonts.google.com/specimen/Bebas+Neue),
-[Lora](https://fonts.google.com/specimen/Lora), and
+[Lora](https://fonts.google.com/specimen/Lora),
+[Inter](https://fonts.google.com/specimen/Inter) and
 [Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono) (all open
 licenses; Roboto Mono is also the UI mono face, served via
-`next/font/google`), plus
+`next/font/google`), plus a trial cut of Respira in the specimen and
 [PP Lettra Mono](https://pangrampangram.com/products/lettra-mono) (licensed)
-for the liquid paragraph example. The mono faces back the scramble effect:
-glyph swaps read best when every glyph shares one ink box. A mono face
-legitimately has zero kerning pairs, so the empty-kerning warning is
-expected for them.
+for the water paragraph. GT Sectra Fine (licensed) sets the page's own text.
+The mono faces back the scramble effect: glyph swaps read best when every
+glyph shares one ink box. A mono face legitimately has zero kerning pairs, so
+the empty-kerning warning is expected for them.

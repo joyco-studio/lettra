@@ -1,10 +1,11 @@
 # lettra
 
-![lettra: sharp, typed MSDF fonts in your scene](https://r2.joyco.studio/hub/images/lettra-banner.png)
+![Lettra: text, native to your canvas.](https://r2.joyco.studio/hub/images/lettra/readme/cover.png)
 
 Runtime MSDF text for Three.js `WebGPURenderer` + TSL. Bake a font atlas once
-(dev-time, manual for now), then render sharp, kerned, animatable text with
-zero runtime dependencies. No wasm, no shaping engine, ~5 KB gzipped.
+with the bundled CLI, then render sharp, kerned, animatable text with zero
+runtime dependencies. No wasm, no shaping engine; the quickstart below is
+~5 KB min+gzip.
 
 [lettra.joyco.studio](https://lettra.joyco.studio) is the live specimen and
 docs site. If you are an agent, start at
@@ -25,6 +26,16 @@ pnpm add lettra three
 
 `three >= 0.185` is an optional peer. The core entry (schema + layout) is
 renderer-agnostic and runs anywhere, including Node.
+
+### Agent skill
+
+The repo ships a [Lettra skill](./skills/lettra/SKILL.md) for coding agents:
+font baking, scene integration, effects and interaction, checked against the
+current release. Add it to a project with:
+
+```bash
+npx skills add joyco-studio/lettra
+```
 
 ## Quickstart
 
@@ -59,6 +70,8 @@ and tree-shakeable: pass one as `material.effect` and its uniforms merge into
 `text.uniforms`, typed (`wipeIn` only exists if you passed `wipe()`). Skip
 the import and the effect's shader code never reaches your bundle.
 
+![fig. 04: threshold erosion, edges dissolve first](https://r2.joyco.studio/hub/images/lettra/readme/wipe.gif)
+
 **`wipe({ band?, coord? })`** is a threshold-erosion dissolve, not a clip:
 the fill threshold rises through the signed distance field, so glyph edges
 dissolve first and stroke skeletons last, while the front sweeps across the
@@ -68,6 +81,8 @@ Reuse one `wipe()` instance across several materials to share the uniforms.
 
 Bake with distance range **8** (see below). Erosion needs SDF headroom;
 shallow ranges make dissolves snap.
+
+![fig. 05: atlas scramble decoding](https://r2.joyco.studio/hub/images/lettra/readme/scramble.gif)
 
 **`scramble({ font, chars?, rate?, drive?, capacity? })`** is the
 decoder/terminal effect: while driven, a glyph renders a random glyph from
@@ -113,9 +128,11 @@ const effect = composeEffects(wipeFx, scramble({ font, drive: (knob) => max(knob
 anything expressible as a node drives the scramble the same way: a liquid
 surface's edge SDF sampled at world position, cursor proximity, an audio
 level. Build the field, hand it to `drive`, done. The playground ships this
-end to end: a cursor-following water trail whose rim scrambles a paragraph
-and whose interior tints the ink wet
+end to end: the cursor paints ink into a small GPU fluid sim, the ink's rim
+scrambles a paragraph and its interior tints the text wet
 ([templates/playground/src/gl/views/liquid.ts](./templates/playground/src/gl/views/liquid.ts)).
+
+![fig. 06: fluid-sim ink driving the scramble](https://r2.joyco.studio/hub/images/lettra/readme/water.gif)
 
 Effects are plain objects satisfying the `TextEffect` contract: a uniform
 bag plus per-wire transforms. The graph has named wires resolved in a fixed
@@ -284,6 +301,8 @@ Two interactions worth knowing:
 
 ## Families and variants
 
+![fig. 02: weights and italics from one family](https://r2.joyco.studio/hub/images/lettra/readme/families.gif)
+
 A family declares its bakes next/font style and resolves CSS-like: an exact
 hit serves its atlas, a weight with no bake serves its neighbour unmodified,
 and an italic request with no italic bake gets a sheared oblique. Weight
@@ -325,10 +344,12 @@ disagree.
 italic run inside a sentence is still a single layout: wrapping, alignment
 and the baseline are paragraph-wide, not per span.
 
-```ts
-import { createRichText, defineFamily } from 'lettra/three'
+![fig. 03: weight and italic spans in one layout](https://r2.joyco.studio/hub/images/lettra/readme/rich-text.png)
 
-await inter.loadAll()                     // spans resolve synchronously
+```ts
+import { createRichText } from 'lettra/three'
+
+await inter.loadAll()                     // spans resolve synchronously (inter from above)
 
 const rich = createRichText({
   family: inter,
@@ -486,13 +507,26 @@ reads as misalignment. Line-box numbers live in `metrics`.
 
 ## Playground
 
+The playground is the docs site, [lettra.joyco.studio](https://lettra.joyco.studio):
+one WebGPU renderer, kept in sync with the page by
+[PortalGL](https://www.npmjs.com/package/portalgl), drawing six live figures.
+Each has a code toggle that shows its snippet.
+
+| Figure | Shows |
+| --- | --- |
+| 01 Specimen | Font switch, align, tracking, leading and measure on editable text; drag to tilt |
+| 02 Families | `defineFamily` weight and italic resolution, exact hits and fallbacks |
+| 03 Rich text | `createRichText` spans edited in place with Tiptap |
+| 04 Wipe | `wipe()` in and out |
+| 05 Scramble | `scramble()` decode on a mono face |
+| 06 Water writes | A fluid sim driving `scramble({ drive })` and a custom color effect |
+
 ```bash
 pnpm install && pnpm --filter @templates/playground dev
 ```
 
-Editable text, two switchable fonts (atomic swap check), wipe buttons, drag
-to tilt, dpr ≤ 2. `?forceWebGL` exercises the WebGL2 fallback. See
-[templates/playground](./templates/playground) for the font bake recipe.
+`?forceWebGL` exercises the WebGL2 fallback. The views live in
+[templates/playground/src/gl/views](./templates/playground/src/gl/views).
 
 ## Non-goals
 
@@ -516,4 +550,4 @@ bundlers.
 
 ## License
 
-ISC © [joyco.studio](https://joyco.studio)
+MIT © [joyco.studio](https://joyco.studio)
