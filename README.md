@@ -383,6 +383,100 @@ Worth knowing:
   the buckets drawing the base variant's font, since elsewhere it would sample
   the wrong texture with those rects; the rest render without it.
 
+## Live editing
+
+Text can be edited in place, in the scene: a caret that blinks between the
+glyphs, a selection behind them, clicks and drags that land on the right
+letter whatever the camera angle, and real typing (IME, undo, clipboard,
+bold and italic) through an invisible field that follows the caret.
+
+It comes in three layers; take only what you need.
+
+**Caret math** (`lettra`, renderer-free). `caretLayout` walks the same pen
+`layoutRuns` draws with, and keeps what the quads drop: the pen x before
+every character and the range of every line. Alignment, tabs, letter
+spacing and mixed runs all agree with the ink by construction. Every rich
+text handle carries one as `handle.caret`.
+
+```ts
+import { caretLayout, hitTest, verticalMove, wordAt } from 'lettra'
+
+const caret = caretLayout(text, runs, { maxWidth: 400 })
+const offset = hitTest(caret, x, y)          // layout px, y-down
+caret.stops[offset]                          // { x, line }
+```
+
+**A document you can edit** (`lettra/three`). `createTextDocument` stacks
+headings and paragraphs (each its own size, line height and letter spacing)
+down a page; `createEditableDocument` adds the caret and selection meshes,
+a ray onto the text's plane for the pointer, and the caret's place on
+screen. Spans whose faces haven't loaded yet wait in the closest loaded one;
+call `document.refresh()` when more arrive.
+
+```ts
+import { createEditableDocument } from 'lettra/three'
+
+await family.load({ weight: 400 })
+
+const page = createEditableDocument({
+  family,
+  width: 4,                                  // world units
+  type: { em: 0.1 },                         // body em, world units
+  maxHeight: 5,                              // optional: lines past it aren't drawn, nor typed into
+  material: { fill: '#2b2118' },
+  blocks: [
+    { kind: 'heading', level: 1, text: 'Notes from the pond', spans: [] },
+    { kind: 'paragraph', text: 'Clear and cold.', spans: [{ start: 6, end: 10, italic: true }] },
+  ],
+})
+scene.add(page.group)
+
+// every frame
+page.update({ reduced: matchMedia('(prefers-reduced-motion: reduce)').matches })
+```
+
+**Input** (`lettra/editor`, optional). `attachEditor` puts a Tiptap editor on
+a hidden field and wires it to the page: typing and pasting (kept to the
+characters your faces can set, and to what fits under `maxHeight`), ↑ ↓ Home
+End along lettra's lines, Escape, and the pointer (press to place, drag to
+select, double/triple/quadruple click for the word, sentence, block).
+
+```bash
+pnpm add @tiptap/core @tiptap/pm
+```
+
+```ts
+const { attachEditor } = await import('lettra/editor') // load it when editing is near
+
+const editing = attachEditor({
+  view: page,
+  camera: () => camera,
+  target: renderer.domElement,
+  label: 'The page',
+  ignore: '[data-toolbar]',                  // your toolbar keeps the editor's focus
+})
+
+editing.on('change', (blocks) => save(blocks))
+editing.on('editing', (on) => toolbar.toggleAttribute('hidden', !on))
+boldButton.onclick = () => editing.toggleBold()
+
+// every frame, after rendering: keeps the hidden field (and an IME's window) at the caret
+editing.sync()
+```
+
+Worth knowing:
+
+- `lettra/editor` is the only entry with dependencies, and they are optional
+  peers: `lettra` and `lettra/three` stay dependency-free.
+- Toolbar buttons should `preventDefault` on `mousedown`, so the selection
+  they act on keeps its focus.
+- Touch presses don't start editing unless you pass `touch: true`: on touch
+  screens a press on the text is usually the start of a scroll, and the
+  software keyboard resizes the viewport.
+- The document is still canvas: keep a readable equivalent (the blocks'
+  text) in the page for assistive tech, and a button that calls
+  `editing.enter()` for keyboard users.
+
 ## The bake CLI
 
 `lettra bake` is the dev-time half of the package: a `bin` entry, never

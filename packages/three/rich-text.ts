@@ -4,7 +4,9 @@
 import { Group, Mesh } from 'three/webgpu'
 import type { Camera, Material, Scene, Texture, WebGPURenderer } from 'three/webgpu'
 import { layoutRuns } from '../core/runs'
-import type { RunsLayoutResult } from '../core/runs'
+import type { LayoutRun, RunsLayoutResult } from '../core/runs'
+import { caretLayout } from '../core/caret'
+import type { CaretLayout } from '../core/caret'
 import type { VariantKey } from '../core/family'
 import type { LayoutGlyph, LayoutOptions, LayoutResult, MSDFFont } from '../core/types'
 import type { FontFamily, LoadedVariant } from './family'
@@ -43,6 +45,10 @@ export interface RichTextHandle<E extends TextEffect | undefined = undefined> {
   /** Shared across every bucket. */
   uniforms: TextUniforms & EffectUniforms<E>
   readonly layout: RunsLayoutResult
+  /** Where a caret can stand in the current text, from the pen that drew it
+   * (see `caretLayout`). Same layout px as `layout`; computed on first read
+   * after each `setText`. */
+  readonly caret: CaretLayout
   /** Omitting `spans` keeps the current ones, clipped to the new text, so
    * shortening it (or clearing it with `''`) is safe per keystroke. Spans you
    * pass explicitly are taken as written and must fit. */
@@ -99,6 +105,48 @@ function clipSpans(spans: RichSpan[], length: number): RichSpan[] {
 const sameBake = (a: LoadedVariant, b: LoadedVariant) =>
   a.font === b.font && a.map === b.map && a.synthetic.slant === b.synthetic.slant
 
+/** The runs `createRichText` lays `text` out in: spans sorted, gaps filled
+ * with the base key, each resolved to its loaded bake, and adjacent runs that
+ * land on one bake merged. Exposed so anything measuring the same text (a
+ * caret, a document deciding what fits) gets the runs the ink is drawn in,
+ * kerning across merged spans included. Throws if a key's bake isn't loaded. */
+export function resolveRichRuns(
+  family: FontFamily,
+  text: string,
+  spans: RichSpan[],
+  base: VariantKey = {}
+): { runs: LayoutRun[]; variants: LoadedVariant[] } {
+  const keys = normalizeRuns(text.length, spans, base)
+  // empty text tiles into nothing; keep one empty run so '' still builds
+  if (keys.length === 0) keys.push({ ...base, start: 0, end: 0, base: true })
+
+  const resolved = keys.map((key) => {
+    const variant = family.get(key)
+    if (!variant) {
+      fail(
+        `variant weight ${key.weight ?? 400} style ${key.style ?? 'normal'} is not loaded; await family.load or loadAll first`
+      )
+    }
+    return variant
+  })
+
+  // adjacent runs resolving to one bake are one run: layoutRuns drops kerning
+  // at every boundary, and across these two it is the same pair table — a span
+  // that changes nothing would otherwise shift the text it precedes
+  const runs: LayoutRun[] = []
+  const variants: LoadedVariant[] = []
+  keys.forEach((key, i) => {
+    const last = runs[runs.length - 1]
+    if (last && sameBake(variants[variants.length - 1], resolved[i])) {
+      last.end = key.end
+      return
+    }
+    runs.push({ font: resolved[i].font, start: key.start, end: key.end })
+    variants.push(resolved[i])
+  })
+  return { runs, variants }
+}
+
 export function createRichText<E extends TextEffect | undefined = undefined>(
   options: CreateRichTextOptions<E>
 ): RichTextHandle<E> {
@@ -120,6 +168,8 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
   const notify = () => listeners.forEach((listener) => listener())
 
   let currentLayout!: RunsLayoutResult
+  let currentRuns: LayoutRun[] = []
+  let currentCaret: CaretLayout | null = null
   // our own list, not group.children: the group is public, and a caller's debug
   // helper added to it is not ours to dispose
   let meshes: Mesh[] = []
@@ -153,40 +203,8 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
   }
 
   const build = (nextText: string, nextSpans: RichSpan[], nextLayoutOptions: LayoutOptions | undefined) => {
-    const keys = normalizeRuns(nextText.length, nextSpans, baseKey)
-    // empty text tiles into nothing; keep one empty run so '' still builds
-    if (keys.length === 0) keys.push({ ...baseKey, start: 0, end: 0, base: true })
-
-    const resolved = keys.map((key) => {
-      const variant = family.get(key)
-      if (!variant) {
-        fail(
-          `variant weight ${key.weight ?? 400} style ${key.style ?? 'normal'} is not loaded; await family.load or loadAll first`
-        )
-      }
-      return variant
-    })
-
-    // adjacent runs resolving to one bake are one run: layoutRuns drops kerning
-    // at every boundary, and across these two it is the same pair table — a span
-    // that changes nothing would otherwise shift the text it precedes
-    const runs: Array<{ start: number; end: number }> = []
-    const variants: LoadedVariant[] = []
-    keys.forEach((key, i) => {
-      const last = runs[runs.length - 1]
-      if (last && sameBake(variants[variants.length - 1], resolved[i])) {
-        last.end = key.end
-        return
-      }
-      runs.push({ start: key.start, end: key.end })
-      variants.push(resolved[i])
-    })
-
-    const nextLayout = layoutRuns(
-      nextText,
-      runs.map((run, i) => ({ font: variants[i].font, start: run.start, end: run.end })),
-      nextLayoutOptions
-    )
+    const { runs: layoutRunList, variants } = resolveRichRuns(family, nextText, nextSpans, baseKey)
+    const nextLayout = layoutRuns(nextText, layoutRunList, nextLayoutOptions)
 
     // A font-bound effect was built from the base variant's font, so resolve
     // that key — never infer it from the runs, which may not include the base
@@ -275,6 +293,8 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
     spans = nextSpans
     layoutOptions = nextLayoutOptions
     currentLayout = nextLayout
+    currentRuns = layoutRunList
+    currentCaret = null
   }
 
   build(text, spans, layoutOptions)
@@ -284,6 +304,10 @@ export function createRichText<E extends TextEffect | undefined = undefined>(
     uniforms: { ...sharedUniforms, ...effect?.uniforms } as RichTextHandle<E>['uniforms'],
     get layout() {
       return currentLayout
+    },
+    get caret() {
+      currentCaret ??= caretLayout(text, currentRuns, layoutOptions)
+      return currentCaret
     },
     setText(nextText, nextSpans, nextLayoutOptions) {
       // build commits text/spans only once it succeeds, so a throw can't leave

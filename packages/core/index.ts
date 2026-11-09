@@ -18,3 +18,5 @@ export type {
 } from './family'
 export { layoutRuns } from './runs'
 export type { LayoutRun, RunsLayoutResult } from './runs'
+export { caretLayout, hitTest, nearestOnLine, verticalMove, lineEdge, wordAt, sentenceAt } from './caret'
+export type { CaretLayout, CaretLine, CaretStop, TextPoint, TextSelection } from './caret'
